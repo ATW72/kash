@@ -4120,8 +4120,11 @@ window.loadBills = _patchedLoadBills;
 function checkMustChangePassword(user) {
   if (user && user.must_change_password) {
     document.getElementById('force-pw-backdrop').style.display = 'flex';
-    // Prevent interaction with the rest of the app
-    document.querySelector('.main') && (document.querySelector('.main').style.pointerEvents = 'none');
+    // Focus first input after modal appears
+    setTimeout(() => {
+      const input = document.getElementById('force-pw-new');
+      if (input) input.focus();
+    }, 200);
   }
 }
 
@@ -4146,7 +4149,6 @@ async function submitForcePassword() {
   const res = await apiCall('/api/users/force-change-password', 'POST', { new_password: newPw });
   if (res) {
     document.getElementById('force-pw-backdrop').style.display = 'none';
-    document.querySelector('.main') && (document.querySelector('.main').style.pointerEvents = '');
     showToast('success', '✅ Password set successfully — welcome to Kash!');
     // Trigger onboarding since this is their first real login
     setTimeout(() => checkOnboarding && checkOnboarding(), 800);
