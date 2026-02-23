@@ -15,7 +15,9 @@ sys.path.insert(0, os.path.dirname(__file__))
 from config.settings import Config
 from utils.db import get_db_connection
 from utils.auth import login_required, admin_required
-from utils.notifications import init_mail, run_daily_notifications, send_email, build_bill_alert_email, build_budget_alert_email
+from utils.notifications import init_mail, run_daily_notifications, send_email, build_bill_alert_email, build_budget_alert_email, build_welcome_email
+import secrets
+import string
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
 
@@ -1875,23 +1877,42 @@ def update_profile():
 @admin_required
 def create_user():
     data = request.json or {}
-    if not data.get('username') or not data.get('password'):
-        return jsonify({'error': 'Username and password required'}), 400
-    if len(data['password']) < 8:
-        return jsonify({'error': 'Password must be at least 8 characters'}), 400
-    must_change = 1 if data.get('must_change_password', True) else 0
-    phash = generate_password_hash(data['password'], method='pbkdf2:sha256')
+    username     = data.get('username', '').strip()
+    display_name = data.get('display_name', '').strip()
+    email        = data.get('email', '').strip()
+    is_admin     = 1 if data.get('is_admin') else 0
+
+    if not username:
+        return jsonify({'error': 'Username is required'}), 400
+    if not email:
+        return jsonify({'error': 'Email is required to send the welcome email'}), 400
+
+    # Auto-generate a secure temporary password
+    alphabet = string.ascii_letters + string.digits
+    temp_password = ''.join(secrets.choice(alphabet) for _ in range(12))
+    phash = generate_password_hash(temp_password, method='pbkdf2:sha256')
+
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("INSERT INTO users (username,password_hash,is_admin,display_name,must_change_password) VALUES (?,?,?,?,?)",
-                  (data['username'], phash, 1 if data.get('is_admin') else 0,
-                   data.get('display_name','').strip(), must_change))
+        c.execute("""INSERT INTO users (username,password_hash,is_admin,display_name,email,must_change_password)
+                     VALUES (?,?,?,?,?,1)""",
+                  (username, phash, is_admin, display_name, email))
         conn.commit()
         conn.close()
-        return jsonify({'success': True}), 201
     except sqlite3.IntegrityError:
         return jsonify({'error': 'Username already exists'}), 400
+
+    # Send welcome email with temp password
+    app_url = request.host_url.rstrip('/')
+    html = build_welcome_email(username, display_name, temp_password, app_url)
+    email_sent = send_email(email, '🎉 Welcome to Kash — Your Account is Ready', html)
+
+    return jsonify({
+        'success': True,
+        'email_sent': email_sent,
+        'message': f'User created and welcome email sent to {email}' if email_sent else f'User created but email failed — temp password: {temp_password}'
+    }), 201
 
 @app.route('/api/users/<int:uid>', methods=['DELETE'])
 @admin_required
