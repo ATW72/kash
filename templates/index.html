@@ -1084,17 +1084,63 @@ canvas.sparkline { vertical-align:middle; }
 .ollama-dot.green { background:#10b981; }
 .ollama-dot.red   { background:#ef4444; }
 .ollama-dot.grey  { background:#9ca3af; }
+
+/* ── Mobile Search ── */
+.mobile-search-btn {
+  display: none; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+  color: white; border-radius: 50%; width: 36px; height: 36px; cursor: pointer;
+  font-size: 1rem; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.mobile-search-overlay {
+  display: none; position: fixed; inset: 0;
+  background: var(--bg-primary); z-index: 500;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+}
+.mobile-search-overlay.active { display: flex; }
+.mobile-search-bar {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.mobile-search-bar input {
+  flex: 1; padding: 0.65rem 0.75rem 0.65rem 2.5rem;
+  border-radius: 12px; font-size: 16px !important;
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.mobile-search-cancel {
+  background: none; border: none; color: var(--primary);
+  font-size: 0.95rem; font-weight: 600; cursor: pointer;
+  padding: 0.5rem; white-space: nowrap;
+}
+.mobile-search-overlay .search-results {
+  position: static; border: none; border-radius: 0;
+  box-shadow: none; max-height: calc(100vh - 80px);
+  overflow-y: auto; flex: 1;
+}
+@media (max-width: 640px) {
+  .desktop-search { display: none !important; }
+  .mobile-search-btn { display: flex !important; }
+}
+@media (min-width: 641px) {
+  .mobile-search-btn { display: none !important; }
+  .mobile-search-overlay { display: none !important; }
+}
 </style>
 </head>
 <body>
 <!-- Header -->
 <div class="header">
   <h1>💸 Kash</h1>
-  <div class="search-wrapper" style="flex:1; max-width:320px; margin: 0 1rem;">
+  <!-- Desktop search -->
+  <div class="search-wrapper desktop-search" style="flex:1; max-width:320px; margin: 0 1rem;">
     <span class="search-icon">🔍</span>
     <input type="text" id="global-search" placeholder="Search expenses, income, bills..." oninput="globalSearch(this.value)" autocomplete="off">
     <div class="search-results" id="search-results" style="display:none;"></div>
   </div>
+  <!-- Mobile search icon -->
+  <button class="mobile-search-btn" id="mobile-search-btn" onclick="openMobileSearch()" title="Search">🔍</button>
   <div class="header-right">
     <span id="user-greeting">Hello!</span>
     <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
@@ -1159,6 +1205,18 @@ canvas.sparkline { vertical-align:middle; }
       <span class="mdi">⚙️</span><span>Account</span>
     </button>
   </div>
+</div>
+
+
+<!-- ══ Mobile Search Overlay ══ -->
+<div class="mobile-search-overlay" id="mobile-search-overlay">
+  <div class="mobile-search-bar">
+    <span class="search-icon" style="left:1rem;">🔍</span>
+    <input type="text" id="mobile-search-input" placeholder="Search expenses, income, bills..."
+      oninput="globalSearch(this.value)" autocomplete="off" autocapitalize="off">
+    <button class="mobile-search-cancel" onclick="closeMobileSearch()">Cancel</button>
+  </div>
+  <div class="search-results" id="mobile-search-results"></div>
 </div>
 
 <!-- Toast Container -->
@@ -4756,5 +4814,57 @@ document.addEventListener('DOMContentLoaded', () => {
       mobileNav.style.display = isMobile() ? '' : 'none';
     }
   });
+});
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// MOBILE SEARCH
+// ═══════════════════════════════════════════════════════════════════════════
+
+function openMobileSearch() {
+  const overlay = document.getElementById('mobile-search-overlay');
+  overlay.classList.add('active');
+  setTimeout(() => {
+    const input = document.getElementById('mobile-search-input');
+    if (input) input.focus();
+  }, 100);
+}
+
+function closeMobileSearch() {
+  const overlay = document.getElementById('mobile-search-overlay');
+  overlay.classList.remove('active');
+  const input = document.getElementById('mobile-search-input');
+  if (input) input.value = '';
+  const results = document.getElementById('mobile-search-results');
+  if (results) results.style.display = 'none';
+}
+
+// Route globalSearch results to mobile overlay when active
+const _origGlobalSearch = window.globalSearch;
+window.globalSearch = function(val) {
+  const overlay = document.getElementById('mobile-search-overlay');
+  if (overlay && overlay.classList.contains('active')) {
+    // Temporarily swap result container
+    const desktopResults = document.getElementById('search-results');
+    const mobileResults  = document.getElementById('mobile-search-results');
+    const originalId = desktopResults.id;
+    desktopResults.id = '_search-results-hidden';
+    mobileResults.id  = 'search-results';
+    if (_origGlobalSearch) _origGlobalSearch(val);
+    desktopResults.id = originalId;
+    mobileResults.id  = 'mobile-search-results';
+    mobileResults.style.display = val ? 'block' : 'none';
+  } else {
+    if (_origGlobalSearch) _origGlobalSearch(val);
+  }
+};
+
+// Close mobile search on result click
+document.addEventListener('click', e => {
+  const overlay = document.getElementById('mobile-search-overlay');
+  if (!overlay || !overlay.classList.contains('active')) return;
+  if (e.target.closest('.search-result-item')) {
+    closeMobileSearch();
+  }
 });
 </script>
