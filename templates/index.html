@@ -985,6 +985,17 @@ canvas.sparkline { vertical-align:middle; }
 .share-user-row { display:flex; align-items:center; justify-content:space-between;
   padding:0.6rem 0; border-bottom:1px solid var(--border); }
 .share-user-row:last-child { border-bottom:none; }
+
+/* ── Force Change Password ── */
+.force-pw-backdrop {
+  position:fixed; inset:0; background:rgba(0,0,0,0.85);
+  display:flex; align-items:center; justify-content:center;
+  z-index:99999; }
+.force-pw-modal {
+  background:var(--bg-card); border-radius:18px; padding:2.5rem;
+  width:100%; max-width:420px; box-shadow:0 20px 60px rgba(0,0,0,0.4); }
+.force-pw-modal h2 { margin:0 0 0.5rem; font-size:1.4rem; }
+.force-pw-modal p  { color:var(--text-secondary); margin:0 0 1.5rem; font-size:0.9rem; }
 </style>
 </head>
 <body>
@@ -1643,6 +1654,26 @@ canvas.sparkline { vertical-align:middle; }
     <div class="modal-btns" style="margin-top:1.25rem;">
       <button class="btn-secondary btn-sm" onclick="closeShareModal()">Close</button>
     </div>
+  </div>
+</div>
+
+
+<!-- ── Force Change Password Modal ── -->
+<div class="force-pw-backdrop" id="force-pw-backdrop" style="display:none;">
+  <div class="force-pw-modal">
+    <div style="font-size:2.5rem;margin-bottom:1rem;">🔐</div>
+    <h2>Set Your Password</h2>
+    <p>Welcome to Kash! Your account was created with a temporary password. Please set a new password before continuing.</p>
+    <div class="form-group">
+      <label>New Password</label>
+      <input type="password" id="force-pw-new" placeholder="Min. 8 characters" class="form-control">
+    </div>
+    <div class="form-group" style="margin-top:1rem;">
+      <label>Confirm Password</label>
+      <input type="password" id="force-pw-confirm" placeholder="Repeat new password" class="form-control">
+    </div>
+    <div id="force-pw-error" style="color:var(--danger);font-size:0.85rem;margin-top:0.5rem;display:none;"></div>
+    <button class="btn-primary" style="width:100%;margin-top:1.5rem;" onclick="submitForcePassword()">Set Password & Continue →</button>
   </div>
 </div>
 
@@ -4071,4 +4102,61 @@ const _patchedLoadBills = async function() {
 // Override loadBills
 window.loadBills = _patchedLoadBills;
 
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// FORCE CHANGE PASSWORD
+// ═══════════════════════════════════════════════════════════════════════════
+
+function checkMustChangePassword(user) {
+  if (user && user.must_change_password) {
+    document.getElementById('force-pw-backdrop').style.display = 'flex';
+    // Prevent interaction with the rest of the app
+    document.querySelector('.main') && (document.querySelector('.main').style.pointerEvents = 'none');
+  }
+}
+
+async function submitForcePassword() {
+  const newPw     = document.getElementById('force-pw-new').value;
+  const confirmPw = document.getElementById('force-pw-confirm').value;
+  const errEl     = document.getElementById('force-pw-error');
+
+  errEl.style.display = 'none';
+
+  if (!newPw || newPw.length < 8) {
+    errEl.textContent = 'Password must be at least 8 characters.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (newPw !== confirmPw) {
+    errEl.textContent = 'Passwords do not match.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const res = await apiCall('/api/users/force-change-password', 'POST', { new_password: newPw });
+  if (res) {
+    document.getElementById('force-pw-backdrop').style.display = 'none';
+    document.querySelector('.main') && (document.querySelector('.main').style.pointerEvents = '');
+    showToast('success', '✅ Password set successfully — welcome to Kash!');
+    // Trigger onboarding since this is their first real login
+    setTimeout(() => checkOnboarding && checkOnboarding(), 800);
+  }
+}
+
+// Hook into existing login flow — patch the login response handler
+const _origHandleLoginResponse = window.handleLoginResponse;
+window.handleLoginResponse = function(data) {
+  if (_origHandleLoginResponse) _origHandleLoginResponse(data);
+  if (data && data.user) checkMustChangePassword(data.user);
+};
+
+// Also check on page load in case session already has must_change flag
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await fetch('/api/auth/me');
+    const data = await res.json();
+    if (data && data.user) checkMustChangePassword(data.user);
+  } catch(e) {}
+});
 </script>

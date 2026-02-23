@@ -53,6 +53,13 @@ def init_db():
     except Exception:
         pass  # Column already exists, safe to ignore
 
+    # Migration: must_change_password flag
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0")
+        conn.commit()
+    except Exception:
+        pass
+
     # Migrations: email/notification columns on users
     for col, defn in [
         ("email",           "TEXT DEFAULT ''"),
@@ -413,7 +420,7 @@ def login():
         return jsonify({'error': 'Username and password required'}), 400
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT id,username,password_hash,is_admin,display_name FROM users WHERE username=?", (username,))
+    c.execute("SELECT id,username,password_hash,is_admin,display_name,must_change_password FROM users WHERE username=?", (username,))
     user = c.fetchone()
     conn.close()
     if not user or not check_password_hash(user[2], password):
@@ -423,7 +430,8 @@ def login():
     session['username'] = user[1]
     session['is_admin'] = bool(user[3])
     session['display_name'] = user[4] or ''
-    return jsonify({'success': True, 'user': {'id': user[0], 'username': user[1], 'is_admin': bool(user[3]), 'display_name': user[4] or ''}}), 200
+    session['must_change_password'] = bool(user[5])
+    return jsonify({'success': True, 'user': {'id': user[0], 'username': user[1], 'is_admin': bool(user[3]), 'display_name': user[4] or '', 'must_change_password': bool(user[5])}}), 200
 
 @app.route('/logout', methods=['POST'])
 def logout():
@@ -433,7 +441,7 @@ def logout():
 @app.route('/api/auth/me')
 @login_required
 def get_current_user():
-    return jsonify({'user': {'id': session.get('user_id'), 'username': session.get('username'), 'is_admin': session.get('is_admin', False), 'display_name': session.get('display_name', '')}}), 200
+    return jsonify({'user': {'id': session.get('user_id'), 'username': session.get('username'), 'is_admin': session.get('is_admin', False), 'display_name': session.get('display_name', ''), 'must_change_password': session.get('must_change_password', False)}}), 200
 
 # ── Categories ────────────────────────────────────────────────────────────────
 
@@ -1838,7 +1846,7 @@ def mail_status():
 @admin_required
 def get_users():
     conn = get_db_connection()
-    rows = [dict(r) for r in conn.execute("SELECT id,username,is_admin,display_name,created_at FROM users").fetchall()]
+    rows = [dict(r) for r in conn.execute("SELECT id,username,is_admin,display_name,created_at,must_change_password FROM users").fetchall()]
     conn.close()
     return jsonify({'data': rows}), 200
 
@@ -1871,12 +1879,14 @@ def create_user():
         return jsonify({'error': 'Username and password required'}), 400
     if len(data['password']) < 8:
         return jsonify({'error': 'Password must be at least 8 characters'}), 400
+    must_change = 1 if data.get('must_change_password', True) else 0
     phash = generate_password_hash(data['password'], method='pbkdf2:sha256')
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("INSERT INTO users (username,password_hash,is_admin,display_name) VALUES (?,?,?,?)",
-                  (data['username'], phash, 1 if data.get('is_admin') else 0, data.get('display_name','').strip()))
+        c.execute("INSERT INTO users (username,password_hash,is_admin,display_name,must_change_password) VALUES (?,?,?,?,?)",
+                  (data['username'], phash, 1 if data.get('is_admin') else 0,
+                   data.get('display_name','').strip(), must_change))
         conn.commit()
         conn.close()
         return jsonify({'success': True}), 201
@@ -1910,10 +1920,32 @@ def change_password():
         conn.close()
         return jsonify({'error': 'Current password is incorrect'}), 401
     phash = generate_password_hash(data['new_password'], method='pbkdf2:sha256')
-    c.execute("UPDATE users SET password_hash=? WHERE id=?", (phash, session['user_id']))
+    c.execute("UPDATE users SET password_hash=?,must_change_password=0 WHERE id=?", (phash, session['user_id']))
     conn.commit()
     conn.close()
+    session['must_change_password'] = False
     return jsonify({'success': True, 'message': 'Password changed successfully'}), 200
+
+
+@app.route('/api/users/force-change-password', methods=['POST'])
+@login_required
+def force_change_password():
+    """Change password without requiring current password — only for must_change_password users."""
+    if not session.get('must_change_password'):
+        return jsonify({'error': 'Not required'}), 400
+    data = request.json or {}
+    if not data.get('new_password'):
+        return jsonify({'error': 'New password required'}), 400
+    if len(data['new_password']) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters'}), 400
+    phash = generate_password_hash(data['new_password'], method='pbkdf2:sha256')
+    conn = get_db_connection()
+    conn.execute("UPDATE users SET password_hash=?,must_change_password=0 WHERE id=?",
+                 (phash, session['user_id']))
+    conn.commit()
+    conn.close()
+    session['must_change_password'] = False
+    return jsonify({'success': True}), 200
 
 @app.route('/health')
 def health():
