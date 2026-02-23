@@ -166,18 +166,18 @@ Once complete, Kash is available at `http://<container-ip>:5000`
 | Resource | Minimum | Recommended | Notes |
 |---|---|---|---|
 | CPU Cores | 1 | 1 | Flask is single-threaded, 1 core is sufficient |
-| RAM | 512MB | **1024MB** | Needed for APScheduler, Flask-Mail, and multi-user load |
-| Disk | 4GB | **8GB** | Receipt photos add up fast — 50 photos ≈ 250MB |
+| RAM | 512MB | **2048MB** | Needed for Gunicorn workers, APScheduler, Flask-Mail, and multi-user load |
+| Disk | 4GB | **16GB** | Receipt photos add up fast — future-proofed for years of use |
 
-The install script defaults to **1 core / 1024MB RAM / 8GB disk**.
+The install script defaults to **1 core / 2048MB RAM / 16GB disk**.
 
 ### Updating an Existing Container
 
 If you installed with the old defaults (512MB / 4GB), run these on your Proxmox host to resize without rebuilding:
 
 ```bash
-pct set 121 --memory 1024
-pct resize 121 rootfs 8G
+pct set 121 --memory 2048
+pct resize 121 rootfs 16G
 pct reboot 121
 ```
 

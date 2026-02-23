@@ -124,10 +124,10 @@ interactive_setup() {
   echo ""
   read -r -p "${TAB}CPU Cores [1]: " CORES
   CORES="${CORES:-1}"
-  read -r -p "${TAB}RAM in MB [1024]: " MEMORY
-  MEMORY="${MEMORY:-1024}"
-  read -r -p "${TAB}Disk size in GB [8]: " DISK
-  DISK="${DISK:-8}"
+  read -r -p "${TAB}RAM in MB [2048]: " MEMORY
+  MEMORY="${MEMORY:-2048}"
+  read -r -p "${TAB}Disk size in GB [16]: " DISK
+  DISK="${DISK:-16}"
 
   echo ""
   echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
@@ -312,11 +312,12 @@ Description=Kash
 After=network.target
 
 [Service]
-Type=simple
+Type=notify
 User=appuser
 WorkingDirectory=/opt/kash
 EnvironmentFile=/opt/kash/.env
-ExecStart=/opt/kash/venv/bin/python main.py
+ExecStart=/opt/kash/venv/bin/gunicorn --config /opt/kash/gunicorn.conf.py "app:app"
+ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always
 RestartSec=5
 StandardOutput=journal
