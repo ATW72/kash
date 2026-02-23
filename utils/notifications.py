@@ -40,7 +40,7 @@ def build_welcome_email(username, display_name, temp_password, app_url=''):
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;background:#f9fafb;padding:2rem;">
       <div style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:16px;padding:2rem;text-align:center;margin-bottom:1.5rem;">
         <h1 style="color:white;margin:0;font-size:2rem;">💸 Kash</h1>
-        <p style="color:rgba(255,255,255,0.85);margin:0.5rem 0 0;">Your household finance tracker</p>
+        <p style="color:rgba(255,255,255,0.85);margin:0.5rem 0 0;">Private. Simple. Yours.</p>
       </div>
       <div style="background:white;border-radius:16px;padding:2rem;margin-bottom:1rem;">
         <h2 style="margin:0 0 0.5rem;color:#1f2937;">Welcome, {name}! 👋</h2>
@@ -58,7 +58,7 @@ def build_welcome_email(username, display_name, temp_password, app_url=''):
         {f'<a href="{app_url}" style="display:block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;text-align:center;padding:0.875rem;border-radius:10px;text-decoration:none;font-weight:600;margin-bottom:1rem;">Open Kash →</a>' if app_url else ''}
         <p style="color:#9ca3af;font-size:0.82rem;margin:0;">This is a temporary password. You will be required to set a new password on your first login. Keep this email safe until then.</p>
       </div>
-      <p style="text-align:center;color:#9ca3af;font-size:0.78rem;margin:0;">Sent by Kash • Your private household finance app</p>
+      <p style="text-align:center;color:#9ca3af;font-size:0.78rem;margin:0;">Sent by Kash • Private. Simple. Yours.</p>
     </div>"""
 
 def build_bill_alert_email(username, display_name, bills):
