@@ -1,0 +1,23 @@
+import os
+
+class Config:
+    SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-change-in-production')
+    DATABASE_PATH = os.environ.get('APP_DATABASE_PATH', '/app/data/expenses.db')
+    HOST = os.environ.get('APP_HOST', '0.0.0.0')
+    PORT = int(os.environ.get('APP_PORT', 5000))
+    DEBUG = os.environ.get('APP_DEBUG', 'false').lower() == 'true'
+    ADMIN_USERNAME = os.environ.get('APP_LOGIN_USERNAME', 'admin')
+    ADMIN_PASSWORD = os.environ.get('APP_LOGIN_PASSWORD', 'admin123')
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    PERMANENT_SESSION_LIFETIME = 86400  # 24 hours
+
+    # Mail settings
+    MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', '')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', '')
+    MAIL_FROM_NAME = os.environ.get('MAIL_FROM_NAME', 'Kash')
+    MAIL_ENABLED = bool(os.environ.get('MAIL_USERNAME', ''))

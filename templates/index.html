@@ -1,0 +1,4074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kash</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="alternate icon" type="image/png" href="/static/favicon.png">
+<link rel="apple-touch-icon" href="/static/favicon.png">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#667eea">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Kash">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+
+// ── Profile ──────────────────────────────────────────────────────────────────
+
+async function loadProfile() {
+  const me = await apiCall('/api/auth/me');
+  if (!me) return;
+  document.getElementById('profile-display-name').value = me.user.display_name || '';
+  document.getElementById('profile-username').value = me.user.username;
+}
+
+async function updateProfile(e) {
+  e.preventDefault();
+  const display_name = document.getElementById('profile-display-name').value.trim();
+  const res = await apiCall('/api/users/profile', 'PUT', { display_name });
+  if (res) {
+    showToast('success', 'Profile updated');
+    document.getElementById('user-greeting').textContent = `Hi, ${display_name || document.getElementById('profile-username').value} 👋`;
+  }
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RECEIPTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _receiptExpenseId = null;
+let _receiptCurrentFile = null;
+
+function openReceiptModal(expenseId, currentFilename) {
+  _receiptExpenseId = expenseId;
+  _receiptCurrentFile = currentFilename;
+  const preview = document.getElementById('receipt-preview');
+  const deleteBtn = document.getElementById('receipt-delete-btn');
+  document.getElementById('receipt-file-input').value = '';
+
+  if (currentFilename) {
+    const ext = currentFilename.split('.').pop().toLowerCase();
+    if (ext === 'pdf') {
+      preview.innerHTML = `<a href="/receipts/${currentFilename}" target="_blank" style="color:var(--primary);font-weight:600;">📄 View PDF Receipt</a>`;
+    } else {
+      preview.innerHTML = `<img src="/receipts/${currentFilename}" style="max-width:100%;max-height:200px;border-radius:10px;object-fit:contain;" alt="Receipt">`;
+    }
+    deleteBtn.style.display = 'inline-flex';
+  } else {
+    preview.innerHTML = '<div style="color:var(--text-tertiary);padding:1rem;">No receipt attached</div>';
+    deleteBtn.style.display = 'none';
+  }
+
+  document.getElementById('receipt-modal-backdrop').classList.add('active');
+}
+
+function closeReceiptModal() {
+  document.getElementById('receipt-modal-backdrop').classList.remove('active');
+  _receiptExpenseId = null;
+}
+
+async function saveReceipt() {
+  const fileInput = document.getElementById('receipt-file-input');
+  if (!fileInput.files.length) {
+    showToast('error', 'Please select a file first');
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  try {
+    const res = await fetch(`/api/expenses/${_receiptExpenseId}/receipt`, {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('success', '🧾 Receipt saved');
+      closeReceiptModal();
+      loadExpenses();
+    } else {
+      showToast('error', data.error || 'Upload failed');
+    }
+  } catch(e) {
+    showToast('error', 'Upload failed');
+  }
+}
+
+async function deleteReceiptFromModal() {
+  const res = await apiCall(`/api/expenses/${_receiptExpenseId}/receipt`, 'DELETE');
+  if (res) {
+    showToast('success', 'Receipt removed');
+    closeReceiptModal();
+    loadExpenses();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadNotificationPrefs() {
+  // Check if mail is configured (show banner if not)
+  const statusRes = await apiCall('/api/admin/mail-status');
+  if (statusRes && !statusRes.configured) {
+    document.getElementById('mail-status-banner').style.display = 'block';
+  }
+  const res = await apiCall('/api/users/notifications');
+  if (!res) return;
+  const d = res.data;
+  document.getElementById('notif-email').value = d.email || '';
+  document.getElementById('notif-bills').checked = !!d.notify_bills;
+  document.getElementById('notif-budgets').checked = !!d.notify_budgets;
+  document.getElementById('notif-monthly').checked = !!d.notify_monthly;
+}
+
+async function saveNotificationPrefs(e) {
+  e.preventDefault();
+  const data = {
+    email: document.getElementById('notif-email').value.trim(),
+    notify_bills: document.getElementById('notif-bills').checked,
+    notify_budgets: document.getElementById('notif-budgets').checked,
+    notify_monthly: document.getElementById('notif-monthly').checked
+  };
+  const res = await apiCall('/api/users/notifications', 'PUT', data);
+  if (res) showToast('success', 'Notification preferences saved');
+}
+
+async function sendTestNotification() {
+  const email = document.getElementById('notif-email').value.trim();
+  if (!email) { showToast('error', 'Please enter your email address first'); return; }
+  showToast('info', 'Sending test email...');
+  const res = await apiCall('/api/notifications/test', 'POST');
+  if (res) showToast('success', res.message || 'Test email sent!');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BACKUP & RESTORE
+// ═══════════════════════════════════════════════════════════════════════════
+
+function downloadBackup() {
+  const a = document.createElement('a');
+  a.href = '/api/backup';
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast('success', 'Backup download started');
+}
+
+async function uploadRestore() {
+  const fileInput = document.getElementById('restore-file');
+  const statusEl = document.getElementById('restore-status');
+  if (!fileInput.files.length) {
+    showToast('error', 'Please select a backup file first');
+    return;
+  }
+  showModal(
+    '⚠️ Confirm Restore',
+    'This will replace ALL existing data with the backup file contents. This cannot be undone. Are you sure?',
+    async () => {
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      statusEl.innerHTML = '<span style="color:var(--text-secondary);">Restoring...</span>';
+      try {
+        const res = await fetch('/api/restore', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const c = data.counts;
+          statusEl.innerHTML = `<span style="color:var(--success);">✅ Restore successful!<br>
+            Expenses: ${c.expenses} · Income: ${c.income} · Bills: ${c.bills} · 
+            Recurring: ${c.recurring} · Budgets: ${c.budgets} · Cards: ${c.credit_cards}</span>`;
+          showToast('success', 'Data restored successfully');
+          fileInput.value = '';
+          loadDashboard();
+        } else {
+          statusEl.innerHTML = `<span style="color:var(--danger);">❌ ${data.error}</span>`;
+          showToast('error', data.error);
+        }
+      } catch(e) {
+        statusEl.innerHTML = `<span style="color:var(--danger);">❌ Upload failed</span>`;
+        showToast('error', 'Restore failed');
+      }
+    }
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// QUICK ADD
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function openQuickAdd() {
+  const backdrop = document.getElementById('quick-modal-backdrop');
+  backdrop.classList.add('active');
+  document.getElementById('qa-date').value = today();
+  // Populate category and paid-by dropdowns
+  const catRes = await apiCall('/api/categories');
+  if (catRes) {
+    const sel = document.getElementById('qa-category');
+    sel.innerHTML = '<option value="">-- Category --</option>';
+    catRes.data.forEach(c => sel.insertAdjacentHTML('beforeend', `<option value="${c.name}">${c.name}</option>`));
+  }
+  const userRes = await apiCall('/api/users/usernames');
+  if (userRes) {
+    const sel = document.getElementById('qa-paid-by');
+    sel.innerHTML = '<option value="">-- Person --</option>';
+    userRes.data.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u; opt.textContent = u;
+      if (u === currentUser) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+function closeQuickAdd(e) {
+  if (!e || e.target === document.getElementById('quick-modal-backdrop')) {
+    document.getElementById('quick-modal-backdrop').classList.remove('active');
+  }
+}
+
+async function submitQuickAdd(e) {
+  e.preventDefault();
+  const data = {
+    date: document.getElementById('qa-date').value,
+    category: document.getElementById('qa-category').value,
+    description: document.getElementById('qa-description').value.trim(),
+    amount: document.getElementById('qa-amount').value,
+    paid_by: document.getElementById('qa-paid-by').value,
+    payment_method: '', notes: ''
+  };
+  const res = await apiCall('/api/expenses', 'POST', data);
+  if (res) {
+    showToast('success', `✅ Expense added`);
+    document.getElementById('quick-modal-backdrop').classList.remove('active');
+    e.target.reset();
+    document.getElementById('qa-date').value = today();
+    loadDashboard();
+    if (document.getElementById('spending-tab').classList.contains('active')) loadExpenses();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BUDGET COPY + ROLLOVER
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function copyLastMonthBudgets() {
+  const res = await apiCall('/api/budgets/copy-last-month', 'POST');
+  if (res) {
+    showToast('success', `📋 Copied ${res.copied} budgets from last month (with rollover)`);
+    loadBudgets();
+    loadDashboard();
+  }
+}
+
+async function applyRollover() {
+  const res = await apiCall('/api/budgets/apply-rollover', 'POST');
+  if (res) {
+    showToast('success', `🔄 Rollover applied to ${res.updated} budget categories`);
+    loadBudgets();
+    loadDashboard();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SAVINGS GOALS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadSavingsGoals() {
+  const res = await apiCall('/api/savings-goals');
+  if (!res) return;
+  const container = document.getElementById('savings-goals-list');
+  if (!res.data.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:1.5rem;"><div class="icon">💰</div>No savings goals set</div>';
+    return;
+  }
+  container.innerHTML = res.data.map(g => {
+    const pct = g.progress;
+    const daysLabel = g.days_left < 0 ? 'Past due' : g.days_left === 0 ? 'Due today' : `${g.days_left} days left`;
+    return `<div class="goal-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem;">
+        <div>
+          <strong style="font-size:1rem;">${g.name}</strong>
+          <div style="font-size:0.82rem;color:var(--text-secondary);margin-top:0.2rem;">${daysLabel} · Target: ${formatDate(g.target_date)}</div>
+        </div>
+        <div style="text-align:right;">
+          <span class="amount-positive">${formatCurrency(g.current_savings)}</span>
+          <span style="color:var(--text-secondary);"> / ${formatCurrency(g.target_amount)}</span>
+          <button class="btn-sm btn-danger" style="margin-left:0.5rem;" onclick="deleteSavingsGoal(${g.id},'${g.name.replace(/'/g,"\'")}')">🗑️</button>
+        </div>
+      </div>
+      <div class="goal-progress-bar">
+        <div class="goal-progress-fill ${pct >= 100 ? 'complete' : ''}" style="width:${Math.min(pct,100)}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text-secondary);">
+        <span>${pct}% achieved</span>
+        ${!g.on_track && g.days_left > 0 ? `<span>Save <strong class="amount-negative">${formatCurrency(g.monthly_needed)}/mo</strong> to reach goal</span>` : g.on_track ? '<span style="color:var(--success);">🎉 Goal reached!</span>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function submitSavingsGoal(e) {
+  e.preventDefault();
+  const data = {
+    name: document.getElementById('goal-name').value.trim(),
+    target_amount: document.getElementById('goal-amount').value,
+    target_date: document.getElementById('goal-date').value
+  };
+  const res = await apiCall('/api/savings-goals', 'POST', data);
+  if (res) {
+    showToast('success', 'Savings goal added');
+    document.getElementById('savings-goal-form').reset();
+    loadSavingsGoals();
+  }
+}
+
+function deleteSavingsGoal(id, name) {
+  showModal('Delete Goal', `Delete goal "${name}"?`, async () => {
+    const res = await apiCall(`/api/savings-goals/${id}`, 'DELETE');
+    if (res) { showToast('success','Goal deleted'); loadSavingsGoals(); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SPENDING BY PERSON
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadPersonSpending() {
+  const res = await apiCall('/api/stats/spending-by-person');
+  if (!res) return;
+  const container = document.getElementById('dashboard-person-spending');
+  if (!res.data.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:1rem;">No spending this month</div>';
+    return;
+  }
+  container.innerHTML = res.data.map(p => `
+    <div class="person-card">
+      <div class="name">${p.paid_by}</div>
+      <div class="amount">${formatCurrency(p.total)}</div>
+    </div>`).join('');
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DASHBOARD MONTH NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _dashboardYear = new Date().getFullYear();
+let _dashboardMonth = new Date().getMonth() + 1;
+const _monthNames = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function shiftDashboardMonth(dir) {
+  _dashboardMonth += dir;
+  if (_dashboardMonth > 12) { _dashboardMonth = 1; _dashboardYear++; }
+  if (_dashboardMonth < 1)  { _dashboardMonth = 12; _dashboardYear--; }
+  updateDashboardMonthLabel();
+  loadDashboardForMonth();
+}
+
+function updateDashboardMonthLabel() {
+  const now = new Date();
+  const isCurrentMonth = _dashboardYear === now.getFullYear() && _dashboardMonth === now.getMonth()+1;
+  document.getElementById('dashboard-month-label').textContent =
+    isCurrentMonth ? '📅 This Month' : `📅 ${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
+  document.getElementById('dashboard-month-display').textContent =
+    `${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
+}
+
+async function loadDashboardForMonth() {
+  const monthStr = `${_dashboardYear}-${String(_dashboardMonth).padStart(2,'0')}`;
+  const stats = await apiCall(`/api/stats/summary-by-month?month=${monthStr}`);
+  if (stats) {
+    const net = stats.monthly_income - stats.monthly_expenses;
+    const netEl = document.getElementById('stat-net-saved');
+    netEl.textContent = formatCurrency(net);
+    netEl.className = `value ${net >= 0 ? 'success' : 'danger'}`;
+    document.getElementById('stat-monthly-expenses').textContent = formatCurrency(stats.monthly_expenses);
+    document.getElementById('stat-monthly-income').textContent = formatCurrency(stats.monthly_income);
+    document.getElementById('stat-left-after-bills').textContent = formatCurrency(stats.left_after_bills);
+    document.getElementById('stat-unpaid-bills').textContent = formatCurrency(stats.unpaid_bills_total);
+    document.getElementById('stat-cc-balance').textContent = formatCurrency(stats.total_credit_card_balance);
+    document.getElementById('stat-total-income').textContent = formatCurrency(stats.total_income);
+    // Budget % for selected month
+    const budgets = await apiCall('/api/budgets');
+    if (budgets) {
+      const mb = budgets.data.filter(b => b.month == _dashboardMonth && b.year == _dashboardYear);
+      const totalBudget = mb.reduce((s,b) => s+b.effective_amount, 0);
+      const totalSpent  = mb.reduce((s,b) => s+b.spent, 0);
+      const pct = totalBudget > 0 ? Math.round((totalSpent/totalBudget)*100) : null;
+      const pctEl = document.getElementById('stat-budget-pct');
+      if (pct !== null) {
+        pctEl.textContent = `${pct}%`;
+        pctEl.className = `value ${pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : 'success'}`;
+      } else {
+        pctEl.textContent = '—';
+        pctEl.className = 'value';
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPANDABLE EXPENSE ROWS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function toggleExpenseDetail(id) {
+  const row = document.getElementById(`expense-detail-${id}`);
+  if (!row) return;
+  row.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DUPLICATE DETECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _forceSubmitExpense = false;
+let _pendingExpenseData = null;
+
+function forceSubmitExpense() {
+  _forceSubmitExpense = true;
+  document.getElementById('dup-warning').classList.remove('show');
+  document.getElementById('expense-form').dispatchEvent(new Event('submit', {bubbles:true, cancelable:true}));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CURRENCIES
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadCurrencies() {
+  const res = await apiCall('/api/currencies');
+  if (!res) return;
+
+  // Populate expense form dropdown
+  const sel = document.getElementById('expense-currency');
+  if (sel) {
+    sel.innerHTML = '';
+    res.data.forEach(c => {
+      sel.insertAdjacentHTML('beforeend',
+        `<option value="${c.code}" ${c.is_home ? 'selected' : ''}>${c.code} — ${c.name}</option>`);
+    });
+  }
+
+  // Show currencies list
+  const container = document.getElementById('currencies-list');
+  if (!container) return;
+  if (!res.data.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">💱</div>No currencies</div>';
+    return;
+  }
+  container.innerHTML = `<table class="expense-table">
+    <thead><tr><th>Code</th><th>Name</th><th>Symbol</th><th>Rate to Home</th><th>Status</th><th></th></tr></thead>
+    <tbody>${res.data.map(c => `
+      <tr>
+        <td><strong>${c.code}</strong></td>
+        <td>${c.name}</td>
+        <td>${c.symbol}</td>
+        <td>${c.is_home ? '1.0 (home)' : c.rate_to_home}</td>
+        <td>${c.is_home ? '<span class="badge badge-success">🏠 Home</span>' : '<span class="badge badge-primary">Foreign</span>'}</td>
+        <td>${!c.is_home ? `<button class="btn-sm btn-danger" onclick="deleteCurrency(${c.id},'${c.code}')">🗑️</button>` : ''}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+async function submitCurrency(e) {
+  e.preventDefault();
+  const data = {
+    code: document.getElementById('currency-code').value.toUpperCase().trim(),
+    name: document.getElementById('currency-name').value.trim(),
+    symbol: document.getElementById('currency-symbol').value.trim(),
+    rate_to_home: document.getElementById('currency-rate').value,
+    is_home: document.getElementById('currency-is-home').checked
+  };
+  const res = await apiCall('/api/currencies', 'POST', data);
+  if (res) {
+    showToast('success', `${data.code} added`);
+    document.getElementById('currency-form').reset();
+    loadCurrencies();
+  }
+}
+
+function deleteCurrency(id, code) {
+  showModal('Delete Currency', `Remove ${code}?`, async () => {
+    const res = await apiCall(`/api/currencies/${id}`, 'DELETE');
+    if (res) { showToast('success', `${code} removed`); loadCurrencies(); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUDIT LOG
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadAuditLog() {
+  const table = document.getElementById('audit-filter-table')?.value || '';
+  const res = await apiCall(`/api/audit-log?limit=100${table ? '&table='+table : ''}`);
+  if (!res) return;
+  const container = document.getElementById('audit-log-list');
+  if (!res.data.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:1.5rem;">No audit entries yet</div>';
+    return;
+  }
+  container.innerHTML = res.data.map(a => {
+    let changes = '';
+    try {
+      const c = JSON.parse(a.changes || '{}');
+      if (c.description) changes = c.description;
+      if (c.before && c.after) {
+        const diffs = Object.keys(c.after).filter(k => c.before[k] != c.after[k]);
+        changes = diffs.map(k => `${k}: ${c.before[k]} → ${c.after[k]}`).join(', ');
+      }
+    } catch(e) {}
+    return `<div class="audit-row">
+      <span class="audit-action audit-${a.action.toLowerCase()}">${a.action}</span>
+      <div style="flex:1;">
+        <strong>${a.table_name}</strong> #${a.record_id || '—'}
+        ${changes ? `<span style="color:var(--text-secondary);"> — ${changes}</span>` : ''}
+        <div style="font-size:0.78rem;color:var(--text-tertiary);margin-top:0.2rem;">
+          by <strong>${a.username}</strong> · ${a.created_at ? a.created_at.replace('T',' ').substring(0,16) : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+</script>
+<style>
+:root {
+  --primary: #667eea; --primary-dark: #5568d3; --secondary: #764ba2;
+  --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+  --bg-primary: #ffffff; --bg-secondary: #f9fafb;
+  --text-primary: #1f2937; --text-secondary: #6b7280; --text-tertiary: #9ca3af;
+  --card-bg: #ffffff; --input-bg: #ffffff; --input-border: #e5e7eb;
+  --shadow: rgba(0,0,0,0.1);
+  --gradient-start: #667eea; --gradient-end: #764ba2;
+  --border: #e5e7eb;
+}
+body.dark-mode {
+  --bg-primary: #1a1a2e; --bg-secondary: #16213e;
+  --text-primary: #e4e4e7; --text-secondary: #a1a1aa; --text-tertiary: #71717a;
+  --card-bg: #0f3460; --input-bg: #16213e; --input-border: rgba(255,255,255,0.1);
+  --shadow: rgba(0,0,0,0.3); --border: rgba(255,255,255,0.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-secondary); color: var(--text-primary); transition: all 0.3s; }
+/* ── Header ── */
+.header {
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  padding: 1rem 1.5rem; display: flex; align-items: center;
+  justify-content: space-between; box-shadow: 0 4px 20px rgba(102,126,234,0.4);
+  position: sticky; top: 0; z-index: 100;
+}
+.header h1 { color: white; font-size: 1.4rem; font-weight: 800; }
+.header-right { display: flex; gap: 0.75rem; align-items: center; }
+.header-right span { color: rgba(255,255,255,0.85); font-size: 0.85rem; }
+#theme-toggle { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+  color: white; border-radius: 50%; width: 36px; height: 36px; cursor: pointer;
+  font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+#theme-toggle:hover { background: rgba(255,255,255,0.3); }
+.btn-logout { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+  color: white; padding: 0.4rem 0.9rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+/* ── Tabs ── */
+.tabs { display: flex; overflow-x: auto; background: var(--bg-primary);
+  border-bottom: 2px solid var(--border); padding: 0 1rem; gap: 0.25rem;
+  scrollbar-width: none; position: sticky; top: 56px; z-index: 90; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab-button { background: none; border: none; color: var(--text-secondary);
+  padding: 0.9rem 1.1rem; cursor: pointer; font-size: 0.9rem; font-weight: 600;
+  white-space: nowrap; border-bottom: 3px solid transparent; margin-bottom: -2px;
+  transition: all 0.2s; }
+.tab-button:hover { color: var(--primary); }
+.tab-button.active { color: var(--primary); border-bottom-color: var(--primary); }
+/* ── Content ── */
+.main { padding: 1.5rem; max-width: 1200px; margin: 0 auto; }
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+/* ── Cards ── */
+.glass-card {
+  background: var(--card-bg); border-radius: 16px;
+  box-shadow: 0 4px 24px var(--shadow); border: 1px solid var(--border);
+  padding: 1.5rem; transition: transform 0.3s, box-shadow 0.3s; margin-bottom: 1.25rem;
+}
+.glass-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--shadow); }
+.card-title { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 0.5rem; }
+/* ── Stat Cards ── */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.stat-card { background: var(--card-bg); border-radius: 14px; padding: 1.25rem;
+  border: 1px solid var(--border); box-shadow: 0 2px 12px var(--shadow); }
+.stat-card h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-secondary); margin-bottom: 0.5rem; }
+.stat-card p { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+.stat-card p.danger { color: var(--danger); }
+.stat-card p.success { color: var(--success); }
+/* ── Forms ── */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+label { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); }
+input, select, textarea {
+  background: var(--input-bg); border: 1.5px solid var(--input-border);
+  border-radius: 10px; padding: 0.65rem 0.9rem; font-size: 0.95rem;
+  color: var(--text-primary); outline: none; transition: border-color 0.2s; width: 100%;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+input.error, select.error { border-color: var(--danger); }
+.field-error { color: var(--danger); font-size: 0.78rem; margin-top: 0.2rem; }
+textarea { resize: vertical; min-height: 60px; }
+/* ── Buttons ── */
+button, .btn {
+  background: linear-gradient(90deg, #4f8cff, #6f6fff);
+  color: white; border: none; border-radius: 10px; padding: 0.65rem 1.3rem;
+  font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+  position: relative; overflow: hidden;
+}
+button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(79,140,255,0.3); }
+button:active:not(:disabled) { transform: scale(0.98); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-danger { background: linear-gradient(90deg, var(--danger), #c0392b); }
+.btn-success { background: linear-gradient(90deg, var(--success), #059669); }
+.btn-warning { background: linear-gradient(90deg, var(--warning), #d97706); }
+.btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); }
+.btn-sm { padding: 0.35rem 0.75rem; font-size: 0.82rem; border-radius: 8px; }
+/* ── Tables / Lists ── */
+.expense-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.expense-table th { background: var(--bg-secondary); color: var(--text-secondary); font-weight: 600;
+  padding: 0.7rem 0.9rem; text-align: left; font-size: 0.8rem; text-transform: uppercase; }
+.expense-table td { padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border); }
+.expense-table tr:hover td { background: var(--bg-secondary); }
+.amount-positive { color: var(--success); font-weight: 700; }
+.amount-negative { color: var(--danger); font-weight: 700; }
+/* ── Credit Card Grid ── */
+.credit-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.cc-card { background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  border-radius: 18px; padding: 1.5rem; color: white;
+  box-shadow: 0 8px 32px rgba(102,126,234,0.4); position: relative; overflow: hidden; }
+.cc-card::before { content:''; position:absolute; top:-50%; right:-20%; width:200px; height:200px;
+  background:rgba(255,255,255,0.08); border-radius:50%; }
+.cc-card .cc-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.25rem; }
+.cc-card .cc-owner { font-size: 0.8rem; opacity: 0.8; margin-bottom: 1rem; }
+.cc-card .cc-balance { font-size: 1.8rem; font-weight: 800; }
+.cc-card .cc-limit { font-size: 0.82rem; opacity: 0.8; margin-top: 0.2rem; }
+.cc-card .cc-util-bar { background: rgba(255,255,255,0.2); border-radius: 4px; height: 6px; margin-top: 1rem; overflow: hidden; }
+.cc-card .cc-util-fill { background: white; height: 100%; border-radius: 4px; transition: width 0.5s; }
+.cc-card .cc-util-fill.danger { background: #fca5a5; }
+.cc-card .cc-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+.cc-card .cc-actions button { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4);
+  color: white; padding: 0.3rem 0.7rem; border-radius: 8px; font-size: 0.8rem; }
+/* ── Budget ── */
+.budget-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+  padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+.budget-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+.budget-progress { height: 10px; background: var(--bg-secondary); border-radius: 5px; overflow: hidden; }
+.budget-fill { height: 100%; border-radius: 5px; transition: width 0.5s;
+  background: linear-gradient(90deg, var(--primary), var(--secondary)); }
+.budget-fill.over { background: linear-gradient(90deg, var(--danger), #c0392b); }
+/* ── Bills ── */
+.bill-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+  padding: 1rem 1.25rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
+.bill-item.paid { opacity: 0.6; }
+.bill-due { font-size: 0.82rem; color: var(--text-secondary); }
+.bill-due.overdue { color: var(--danger); font-weight: 700; }
+.bill-due.soon { color: var(--danger); font-weight: 700; }
+.bill-due.week { color: var(--warning); font-weight: 600; }
+/* ── Toast ── */
+#toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+.toast { min-width: 280px; background: var(--card-bg); border-radius: 12px;
+  box-shadow: 0 4px 24px var(--shadow); border-left: 4px solid var(--primary); overflow: hidden;
+  animation: slideIn 0.3s ease; }
+.toast.success { border-left-color: var(--success); }
+.toast.error { border-left-color: var(--danger); }
+.toast.warning { border-left-color: var(--warning); }
+.toast.fade-out { animation: slideOut 0.3s ease forwards; }
+.toast-header { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.9rem 0; }
+.toast-title { font-weight: 700; font-size: 0.85rem; color: var(--text-primary); }
+.toast-close { background: none; border: none; color: var(--text-tertiary); cursor: pointer;
+  font-size: 0.9rem; padding: 0; }
+.toast-body { padding: 0.4rem 0.9rem 0.7rem; font-size: 0.88rem; color: var(--text-secondary); }
+@keyframes slideIn { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slideOut { to { transform: translateX(110%); opacity: 0; } }
+/* ── Modal ── */
+.modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; }
+.modal-backdrop.active { display: flex; align-items: center; justify-content: center; }
+.modal { background: var(--card-bg); border-radius: 18px; padding: 2rem; min-width: 320px;
+  max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.modal h3 { margin-bottom: 0.75rem; font-size: 1.1rem; }
+.modal p { color: var(--text-secondary); margin-bottom: 1.5rem; }
+.modal-btns { display: flex; gap: 0.75rem; justify-content: flex-end; }
+/* ── Misc ── */
+.gradient-text { background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 800; }
+.empty-state { text-align: center; padding: 3rem; color: var(--text-tertiary); }
+.empty-state .icon { font-size: 3rem; margin-bottom: 0.75rem; }
+.badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+.badge-success { background: rgba(16,185,129,0.15); color: var(--success); }
+.badge-danger { background: rgba(239,68,68,0.15); color: var(--danger); }
+.badge-warning { background: rgba(245,158,11,0.15); color: var(--warning); }
+.badge-primary { background: rgba(102,126,234,0.15); color: var(--primary); }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.flex-gap { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.section-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+.overflow-table { overflow-x: auto; }
+/* ── Collapsible sections ── */
+.collapsible-card { padding: 0; overflow: hidden; }
+.collapsible-header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; cursor: pointer; user-select: none; }
+.collapsible-header:hover { background: var(--bg-secondary); }
+.collapsible-body { padding: 0 1.5rem 1.5rem; border-top: 1px solid var(--border); }
+.collapsible-body.collapsed { display: none; }
+.collapse-arrow { color: var(--text-secondary); font-size: 0.85rem; transition: transform 0.2s; }
+.collapse-arrow.collapsed { transform: rotate(-90deg); }
+.filter-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.filter-row input, .filter-row select { flex: 1; min-width: 140px; }
+@media (max-width: 640px) {
+  .main { padding: 1rem; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .credit-card-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Search bar ── */
+.search-wrapper { position: relative; margin-bottom: 1rem; }
+.search-wrapper input { padding-left: 2.5rem; border-radius: 12px; }
+.search-icon { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-size: 1rem; pointer-events: none; }
+.search-results { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 32px var(--shadow); position: absolute; width: 100%; z-index: 50; max-height: 360px; overflow-y: auto; }
+.search-result-item { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.search-result-item:hover { background: var(--bg-secondary); }
+.search-result-item:last-child { border-bottom: none; }
+.search-result-label { font-size: 0.82rem; color: var(--text-secondary); }
+/* ── Hero month card ── */
+.hero-card { background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end)); border-radius: 20px; padding: 1.75rem; color: white; margin-bottom: 1.25rem; box-shadow: 0 8px 32px rgba(102,126,234,0.35); }
+.hero-card h2 { font-size: 1rem; opacity: 0.85; margin-bottom: 1rem; font-weight: 600; letter-spacing: 0.03em; }
+.hero-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+.hero-stat { text-align: center; }
+.hero-stat .label { font-size: 0.75rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; }
+.hero-stat .value { font-size: 1.4rem; font-weight: 800; }
+.hero-stat .value.danger { color: #fca5a5; }
+.hero-stat .value.success { color: #6ee7b7; }
+.hero-stat .value.warning { color: #fde68a; }
+.hero-divider { width: 1px; background: rgba(255,255,255,0.2); }
+/* ── Bill alerts on dashboard ── */
+.bill-alerts { display: flex; flex-direction: column; gap: 0.6rem; }
+.bill-alert { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-radius: 10px; background: var(--bg-secondary); border-left: 4px solid var(--warning); }
+.bill-alert.overdue { border-left-color: var(--danger); background: rgba(239,68,68,0.05); }
+.bill-alert.today { border-left-color: var(--danger); }
+/* ── Budget mini on dashboard ── */
+.budget-mini { display: flex; flex-direction: column; gap: 0.6rem; }
+.budget-mini-item { display: flex; flex-direction: column; gap: 0.3rem; }
+.budget-mini-info { display: flex; justify-content: space-between; font-size: 0.85rem; }
+.budget-mini-bar { height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; }
+.budget-mini-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--success), #059669); transition: width 0.5s; }
+.budget-mini-fill.warn { background: linear-gradient(90deg, var(--warning), #d97706); }
+.budget-mini-fill.over { background: linear-gradient(90deg, var(--danger), #c0392b); }
+/* ── Savings chart card ── */
+.dashboard-grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
+.dashboard-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .header h1 { font-size: 1.1rem; }
+  .header-right span { display: none; }
+  .hero-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .hero-stat .value { font-size: 1.15rem; }
+  .dashboard-grid-3, .dashboard-grid-2 { grid-template-columns: 1fr; }
+  /* tabs handled by mobile tab styles */
+  .main { padding: 0.75rem; }
+  .glass-card { padding: 1rem; }
+  .expense-table { font-size: 0.82rem; }
+  .expense-table th, .expense-table td { padding: 0.5rem 0.6rem; }
+  .form-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .credit-card-grid { grid-template-columns: 1fr; }
+  .filter-row { gap: 0.5rem; }
+  .modal { min-width: 90vw; padding: 1.25rem; }
+  .bill-item { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .flex-gap { flex-wrap: wrap; }
+  #toast-container { bottom: 0.75rem; right: 0.75rem; left: 0.75rem; }
+  .toast { min-width: unset; }
+}
+@media (max-width: 480px) {
+  .hero-grid { grid-template-columns: 1fr 1fr; }
+  .stats-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .btn-sm { padding: 0.5rem 0.9rem; font-size: 0.85rem; }
+
+  .bill-item { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+  .bill-item .flex-gap { width: 100%; justify-content: flex-end; }
+  .hero-card { padding: 1.25rem; }
+  .hero-stat .value { font-size: 1.1rem; }
+  .search-wrapper { max-width: 100% !important; margin: 0 0.5rem !important; }
+  .glass-card:hover { transform: none; }
+  input, select, textarea { font-size: 16px; }
+}
+
+/* ── Tab icon/label split ── */
+.tab-button { display: flex; flex-direction: row; align-items: center; gap: 0.4rem; }
+.tab-icon { font-size: 1rem; line-height: 1; }
+.tab-label { white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .tabs {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto !important;
+    border-bottom: none;
+    border-top: 2px solid var(--border);
+    padding: 0;
+    justify-content: space-around;
+    z-index: 200;
+    box-shadow: 0 -4px 20px var(--shadow);
+  }
+  .tab-button {
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.5rem 0.25rem 0.6rem;
+    flex: 1;
+    font-size: 0.65rem;
+    border-bottom: none !important;
+    border-top: 3px solid transparent;
+    margin-bottom: 0;
+  }
+  .tab-button.active {
+    border-top-color: var(--primary);
+    border-bottom-color: transparent !important;
+  }
+  .tab-icon { font-size: 1.3rem; }
+  .tab-label { font-size: 0.62rem; }
+  /* Push content up so it's not hidden behind fixed bottom nav */
+  .main { padding-bottom: 5rem !important; }
+}
+
+/* ── Quick-add FAB ── */
+.fab { position: fixed; bottom: 5.5rem; right: 1.25rem; width: 56px; height: 56px;
+  border-radius: 50%; background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  color: white; font-size: 1.6rem; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px rgba(102,126,234,0.5); z-index: 150; cursor: pointer;
+  border: none; transition: transform 0.2s, box-shadow 0.2s; }
+.fab:hover { transform: scale(1.1); box-shadow: 0 8px 28px rgba(102,126,234,0.6); }
+@media (min-width: 641px) {
+  .fab { bottom: 1.5rem; }
+}
+/* ── Quick-add modal ── */
+.quick-modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; }
+.quick-modal-backdrop.active { display: flex; align-items: flex-end; justify-content: center; }
+@media (min-width: 641px) {
+  .quick-modal-backdrop.active { align-items: center; }
+}
+.quick-modal { background: var(--card-bg); border-radius: 20px 20px 0 0; padding: 1.5rem;
+  width: 100%; max-width: 480px; box-shadow: 0 -8px 40px rgba(0,0,0,0.2);
+  animation: slideUp 0.25s ease; }
+@media (min-width: 641px) {
+  .quick-modal { border-radius: 20px; }
+}
+@keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+/* ── Savings goal card ── */
+.goal-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px;
+  padding: 1.25rem; margin-bottom: 0.75rem; }
+.goal-progress-bar { height: 12px; background: var(--bg-secondary); border-radius: 6px; overflow: hidden; margin: 0.75rem 0; }
+.goal-progress-fill { height: 100%; border-radius: 6px; transition: width 0.6s;
+  background: linear-gradient(90deg, var(--primary), var(--secondary)); }
+.goal-progress-fill.complete { background: linear-gradient(90deg, var(--success), #059669); }
+/* ── Person spending ── */
+.person-spending-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; }
+.person-card { background: var(--bg-secondary); border-radius: 12px; padding: 1rem; text-align: center; }
+.person-card .name { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.person-card .amount { font-size: 1.25rem; font-weight: 800; color: var(--danger); }
+/* ── MoM indicator ── */
+.mom-badge { font-size: 0.75rem; font-weight: 600; padding: 0.15rem 0.4rem; border-radius: 6px; margin-left: 0.4rem; }
+.mom-up { background: rgba(239,68,68,0.12); color: var(--danger); }
+.mom-down { background: rgba(16,185,129,0.12); color: var(--success); }
+.mom-flat { background: rgba(107,114,128,0.12); color: var(--text-secondary); }
+
+/* ── Audit log ── */
+.audit-row { display:flex; gap:0.75rem; padding:0.65rem 0; border-bottom:1px solid var(--border); font-size:0.85rem; align-items:flex-start; }
+.audit-row:last-child { border-bottom:none; }
+.audit-action { padding:0.2rem 0.55rem; border-radius:6px; font-size:0.75rem; font-weight:700; white-space:nowrap; }
+.audit-create { background:rgba(16,185,129,0.12); color:var(--success); }
+.audit-update { background:rgba(102,126,234,0.12); color:var(--primary); }
+.audit-delete { background:rgba(239,68,68,0.12); color:var(--danger); }
+/* ── Expandable expense row ── */
+.expense-row-detail { background:var(--bg-secondary); padding:0.75rem 1rem; font-size:0.85rem;
+  color:var(--text-secondary); border-bottom:1px solid var(--border); display:none; }
+.expense-row-detail.open { display:table-row; }
+.expense-row-detail td { padding:0.75rem 1rem; }
+/* ── Month picker ── */
+.month-nav { display:flex; align-items:center; gap:0.75rem; }
+.month-nav button { background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.3);
+  color:white; border-radius:8px; padding:0.3rem 0.7rem; font-size:0.9rem; cursor:pointer; }
+.month-nav span { font-size:1rem; font-weight:700; color:white; min-width:130px; text-align:center; }
+/* ── Currency badge ── */
+.currency-badge { font-size:0.75rem; color:var(--text-secondary); margin-left:0.3rem; }
+/* ── Duplicate warning ── */
+.dup-warning { background:rgba(245,158,11,0.1); border:1px solid var(--warning); border-radius:10px;
+  padding:0.75rem 1rem; margin-top:0.75rem; font-size:0.88rem; display:none; }
+.dup-warning.show { display:block; }
+
+/* ── Insights ── */
+.insight-card { display:flex; gap:0.85rem; align-items:flex-start; padding:0.85rem 1rem;
+  border-radius:12px; margin-bottom:0.6rem; font-size:0.9rem; }
+.insight-info  { background:rgba(102,126,234,0.08); border:1px solid rgba(102,126,234,0.2); }
+.insight-warning { background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); }
+.insight-success { background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); }
+.insight-danger  { background:rgba(239,68,68,0.08);  border:1px solid rgba(239,68,68,0.25); }
+.insight-icon { font-size:1.3rem; flex-shrink:0; line-height:1; }
+.insight-title { font-weight:700; margin-bottom:0.2rem; }
+.insight-msg { color:var(--text-secondary); font-size:0.85rem; line-height:1.4; }
+/* ── Forecast band on chart ── */
+.forecast-badge { display:inline-flex; align-items:center; gap:0.4rem; font-size:0.82rem;
+  background:rgba(102,126,234,0.12); color:var(--primary); border-radius:8px;
+  padding:0.25rem 0.6rem; margin-left:0.5rem; font-weight:600; }
+/* ── Sparklines ── */
+.sparkline-wrap { display:inline-block; vertical-align:middle; margin-left:0.5rem; }
+canvas.sparkline { vertical-align:middle; }
+/* ── Split modal ── */
+.split-row { display:grid; grid-template-columns:1fr auto auto; gap:0.6rem; align-items:center;
+  padding:0.5rem 0; border-bottom:1px solid var(--border); }
+.split-row:last-child { border-bottom:none; }
+.split-mode-tabs { display:flex; gap:0.5rem; margin-bottom:1rem; }
+.split-mode-tab { padding:0.4rem 0.85rem; border-radius:8px; font-size:0.85rem; font-weight:600;
+  cursor:pointer; border:1px solid var(--border); background:transparent; color:var(--text-secondary); }
+.split-mode-tab.active { background:var(--primary); color:white; border-color:var(--primary); }
+/* ── Widget toggle ── */
+.widget-toggle-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:0.6rem; margin-bottom:1rem; }
+.widget-toggle-item { display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.85rem;
+  border-radius:10px; border:1px solid var(--border); cursor:pointer; font-size:0.88rem;
+  font-weight:500; user-select:none; transition:background 0.15s; }
+.widget-toggle-item.hidden { opacity:0.45; background:var(--bg-secondary); }
+.widget-toggle-item.visible { background:rgba(102,126,234,0.08); border-color:var(--primary); }
+/* ── Advanced search panel ── */
+.adv-search-panel { background:var(--bg-secondary); border-radius:14px; padding:1.25rem;
+  margin-bottom:1rem; display:none; }
+.adv-search-panel.open { display:block; animation:fadeIn 0.2s ease; }
+.adv-search-results-bar { display:flex; justify-content:space-between; align-items:center;
+  padding:0.5rem 0; font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem; }
+/* ── Onboarding overlay ── */
+.onboarding-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65);
+  z-index:500; align-items:center; justify-content:center; }
+.onboarding-backdrop.active { display:flex; }
+.onboarding-modal { background:var(--card-bg); border-radius:24px; padding:2rem;
+  max-width:480px; width:calc(100% - 2rem); box-shadow:0 20px 60px rgba(0,0,0,0.3);
+  animation:slideUp 0.3s ease; position:relative; }
+.onboarding-steps { display:flex; gap:0.4rem; margin-bottom:1.5rem; }
+.onboarding-step-dot { height:6px; border-radius:3px; flex:1;
+  background:var(--border); transition:background 0.3s; }
+.onboarding-step-dot.done { background:var(--primary); }
+.onboarding-step-dot.active { background:var(--secondary); }
+.onboarding-title { font-size:1.3rem; font-weight:800; margin-bottom:0.5rem; }
+.onboarding-sub { color:var(--text-secondary); font-size:0.92rem; line-height:1.5; margin-bottom:1.5rem; }
+.onboarding-nav { display:flex; justify-content:space-between; align-items:center; margin-top:1.5rem; }
+/* ── Splits summary card ── */
+.split-owed-item { display:flex; justify-content:space-between; align-items:center;
+  padding:0.6rem 0; border-bottom:1px solid var(--border); font-size:0.9rem; }
+.split-owed-item:last-child { border-bottom:none; }
+
+/* ── Sharing ── */
+.mine-toggle { display:flex; align-items:center; gap:0.5rem; padding:0.35rem 0.85rem;
+  border-radius:20px; font-size:0.82rem; font-weight:600; cursor:pointer;
+  border:1px solid var(--border); background:transparent; color:var(--text-secondary);
+  transition:all 0.15s; white-space:nowrap; }
+.mine-toggle.active { background:var(--primary); color:white; border-color:var(--primary); }
+.shared-badge { display:inline-flex; align-items:center; gap:0.3rem; font-size:0.72rem;
+  background:rgba(102,126,234,0.12); color:var(--primary); border-radius:6px;
+  padding:0.15rem 0.45rem; font-weight:600; margin-left:0.4rem; }
+.owner-badge { font-size:0.72rem; color:var(--text-tertiary); margin-left:0.3rem; }
+/* Share modal */
+.share-user-row { display:flex; align-items:center; justify-content:space-between;
+  padding:0.6rem 0; border-bottom:1px solid var(--border); }
+.share-user-row:last-child { border-bottom:none; }
+</style>
+</head>
+<body>
+<!-- Header -->
+<div class="header">
+  <h1>💸 Kash</h1>
+  <div class="search-wrapper" style="flex:1; max-width:320px; margin: 0 1rem;">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="global-search" placeholder="Search expenses, income, bills..." oninput="globalSearch(this.value)" autocomplete="off">
+    <div class="search-results" id="search-results" style="display:none;"></div>
+  </div>
+  <div class="header-right">
+    <span id="user-greeting">Hello!</span>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+    <button class="btn-logout" onclick="doLogout()">Logout</button>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-button active" data-tab="dashboard"><span class="tab-icon">📊</span><span class="tab-label">Dashboard</span></button>
+  <button class="tab-button" data-tab="spending"><span class="tab-icon">💸</span><span class="tab-label">Spending</span></button>
+  <button class="tab-button" data-tab="income"><span class="tab-icon">💵</span><span class="tab-label">Income</span></button>
+  <button class="tab-button" data-tab="credit-cards"><span class="tab-icon">💳</span><span class="tab-label">Cards</span></button>
+  <button class="tab-button" data-tab="budgets"><span class="tab-icon">🎯</span><span class="tab-label">Budgets</span></button>
+  <button class="tab-button" data-tab="reports"><span class="tab-icon">📈</span><span class="tab-label">Reports</span></button>
+  <button class="tab-button" data-tab="currencies"><span class="tab-icon">💱</span><span class="tab-label">Currencies</span></button>
+  <button class="tab-button" data-tab="account"><span class="tab-icon">⚙️</span><span class="tab-label">Account</span></button>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal" id="modal-container">
+    <h3 id="modal-title">Confirm</h3>
+    <p id="modal-body">Are you sure?</p>
+    <div class="modal-btns">
+      <button class="btn-secondary btn-sm" onclick="hideModal()">Cancel</button>
+      <button class="btn-danger btn-sm" id="modal-confirm-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<div class="tab-content active" id="dashboard-tab">
+
+  <!-- Hero: How am I doing this month? -->
+  <div class="hero-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+      <h2 id="dashboard-month-label" style="margin:0;">📅 This Month</h2>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <button class="btn-sm btn-secondary" style="font-size:0.8rem;" onclick="openWidgetToggle()" title="Customize dashboard">⚙️ Widgets</button>
+        <div class="month-nav">
+        <button onclick="shiftDashboardMonth(-1)">◀</button>
+        <span id="dashboard-month-display">—</span>
+        <button onclick="shiftDashboardMonth(1)">▶</button>
+        </div>
+      </div>
+    </div>
+    <div class="hero-grid">
+      <div class="hero-stat">
+        <div class="label">Spent</div>
+        <div class="value danger" id="stat-monthly-expenses">$0</div>
+      </div>
+      <div class="hero-stat">
+        <div class="label">Earned</div>
+        <div class="value success" id="stat-monthly-income">$0</div>
+      </div>
+      <div class="hero-stat">
+        <div class="label">Net Saved</div>
+        <div class="value" id="stat-net-saved">$0</div>
+      </div>
+      <div class="hero-stat">
+        <div class="label">Budget Used</div>
+        <div class="value" id="stat-budget-pct">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Insights banner -->
+  <div class="glass-card" id="widget-insights" style="padding:1rem 1.25rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+      <div class="card-title" style="margin:0;">💡 Insights</div>
+      <span class="forecast-badge" id="forecast-badge" style="display:none;">📈 <span id="forecast-value"></span> forecast</span>
+    </div>
+    <div id="insights-list"><div style="color:var(--text-secondary);font-size:0.88rem;padding:0.5rem 0;">Analysing your spending…</div></div>
+  </div>
+
+  <!-- Secondary stats -->
+  <div class="stats-grid" style="margin-bottom:1.25rem;">
+    <div class="stat-card" id="stat-card-unpaid"><h3>Unpaid Bills</h3><p id="stat-unpaid-bills" class="danger">$0.00</p></div>
+    <div class="stat-card" id="stat-card-left"><h3>Left After Bills</h3><p id="stat-left-after-bills">$0.00</p></div>
+    <div class="stat-card" id="stat-card-cc"><h3>CC Balance</h3><p id="stat-cc-balance" class="danger">$0.00</p></div>
+    <div class="stat-card" id="stat-card-income"><h3>All-Time Income</h3><p id="stat-total-income" class="success">$0.00</p></div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="dashboard-grid-2">
+    <div class="glass-card" id="card-trend">
+      <div class="card-title">📊 12-Month Trend</div>
+      <canvas id="trend-chart" height="200"></canvas>
+    </div>
+    <div class="glass-card" id="card-category">
+      <div class="card-title">🍕 Spending by Category <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">(click to filter)</span></div>
+      <canvas id="category-chart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Bills alerts + Budget mini -->
+  <div class="dashboard-grid-2">
+    <div class="glass-card" id="card-bills">
+      <div class="card-title">⚠️ Upcoming Bills <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">next 7 days</span></div>
+      <div class="bill-alerts" id="dashboard-bill-alerts">
+        <div class="empty-state" style="padding:1rem;">No upcoming bills 🎉</div>
+      </div>
+    </div>
+    <div class="glass-card" id="card-budgets">
+      <div class="card-title">🎯 Budget Status</div>
+      <div class="budget-mini" id="dashboard-budget-mini">
+        <div class="empty-state" style="padding:1rem;">No budgets set</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Splits summary -->
+  <div class="glass-card" id="widget-splits" style="display:none;">
+    <div class="card-title">🤝 Who Owes What</div>
+    <div id="dashboard-splits-list"><div class="empty-state" style="padding:1rem;">No outstanding splits</div></div>
+  </div>
+
+  <!-- Person spending + Savings trend -->
+  <div class="dashboard-grid-2">
+    <div class="glass-card" id="card-person">
+      <div class="card-title">👤 Spending by Person <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">this month</span></div>
+      <div class="person-spending-grid" id="dashboard-person-spending">
+        <div class="empty-state" style="padding:1rem;">No data yet</div>
+      </div>
+    </div>
+    <div class="glass-card" id="card-savings">
+      <div class="card-title">💰 Cumulative Savings</div>
+      <canvas id="savings-chart" height="160"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ SPENDING ═══════════════ -->
+<div class="tab-content" id="spending-tab">
+  <div class="glass-card">
+    <div class="card-title">➕ Add Expense</div>
+    <form id="expense-form" onsubmit="submitExpenseForm(event)">
+      <div class="form-grid">
+        <div class="form-group"><label>Date *</label><input type="date" id="expense-date" required></div>
+        <div class="form-group"><label>Category *</label><select id="expense-category" required><option value="">-- Category --</option></select></div>
+        <div class="form-group"><label>Description *</label><input type="text" id="expense-description" placeholder="What was purchased?" required></div>
+        <div class="form-group"><label>Amount *</label><input type="number" id="expense-amount" step="0.01" min="0.01" placeholder="0.00" required></div>
+        <div class="form-group"><label>Paid By *</label>
+          <select id="expense-paid-by" required>
+            <option value="">-- Person --</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Payment Method</label>
+          <select id="expense-payment-method">
+            <option value="">-- Method --</option>
+            <option value="Cash">Cash</option>
+            <option value="Credit">Credit</option>
+            <option value="Debit">Debit</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Credit Card</label><select id="expense-credit-card"><option value="">-- None --</option></select></div>
+        <div class="form-group"><label>Notes</label><textarea id="expense-notes" rows="2" placeholder="Optional notes..."></textarea></div>
+      </div>
+      <div style="margin-top:1rem; display:flex; gap:0.75rem;">
+        <button type="submit" id="expense-submit-btn">💾 Add Expense</button>
+        <button type="button" class="btn-secondary" onclick="cancelExpenseEdit()">Cancel</button>
+      </div>
+      <input type="hidden" id="expense-edit-id">
+    </form>
+  </div>
+  <div class="glass-card">
+    <div class="section-header">
+      <span class="section-title">Expense History</span>
+      <div class="flex-gap">
+        <button class="btn-sm btn-success" onclick="exportExpensesCSV()">📄 CSV</button>
+        <button class="btn-sm" style="background:linear-gradient(90deg,#217346,#1a5c37)" onclick="exportExpensesExcel()">📊 Excel</button>
+      </div>
+    </div>
+    <div class="filter-row">
+      <input type="date" id="expense-filter-start" placeholder="From">
+      <input type="date" id="expense-filter-end" placeholder="To">
+      <select id="expense-filter-category"><option value="">All Categories</option></select>
+      <button class="btn-sm" onclick="loadExpenses()">🔍 Filter</button>
+      <button class="btn-sm btn-secondary" onclick="clearExpenseFilter()">✕ Clear</button>
+      <button class="btn-sm btn-secondary" onclick="toggleAdvSearch()" id="adv-search-toggle">⚙️ Advanced</button>
+      <button class="mine-toggle" id="expense-mine-toggle" onclick="toggleMineFilter('expenses',this)">👤 Mine Only</button>
+    </div>
+    <div class="adv-search-panel" id="adv-search-panel">
+      <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.75rem;">
+        <div class="form-group"><label>Keyword</label><input type="text" id="adv-q" placeholder="Search description…"></div>
+        <div class="form-group"><label>Person</label><select id="adv-person"><option value="">Anyone</option></select></div>
+        <div class="form-group"><label>Method</label>
+          <select id="adv-method">
+            <option value="">Any Method</option>
+            <option value="Cash">Cash</option>
+            <option value="Credit">Credit</option>
+            <option value="Debit">Debit</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Min Amount</label><input type="number" id="adv-amt-min" placeholder="0.00" step="0.01" min="0"></div>
+        <div class="form-group"><label>Max Amount</label><input type="number" id="adv-amt-max" placeholder="Any" step="0.01" min="0"></div>
+      </div>
+      <div style="display:flex;gap:0.6rem;margin-top:0.75rem;align-items:center;">
+        <button class="btn-sm" onclick="runAdvSearch()">🔍 Search</button>
+        <button class="btn-sm btn-secondary" onclick="clearAdvSearch()">✕ Clear</button>
+        <span id="adv-search-summary" style="font-size:0.83rem;color:var(--text-secondary);"></span>
+      </div>
+    </div>
+    <div class="overflow-table"><table class="expense-table">
+      <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Paid By</th><th>Method</th><th>Actions</th></tr></thead>
+      <tbody id="expense-list"><tr><td colspan="7" class="empty-state"><div class="icon">💸</div>No expenses yet</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <!-- ── Bills Sub-Section ── -->
+  <div class="glass-card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('bills-section')">
+      <span class="card-title" style="margin-bottom:0;">📅 Bills</span>
+      <span class="collapse-arrow" id="bills-section-arrow">▼</span>
+    </div>
+    <div id="bills-section" class="collapsible-body">
+      <form id="bill-form" onsubmit="submitBillForm(event)" style="margin-bottom:1.25rem;">
+        <div class="form-grid">
+          <div class="form-group"><label>Bill Name *</label><input type="text" id="bill-name" placeholder="e.g. Electric Bill" required></div>
+          <div class="form-group"><label>Amount *</label><input type="number" id="bill-amount" step="0.01" min="0.01" placeholder="0.00" required></div>
+          <div class="form-group"><label>Due Date *</label><input type="date" id="bill-due-date" required></div>
+          <div class="form-group"><label>Category</label><select id="bill-category"><option value="">-- Category --</option></select></div>
+          <div class="form-group"><label>Notes</label><textarea id="bill-notes" rows="2"></textarea></div>
+          <div class="form-group" style="justify-content:flex-end;padding-top:0.5rem;">
+            <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;font-weight:500;color:var(--text-primary);">
+              <input type="checkbox" id="bill-is-recurring" style="width:auto;accent-color:var(--primary);" onchange="toggleBillFrequency(this)">
+              🔄 Recurring bill
+            </label>
+          </div>
+          <div class="form-group" id="bill-frequency-group" style="display:none;">
+            <label>Frequency</label>
+            <select id="bill-frequency">
+              <option value="monthly">Monthly</option>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Bi-Weekly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" style="margin-top:0.75rem;">💾 Add Bill</button>
+      </form>
+      <div id="bills-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Recurring Sub-Section ── -->
+  <div class="glass-card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('recurring-section')">
+      <span class="card-title" style="margin-bottom:0;">🔄 Recurring Transactions</span>
+      <span class="collapse-arrow" id="recurring-section-arrow">▼</span>
+    </div>
+    <div id="recurring-section" class="collapsible-body">
+      <form id="recurring-form" onsubmit="submitRecurringForm(event)" style="margin-bottom:1.25rem;">
+        <div class="form-grid">
+          <div class="form-group"><label>Type *</label>
+            <select id="rec-type" required>
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Frequency *</label>
+            <select id="rec-frequency" required>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Bi-Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Next Date *</label><input type="date" id="rec-next-date" required></div>
+          <div class="form-group"><label>Description *</label><input type="text" id="rec-description" required></div>
+          <div class="form-group"><label>Amount *</label><input type="number" id="rec-amount" step="0.01" min="0.01" required></div>
+          <div class="form-group"><label>Category</label><select id="rec-category"><option value="">-- Category --</option></select></div>
+          <div class="form-group"><label>Person *</label>
+            <select id="rec-person" required>
+              <option value="">-- Person --</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" style="margin-top:0.75rem;">💾 Add Recurring</button>
+      </form>
+      <div id="recurring-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ INCOME ═══════════════ -->
+<div class="tab-content" id="income-tab">
+  <div class="glass-card">
+    <div class="card-title">➕ Add Income</div>
+    <form id="income-form" onsubmit="submitIncomeForm(event)">
+      <div class="form-grid">
+        <div class="form-group"><label>Date *</label><input type="date" id="income-date" required></div>
+        <div class="form-group"><label>Source *</label>
+          <select id="income-source" required>
+            <option value="">-- Source --</option>
+            <option value="Salary">Salary</option>
+            <option value="Bonus">Bonus</option>
+            <option value="Investment">Investment</option>
+            <option value="Gift">Gift</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Description *</label><input type="text" id="income-description" placeholder="Description" required></div>
+        <div class="form-group"><label>Amount *</label><input type="number" id="income-amount" step="0.01" min="0.01" placeholder="0.00" required></div>
+        <div class="form-group"><label>Received By *</label>
+          <select id="income-received-by" required>
+            <option value="">-- Person --</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Notes</label><textarea id="income-notes" rows="2"></textarea></div>
+      </div>
+      <div style="margin-top:1rem; display:flex; gap:0.75rem;">
+        <button type="submit" id="income-submit-btn">💾 Add Income</button>
+        <button type="button" class="btn-secondary" onclick="cancelIncomeEdit()">Cancel</button>
+      </div>
+      <input type="hidden" id="income-edit-id">
+    </form>
+  </div>
+  <div class="glass-card">
+    <div class="section-header">
+      <span class="section-title">Income History</span>
+      <button class="btn-sm btn-success" onclick="exportIncomeCSV()">📄 CSV</button>
+    </div>
+    <div class="overflow-table"><table class="expense-table">
+      <thead><tr><th>Date</th><th>Source</th><th>Description</th><th>Amount</th><th>Received By</th><th>Actions</th></tr></thead>
+      <tbody id="income-list"><tr><td colspan="6" class="empty-state"><div class="icon">💵</div>No income yet</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ═══════════════ CREDIT CARDS ═══════════════ -->
+<div class="tab-content" id="credit-cards-tab">
+  <div class="glass-card">
+    <div class="card-title">➕ Add Credit Card</div>
+    <form id="credit-card-form" onsubmit="submitCreditCardForm(event)">
+      <div class="form-grid">
+        <div class="form-group"><label>Owner *</label>
+          <select id="credit-card-owner" required>
+            <option value="">-- Owner --</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Card Name *</label><input type="text" id="credit-card-name" placeholder="e.g. Visa Gold" required></div>
+        <div class="form-group"><label>Credit Limit</label><input type="number" id="credit-card-limit" step="0.01" placeholder="Optional"></div>
+        <div class="form-group"><label>Manual Balance Override</label><input type="number" id="credit-card-manual-balance" step="0.01" placeholder="Leave blank to auto-calculate"></div>
+      </div>
+      <button type="submit" style="margin-top:1rem;">💾 Save Card</button>
+      <input type="hidden" id="cc-edit-id">
+    </form>
+  </div>
+  <div class="credit-card-grid" id="credit-card-list">
+    <div class="empty-state"><div class="icon">💳</div>No credit cards added</div>
+  </div>
+</div>
+
+<!-- ═══════════════ BUDGETS ═══════════════ -->
+<div class="tab-content" id="budgets-tab">
+  <div class="glass-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+      <div class="card-title" style="margin-bottom:0;">➕ Set Budget</div>
+      <div class="flex-gap">
+        <button class="btn-sm btn-secondary" onclick="copyLastMonthBudgets()">📋 Copy Last Month</button>
+        <button class="btn-sm btn-secondary" onclick="applyRollover()">🔄 Apply Rollover</button>
+      </div>
+    </div>
+    <form id="budget-form" onsubmit="submitBudgetForm(event)">
+      <div class="form-grid">
+        <div class="form-group"><label>Category *</label><select id="budget-category" required><option value="">-- Category --</option></select></div>
+        <div class="form-group"><label>Amount *</label><input type="number" id="budget-amount" step="0.01" min="0.01" placeholder="Budget amount" required></div>
+        <div class="form-group"><label>Month *</label>
+          <select id="budget-month" required>
+            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Year *</label><input type="number" id="budget-year" min="2020" max="2099" required></div>
+      </div>
+      <button type="submit" style="margin-top:1rem;">💾 Set Budget</button>
+    </form>
+  </div>
+  <div id="budget-list"></div>
+
+  <!-- Savings Goals -->
+  <div class="glass-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+      <div class="card-title" style="margin-bottom:0;">💰 Savings Goals</div>
+    </div>
+    <form id="savings-goal-form" onsubmit="submitSavingsGoal(event)" style="margin-bottom:1.25rem;">
+      <div class="form-grid">
+        <div class="form-group"><label>Goal Name *</label><input type="text" id="goal-name" placeholder="e.g. Emergency Fund" required></div>
+        <div class="form-group"><label>Target Amount *</label><input type="number" id="goal-amount" step="0.01" min="1" placeholder="0.00" required></div>
+        <div class="form-group"><label>Target Date *</label><input type="date" id="goal-date" required></div>
+      </div>
+      <button type="submit" style="margin-top:0.75rem;">➕ Add Goal</button>
+    </form>
+    <div id="savings-goals-list"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ REPORTS ═══════════════ -->
+<div class="tab-content" id="reports-tab">
+  <div class="glass-card">
+    <div class="card-title">📊 Generate Report</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Start Date</label><input type="date" id="report-start"></div>
+      <div class="form-group"><label>End Date</label><input type="date" id="report-end"></div>
+    </div>
+    <div class="flex-gap" style="margin-top:1rem;">
+      <button onclick="exportExpensesCSV(true)">📄 Expense CSV</button>
+      <button onclick="exportExpensesExcel()">📊 Expense Excel</button>
+      <button class="btn-success" onclick="exportIncomeCSV()">💵 Income CSV</button>
+    </div>
+  </div>
+  <div class="glass-card" id="monthly-report-card">
+    <div class="card-title">📅 Monthly Summary</div>
+    <div id="monthly-report-body"><div class="empty-state">Click to generate...</div></div>
+    <button onclick="generateMonthlyReport()" style="margin-top:1rem;">Generate Report</button>
+  </div>
+</div>
+
+
+<!-- ═══════════════ CURRENCIES ═══════════════ -->
+<div class="tab-content" id="currencies-tab">
+  <div class="glass-card" style="max-width:700px;">
+    <div class="card-title">💱 Currencies</div>
+    <p style="color:var(--text-secondary);font-size:0.88rem;margin-bottom:1.25rem;">
+      Set your home currency and add any currencies you spend in. All amounts are stored and displayed in your home currency. The exchange rate is how many units of the foreign currency equal 1 unit of your home currency.
+    </p>
+    <form id="currency-form" onsubmit="submitCurrency(event)" style="margin-bottom:1.5rem;">
+      <div class="form-grid">
+        <div class="form-group"><label>Code *</label><input type="text" id="currency-code" placeholder="e.g. EUR" maxlength="3" style="text-transform:uppercase;" required></div>
+        <div class="form-group"><label>Name *</label><input type="text" id="currency-name" placeholder="e.g. Euro" required></div>
+        <div class="form-group"><label>Symbol *</label><input type="text" id="currency-symbol" placeholder="e.g. €" maxlength="3" required></div>
+        <div class="form-group"><label>Rate to Home *</label><input type="number" id="currency-rate" step="0.000001" min="0.000001" placeholder="e.g. 1.08" required></div>
+        <div class="form-group" style="justify-content:flex-end;padding-top:0.5rem;">
+          <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;font-weight:500;">
+            <input type="checkbox" id="currency-is-home" style="width:auto;accent-color:var(--primary);"> Set as home currency
+          </label>
+        </div>
+      </div>
+      <button type="submit" style="margin-top:0.75rem;">➕ Add Currency</button>
+    </form>
+    <div id="currencies-list"></div>
+  </div>
+
+  <!-- Audit Log — Admin Only -->
+  <div class="glass-card" id="audit-log-card" style="max-width:900px;display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+      <div class="card-title" style="margin-bottom:0;">📋 Audit Log <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary);">(Admin Only)</span></div>
+      <div class="flex-gap">
+        <select id="audit-filter-table" onchange="loadAuditLog()" style="font-size:0.85rem;padding:0.4rem 0.7rem;">
+          <option value="">All tables</option>
+          <option value="expenses">Expenses</option>
+          <option value="income">Income</option>
+          <option value="bills">Bills</option>
+          <option value="budgets">Budgets</option>
+        </select>
+      </div>
+    </div>
+    <div id="audit-log-list"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ ACCOUNT ═══════════════ -->
+<div class="tab-content" id="account-tab">
+  <div class="glass-card" style="max-width:500px;">
+    <div class="card-title">👤 Your Profile</div>
+    <form id="profile-form" onsubmit="updateProfile(event)">
+      <div class="form-group"><label>Display Name</label>
+        <input type="text" id="profile-display-name" placeholder="e.g. Anthony" maxlength="50">
+        <span style="font-size:0.78rem;color:var(--text-secondary);">This is shown in the greeting instead of your username.</span>
+      </div>
+      <div class="form-group" style="margin-top:0.75rem;"><label>Username</label>
+        <input type="text" id="profile-username" disabled style="opacity:0.6;">
+      </div>
+      <button type="submit" style="margin-top:1rem;">💾 Save Profile</button>
+    </form>
+  </div>
+
+  <div class="glass-card" style="max-width:500px;">
+    <div class="card-title">🔒 Change Password</div>
+    <form id="password-form" onsubmit="changePassword(event)">
+      <div class="form-group"><label>Current Password</label><input type="password" id="current-password" required></div>
+      <div class="form-group" style="margin-top:0.75rem;"><label>New Password</label><input type="password" id="new-password" required></div>
+      <div class="form-group" style="margin-top:0.75rem;"><label>Confirm New Password</label><input type="password" id="confirm-password" required></div>
+      <button type="submit" style="margin-top:1rem;">Update Password</button>
+    </form>
+  </div>
+  <div class="glass-card" id="user-management-card" style="max-width:700px; display:none;">
+    <div class="card-title">👥 User Management <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary)">(Admin Only)</span></div>
+    <form id="new-user-form" onsubmit="createUser(event)" style="margin-bottom:1.5rem;">
+      <div class="form-grid">
+        <div class="form-group"><label>Username</label><input type="text" id="new-username" required></div>
+        <div class="form-group"><label>Display Name</label><input type="text" id="new-user-display-name" placeholder="e.g. Anthony"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="new-user-password" required></div>
+        <div class="form-group" style="justify-content:flex-end; padding-top:1.4rem;">
+          <label style="display:flex;align-items:center;gap:0.5rem;">
+            <input type="checkbox" id="new-user-admin" style="width:auto;"> Admin
+          </label>
+        </div>
+      </div>
+      <button type="submit" style="margin-top:0.75rem;">Add User</button>
+    </form>
+    <div id="users-list"></div>
+  </div>
+
+
+  <!-- Notification Settings -->
+  <div class="glass-card" style="max-width:600px;">
+    <div class="card-title">🔔 Notification Settings</div>
+    <div id="mail-status-banner" style="display:none;background:rgba(245,158,11,0.1);border:1px solid var(--warning);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.85rem;color:var(--warning);">
+      ⚠️ Email is not configured on the server. Ask your admin to add MAIL_USERNAME and MAIL_PASSWORD to the .env file.
+    </div>
+    <form id="notifications-form" onsubmit="saveNotificationPrefs(event)">
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label>Your Email Address</label>
+        <input type="email" id="notif-email" placeholder="your@email.com">
+        <span style="font-size:0.78rem;color:var(--text-secondary);">Leave blank to opt out of all notifications.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.6rem;margin-bottom:1.25rem;">
+        <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-size:0.9rem;font-weight:500;color:var(--text-primary);">
+          <input type="checkbox" id="notif-bills" style="width:auto;accent-color:var(--primary);">
+          📅 Bill due alerts (3 days before + overdue)
+        </label>
+        <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-size:0.9rem;font-weight:500;color:var(--text-primary);">
+          <input type="checkbox" id="notif-budgets" style="width:auto;accent-color:var(--primary);">
+          🎯 Budget warnings (at 80% and when exceeded)
+        </label>
+        <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-size:0.9rem;font-weight:500;color:var(--text-primary);">
+          <input type="checkbox" id="notif-monthly" style="width:auto;accent-color:var(--primary);">
+          📊 Monthly summary (1st of each month)
+        </label>
+      </div>
+      <div class="flex-gap">
+        <button type="submit">💾 Save Preferences</button>
+        <button type="button" class="btn-secondary" onclick="sendTestNotification()">📧 Send Test Email</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Backup / Restore — Admin Only -->
+  <div class="glass-card" id="backup-card" style="max-width:700px; display:none;">
+    <div class="card-title">🗄️ Backup & Restore <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary)">(Admin Only)</span></div>
+
+    <div style="margin-bottom:1.5rem;">
+      <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1rem;">
+        Export all your data to a JSON file you can use to restore after a reinstall. 
+        Your users and passwords are <strong>not</strong> included — just transactions, bills, budgets, and cards.
+      </p>
+      <button onclick="downloadBackup()" class="btn-success">📥 Download Backup</button>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin-bottom:1.5rem;">
+
+    <div>
+      <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1rem;">
+        ⚠️ Restoring will <strong>replace all existing data</strong> with the contents of the backup file. This cannot be undone.
+      </p>
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label>Select Backup File (.json)</label>
+        <input type="file" id="restore-file" accept=".json" style="padding:0.5rem;">
+      </div>
+      <button onclick="uploadRestore()" class="btn-danger">📤 Restore from Backup</button>
+      <div id="restore-status" style="margin-top:1rem;"></div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ── Split Expense Modal ── -->
+<div class="modal-backdrop" id="split-modal-backdrop">
+  <div class="modal" style="max-width:520px;">
+    <h3>🤝 Split Expense</h3>
+    <div id="split-expense-info" style="background:var(--bg-secondary);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.9rem;"></div>
+    <div class="split-mode-tabs">
+      <button class="split-mode-tab active" onclick="setSplitMode('even',this)">÷ Even</button>
+      <button class="split-mode-tab" onclick="setSplitMode('pct',this)">% Percentage</button>
+      <button class="split-mode-tab" onclick="setSplitMode('amount',this)">$ Amount</button>
+    </div>
+    <div id="split-rows-container"></div>
+    <div id="split-validation" style="font-size:0.83rem;color:var(--danger);margin-top:0.5rem;min-height:1.2em;"></div>
+    <div class="modal-btns" style="margin-top:1rem;">
+      <button class="btn-secondary btn-sm" onclick="closeSplitModal()">Cancel</button>
+      <button class="btn-sm" onclick="saveSplits()">💾 Save Splits</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Widget Toggle Modal ── -->
+<div class="modal-backdrop" id="widget-modal-backdrop">
+  <div class="modal" style="max-width:480px;">
+    <h3>⚙️ Customize Dashboard</h3>
+    <p style="color:var(--text-secondary);font-size:0.88rem;margin-bottom:1rem;">Toggle which cards appear on your dashboard.</p>
+    <div class="widget-toggle-grid" id="widget-toggle-list"></div>
+    <div class="modal-btns">
+      <button class="btn-secondary btn-sm" onclick="closeWidgetToggle()">Cancel</button>
+      <button class="btn-sm" onclick="saveWidgetPrefs()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Onboarding Overlay ── -->
+<div class="onboarding-backdrop" id="onboarding-backdrop">
+  <div class="onboarding-modal">
+    <div class="onboarding-steps" id="onboarding-dots"></div>
+    <div class="onboarding-title" id="onboarding-title"></div>
+    <div class="onboarding-sub" id="onboarding-sub"></div>
+    <div id="onboarding-step-content"></div>
+    <div class="onboarding-nav">
+      <button class="btn-secondary btn-sm" onclick="skipOnboarding()">Skip setup</button>
+      <button class="btn-sm" id="onboarding-next-btn" onclick="nextOnboardingStep()">Next →</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Share Modal ── -->
+<div class="modal-backdrop" id="share-modal-backdrop">
+  <div class="modal" style="max-width:460px;">
+    <h3>🔗 Share Record</h3>
+    <div id="share-record-info" style="background:var(--bg-secondary);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.9rem;"></div>
+    <div style="margin-bottom:1.25rem;">
+      <div class="card-title" style="font-size:0.9rem;margin-bottom:0.75rem;">Currently shared with:</div>
+      <div id="share-current-list"><div style="color:var(--text-secondary);font-size:0.85rem;">Not shared with anyone</div></div>
+    </div>
+    <div>
+      <div class="card-title" style="font-size:0.9rem;margin-bottom:0.75rem;">Share with user:</div>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <select id="share-user-select" style="flex:1;">
+          <option value="">-- Select user --</option>
+        </select>
+        <button class="btn-sm" onclick="addShare()">🔗 Share</button>
+      </div>
+    </div>
+    <div class="modal-btns" style="margin-top:1.25rem;">
+      <button class="btn-secondary btn-sm" onclick="closeShareModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- .main -->
+
+<!-- ── Receipt Modal ── -->
+<div class="modal-backdrop" id="receipt-modal-backdrop">
+  <div class="modal" id="receipt-modal" style="max-width:480px;">
+    <h3>🧾 Receipt</h3>
+    <div id="receipt-preview" style="margin:1rem 0;text-align:center;min-height:80px;"></div>
+    <div class="form-group" style="margin-bottom:1rem;">
+      <label>Upload Receipt Photo</label>
+      <input type="file" id="receipt-file-input" accept="image/*,.pdf" style="padding:0.5rem;" capture="environment">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-secondary btn-sm" onclick="closeReceiptModal()">Cancel</button>
+      <button class="btn-danger btn-sm" id="receipt-delete-btn" style="display:none;" onclick="deleteReceiptFromModal()">🗑️ Remove</button>
+      <button class="btn-sm" onclick="saveReceipt()">📎 Save Receipt</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Floating Quick-Add Button ── -->
+<button class="fab" onclick="openQuickAdd()" title="Quick Add Expense">＋</button>
+
+<!-- ── Quick-Add Modal ── -->
+<div class="quick-modal-backdrop" id="quick-modal-backdrop" onclick="closeQuickAdd(event)">
+  <div class="quick-modal" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+      <h3 style="font-size:1.1rem;">⚡ Quick Add Expense</h3>
+      <button onclick="closeQuickAdd()" style="background:none;border:none;font-size:1.3rem;color:var(--text-secondary);padding:0;cursor:pointer;">✕</button>
+    </div>
+    <form onsubmit="submitQuickAdd(event)">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group"><label>Date *</label><input type="date" id="qa-date" required></div>
+        <div class="form-group"><label>Amount *</label><input type="number" id="qa-amount" step="0.01" min="0.01" placeholder="0.00" required></div>
+        <div class="form-group"><label>Category *</label><select id="qa-category" required><option value="">-- Category --</option></select></div>
+        <div class="form-group"><label>Paid By *</label><select id="qa-paid-by" required><option value="">-- Person --</option></select></div>
+      </div>
+      <div class="form-group" style="margin-top:0.75rem;"><label>Description *</label><input type="text" id="qa-description" placeholder="What was purchased?" required></div>
+      <button type="submit" style="width:100%;margin-top:1rem;">💾 Add Expense</button>
+    </form>
+  </div>
+</div>
+
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILITY FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function formatCurrency(val) {
+  const num = parseFloat(val) || 0;
+  return '$' + num.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function formatDate(ds) {
+  if (!ds) return '';
+  const [y,m,d] = ds.split('-');
+  return `${m}/${d}/${y}`;
+}
+
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function showToast(type='info', message='', title='') {
+  const container = document.getElementById('toast-container');
+  if (!message) return;
+  const titles = {success:'Success', error:'Error', warning:'Warning', info:'Info'};
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <div class="toast-header">
+      <div class="toast-title">${title || titles[type] || 'Info'}</div>
+      <button class="toast-close" onclick="this.closest('.toast').remove()">✕</button>
+    </div>
+    <div class="toast-body">${message}</div>`;
+  container.appendChild(toast);
+  setTimeout(() => { toast.classList.add('fade-out'); setTimeout(()=>toast.remove(), 300); }, 4000);
+}
+
+async function apiCall(endpoint, method='GET', data=null) {
+  try {
+    const opts = { method, headers: {'Content-Type':'application/json'}, credentials: 'same-origin' };
+    if (data && method !== 'GET') opts.body = JSON.stringify(data);
+    const resp = await fetch(endpoint, opts);
+    const result = await resp.json();
+    if (!resp.ok) { showToast('error', result.error || 'Operation failed'); return null; }
+    return result;
+  } catch(e) {
+    showToast('error', 'Network error occurred');
+    return null;
+  }
+}
+
+function showModal(title, body, onConfirm) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent = body;
+  document.getElementById('modal-backdrop').classList.add('active');
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.onclick = () => { hideModal(); onConfirm(); };
+}
+function hideModal() { document.getElementById('modal-backdrop').classList.remove('active'); }
+
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-button').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `${tabName}-tab`));
+  // Lazy-load data
+  if (tabName === 'dashboard') loadDashboard();
+  if (tabName === 'spending') { loadExpenses(); loadBills(); loadRecurring(); }
+  if (tabName === 'income') loadIncome();
+  if (tabName === 'credit-cards') loadCreditCards();
+  if (tabName === 'budgets') loadBudgets();
+  if (tabName === 'account') { loadUsers(); loadProfile(); loadNotificationPrefs(); }
+  if (tabName === 'currencies') { loadCurrencies(); loadAuditLog(); }
+}
+
+function toggleSection(id) {
+  const body = document.getElementById(id);
+  const arrow = document.getElementById(id + '-arrow');
+  body.classList.toggle('collapsed');
+  if (arrow) arrow.classList.toggle('collapsed');
+}
+
+document.querySelectorAll('.tab-button').forEach(btn => btn.addEventListener('click', ()=>switchTab(btn.dataset.tab)));
+
+function toggleTheme() {
+  document.body.classList.toggle('dark-mode');
+  const isDark = document.body.classList.contains('dark-mode');
+  // Save to both localStorage AND cookie so it persists on mobile PWA
+  try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch(e) {}
+  document.cookie = `theme=${isDark ? 'dark' : 'light'};path=/;max-age=31536000;SameSite=Lax`;
+  document.getElementById('theme-toggle').textContent = isDark ? '☀️' : '🌙';
+}
+
+async function doLogout() {
+  await apiCall('/logout', 'POST');
+  window.location.href = '/login';
+}
+
+function clearFormErrors() {
+  document.querySelectorAll('.error').forEach(e => e.classList.remove('error'));
+  document.querySelectorAll('.field-error').forEach(e => e.remove());
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CATEGORIES & CARDS DROPDOWNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _categories = [];
+let _creditCards = [];
+
+async function loadCategories() {
+  const res = await apiCall('/api/categories');
+  if (!res) return;
+  _categories = res.data;
+  ['expense-category','expense-filter-category','budget-category','bill-category','rec-category'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = id.includes('filter') ? '<option value="">All Categories</option>' : '<option value="">-- Category --</option>';
+    _categories.forEach(c => sel.insertAdjacentHTML('beforeend', `<option value="${c}"${c===cur?' selected':''}>${c}</option>`));
+  });
+}
+
+async function populateUserDropdowns() {
+  const res = await apiCall('/api/users/usernames');
+  if (!res) return;
+  const users = res.data;
+  const dropdownIds = ['expense-paid-by', 'income-received-by', 'credit-card-owner', 'rec-person'];
+  dropdownIds.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    // Keep the first placeholder option, replace the rest
+    const placeholder = sel.options[0];
+    sel.innerHTML = '';
+    sel.appendChild(placeholder);
+    users.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u;
+      opt.textContent = u;
+      // Auto-select if it matches the logged-in user
+      if (u === currentUser) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+async function populateCreditCardDropdowns() {
+  const res = await apiCall('/api/credit-cards');
+  if (!res) return;
+  _creditCards = res.data;
+  const sel = document.getElementById('expense-credit-card');
+  sel.innerHTML = '<option value="">-- None --</option>';
+  _creditCards.forEach(c => sel.insertAdjacentHTML('beforeend', `<option value="${c.id}">${c.owner} - ${c.card_name}</option>`));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════
+
+let trendChart=null, catChart=null, savingsChart=null;
+
+async function loadDashboard() {
+  _dashboardYear = new Date().getFullYear();
+  _dashboardMonth = new Date().getMonth() + 1;
+  updateDashboardMonthLabel();
+
+  const stats = await apiCall(`/api/stats/summary-by-month?month=${_dashboardYear}-${String(_dashboardMonth).padStart(2,'0')}`);
+  if (stats) {
+    const net = stats.monthly_income - stats.monthly_expenses;
+    const netEl = document.getElementById('stat-net-saved');
+    netEl.textContent = formatCurrency(net);
+    netEl.className = `value ${net >= 0 ? 'success' : 'danger'}`;
+    document.getElementById('stat-monthly-expenses').textContent = formatCurrency(stats.monthly_expenses);
+    document.getElementById('stat-monthly-income').textContent = formatCurrency(stats.monthly_income);
+    document.getElementById('stat-left-after-bills').textContent = formatCurrency(stats.left_after_bills);
+    document.getElementById('stat-unpaid-bills').textContent = formatCurrency(stats.unpaid_bills_total);
+    document.getElementById('stat-cc-balance').textContent = formatCurrency(stats.total_credit_card_balance);
+    document.getElementById('stat-total-income').textContent = formatCurrency(stats.total_income);
+  }
+
+  loadTrendChart();
+  loadCategoryChart();
+  loadSavingsChart();
+  loadDashboardBills();
+  loadDashboardBudgets();
+  loadPersonSpending();
+  loadInsights();
+  loadSplitsSummary();
+  loadWidgetPrefs();
+}
+
+async function loadDashboardBills() {
+  const res = await apiCall('/api/bills');
+  if (!res) return;
+  const container = document.getElementById('dashboard-bill-alerts');
+  const upcoming = res.data.filter(b => !b.is_paid && b.days_until !== null && b.days_until <= 7);
+  if (!upcoming.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:1rem;">No upcoming bills 🎉</div>';
+    return;
+  }
+  container.innerHTML = upcoming.map(b => {
+    const cls = b.days_until < 0 ? 'overdue' : b.days_until === 0 ? 'today' : '';
+    const label = b.days_until < 0 ? `${Math.abs(b.days_until)}d overdue` : b.days_until === 0 ? 'Due today!' : `Due in ${b.days_until}d`;
+    return `<div class="bill-alert ${cls}">
+      <div>
+        <strong>${b.name}</strong>
+        <div style="font-size:0.8rem;color:var(--text-secondary);">${label} — ${formatDate(b.due_date)}</div>
+      </div>
+      <div class="flex-gap">
+        <strong class="amount-negative">${formatCurrency(b.amount)}</strong>
+        <button class="btn-sm btn-success" onclick="toggleBillPaid(${b.id},'${b.name.replace(/'/g,"\'")}',${b.amount},'${b.category||''}','${b.due_date}')">✅ Pay</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function loadDashboardBudgets() {
+  const now = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const [budgetsRes, spendRes] = await Promise.all([
+    apiCall('/api/budgets'),
+    apiCall(`/api/stats/spending-by-category?month=${month}`)
+  ]);
+  if (!budgetsRes) return;
+  const container = document.getElementById('dashboard-budget-mini');
+  const curMonth = now.getMonth()+1, curYear = now.getFullYear();
+  const budgets = budgetsRes.data.filter(b => b.month == curMonth && b.year == curYear);
+  if (!budgets.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:1rem;">No budgets set</div>';
+    return;
+  }
+  const spendMap = {};
+  if (spendRes) spendRes.data.forEach(s => spendMap[s.category] = s.total);
+
+  // Calculate total budget % for hero card
+  const totalBudget = budgets.reduce((s,b) => s+b.amount, 0);
+  const totalSpent = budgets.reduce((s,b) => s+(spendMap[b.category]||0), 0);
+  const pct = totalBudget > 0 ? Math.round((totalSpent/totalBudget)*100) : null;
+  const pctEl = document.getElementById('stat-budget-pct');
+  if (pct !== null) {
+    pctEl.textContent = `${pct}%`;
+    pctEl.className = `value ${pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : 'success'}`;
+  }
+
+  container.innerHTML = budgets.map(b => {
+    const spent = spendMap[b.category] || 0;
+    const p = Math.min(Math.round((spent/b.amount)*100), 100);
+    const cls = p >= 100 ? 'over' : p >= 80 ? 'warn' : '';
+    return `<div class="budget-mini-item">
+      <div class="budget-mini-info">
+        <span>${b.category}</span>
+        <span style="color:var(--text-secondary);font-size:0.8rem;">${formatCurrency(spent)} / ${formatCurrency(b.amount)}</span>
+      </div>
+      <div class="budget-mini-bar"><div class="budget-mini-fill ${cls}" style="width:${p}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+async function loadTrendChart() {
+  const res = await apiCall('/api/stats/monthly-trend');
+  if (!res) return;
+  const labels = res.data.map(r => r.month);
+  const exp = res.data.map(r => r.expenses);
+  const inc = res.data.map(r => r.income);
+  const ctx = document.getElementById('trend-chart').getContext('2d');
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {label:'Expenses', data:exp, borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.1)', tension:0.4, fill:true},
+        {label:'Income', data:inc, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.1)', tension:0.4, fill:true}
+      ]
+    },
+    options: { responsive:true, plugins:{legend:{position:'top'}}, scales:{y:{beginAtZero:true}} }
+  });
+}
+
+async function loadCategoryChart() {
+  const now = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const res = await apiCall(`/api/stats/spending-by-category?month=${month}`);
+  if (!res || !res.data.length) return;
+  const colors = ['#667eea','#764ba2','#10b981','#ef4444','#f59e0b','#06b6d4','#8b5cf6','#ec4899','#f97316','#14b8a6','#84cc16'];
+  const ctx = document.getElementById('category-chart').getContext('2d');
+  if (catChart) catChart.destroy();
+  catChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: res.data.map(r=>r.category),
+      datasets: [{data: res.data.map(r=>r.total), backgroundColor: colors}]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position:'bottom' } },
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const label = res.data[elements[0].index].category;
+        switchTab('spending');
+        setTimeout(() => {
+          document.getElementById('expense-filter-category').value = label;
+          loadExpenses();
+        }, 100);
+      }
+    }
+  });
+}
+
+async function loadSavingsChart() {
+  const res = await apiCall('/api/stats/monthly-trend');
+  if (!res) return;
+  let cumulative = 0;
+  const savings = res.data.map(r => { cumulative += (r.income - r.expenses); return Math.round(cumulative * 100) / 100; });
+  const ctx = document.getElementById('savings-chart').getContext('2d');
+  if (savingsChart) savingsChart.destroy();
+  savingsChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: res.data.map(r => r.month),
+      datasets: [{
+        label: 'Cumulative Savings',
+        data: savings,
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16,185,129,0.15)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 4,
+        pointBackgroundColor: savings.map(v => v >= 0 ? '#10b981' : '#ef4444')
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: false,
+          ticks: { callback: v => '$' + v.toLocaleString() }
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPENSES
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadExpenses() {
+  const start = document.getElementById('expense-filter-start').value;
+  const end = document.getElementById('expense-filter-end').value;
+  const cat = document.getElementById('expense-filter-category').value;
+  let url = '/api/expenses?';
+  if (start) url += `start_date=${start}&`;
+  if (end) url += `end_date=${end}&`;
+  if (cat) url += `category=${encodeURIComponent(cat)}&`;
+  const res = await apiCall(url);
+  if (!res) return;
+  const tbody = document.getElementById('expense-list');
+  if (!res.data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">💸</div>No expenses found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = res.data.map(e => `
+    <tr>
+      <td>${formatDate(e.date)}</td>
+      <td><span class="badge badge-primary">${e.category}</span></td>
+      <td>${e.description}</td>
+      <td class="amount-negative">${formatCurrency(e.amount)}</td>
+      <td>${e.paid_by}</td>
+      <td>${e.payment_method || '-'}</td>
+      <td>
+        <button class="btn-sm btn-warning" onclick="editExpense(${e.id})">✏️</button>
+        <button class="btn-sm ${e.receipt_filename ? 'btn-success' : 'btn-secondary'}" onclick="openReceiptModal(${e.id}, '${e.receipt_filename||''}')" title="${e.receipt_filename ? 'View/change receipt' : 'Attach receipt'}">🧾</button>
+        <button class="btn-sm btn-danger" onclick="deleteExpense(${e.id}, '${e.description.replace(/'/g,"\\'")}')">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+function clearExpenseFilter() {
+  document.getElementById('expense-filter-start').value = '';
+  document.getElementById('expense-filter-end').value = '';
+  document.getElementById('expense-filter-category').value = '';
+  loadExpenses();
+}
+
+async function submitExpenseForm(e) {
+  e.preventDefault();
+  clearFormErrors();
+  const editId = document.getElementById('expense-edit-id').value;
+  const data = {
+    date: document.getElementById('expense-date').value,
+    category: document.getElementById('expense-category').value,
+    description: document.getElementById('expense-description').value.trim(),
+    amount: document.getElementById('expense-amount').value,
+    paid_by: document.getElementById('expense-paid-by').value,
+    payment_method: document.getElementById('expense-payment-method').value,
+    credit_card_id: document.getElementById('expense-credit-card').value || null,
+    notes: document.getElementById('expense-notes').value,
+    currency: document.getElementById('expense-currency').value || 'USD'
+  };
+  // Check for duplicates first
+  document.getElementById('dup-warning').classList.remove('show');
+  const dupRes = await fetch('/api/expenses/check-duplicate', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({date: data.date, description: data.description, amount: data.amount})
+  });
+  const dupData = await dupRes.json();
+  if (dupData.duplicate && !_forceSubmitExpense) {
+    document.getElementById('dup-warning-msg').textContent =
+      `A similar expense "${dupData.existing.description}" for ${formatCurrency(dupData.existing.amount)} already exists on ${formatDate(dupData.existing.date)}.`;
+    document.getElementById('dup-warning').classList.add('show');
+    _pendingExpenseData = data;
+    return;
+  }
+  _forceSubmitExpense = false;
+  _pendingExpenseData = null;
+  let res;
+  if (editId) {
+    res = await apiCall(`/api/expenses/${editId}`, 'PUT', data);
+    if (res) { showToast('success','Expense updated'); cancelExpenseEdit(); loadExpenses(); }
+  } else {
+    res = await apiCall('/api/expenses', 'POST', data);
+    if (res) { showToast('success','Expense added'); document.getElementById('expense-form').reset(); setDefaultDates(); loadExpenses(); }
+  }
+}
+
+async function editExpense(id) {
+  const res = await apiCall('/api/expenses');
+  if (!res) return;
+  const exp = res.data.find(e => e.id === id);
+  if (!exp) return;
+  document.getElementById('expense-date').value = exp.date;
+  document.getElementById('expense-category').value = exp.category;
+  document.getElementById('expense-description').value = exp.description;
+  document.getElementById('expense-amount').value = exp.amount;
+  document.getElementById('expense-paid-by').value = exp.paid_by;
+  document.getElementById('expense-payment-method').value = exp.payment_method || '';
+  document.getElementById('expense-credit-card').value = exp.credit_card_id || '';
+  document.getElementById('expense-notes').value = exp.notes || '';
+  document.getElementById('expense-edit-id').value = id;
+  document.getElementById('expense-submit-btn').textContent = '💾 Update Expense';
+  document.getElementById('expense-form').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelExpenseEdit() {
+  document.getElementById('expense-form').reset();
+  document.getElementById('expense-edit-id').value = '';
+  document.getElementById('expense-submit-btn').textContent = '💾 Add Expense';
+  setDefaultDates();
+}
+
+function deleteExpense(id, desc) {
+  showModal('Delete Expense', `Delete "${desc}"? This cannot be undone.`, async () => {
+    const res = await apiCall(`/api/expenses/${id}`, 'DELETE');
+    if (res) { showToast('success','Expense deleted'); loadExpenses(); }
+  });
+}
+
+function exportExpensesCSV(useReportDates=false) {
+  let url = '/api/export/expenses/csv?';
+  if (useReportDates) {
+    const s = document.getElementById('report-start').value;
+    const e = document.getElementById('report-end').value;
+    if (s) url += `start_date=${s}&`;
+    if (e) url += `end_date=${e}&`;
+  }
+  window.location.href = url;
+}
+
+function exportExpensesExcel() { window.location.href = '/api/export/expenses/excel'; }
+function exportIncomeCSV() { window.location.href = '/api/export/income/csv'; }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INCOME
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadIncome() {
+  const res = await apiCall('/api/income');
+  if (!res) return;
+  const tbody = document.getElementById('income-list');
+  if (!res.data.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">💵</div>No income yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = res.data.map(i => `
+    <tr>
+      <td>${formatDate(i.date)}</td>
+      <td><span class="badge badge-success">${i.source}</span></td>
+      <td>${i.description}</td>
+      <td class="amount-positive">${formatCurrency(i.amount)}</td>
+      <td>${i.received_by}</td>
+      <td>
+        <button class="btn-sm btn-warning" onclick="editIncome(${i.id})">✏️</button>
+        <button class="btn-sm btn-danger" onclick="deleteIncome(${i.id},'${i.description.replace(/'/g,"\\'")}')">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function submitIncomeForm(e) {
+  e.preventDefault();
+  const editId = document.getElementById('income-edit-id').value;
+  const data = {
+    date: document.getElementById('income-date').value,
+    source: document.getElementById('income-source').value,
+    description: document.getElementById('income-description').value.trim(),
+    amount: document.getElementById('income-amount').value,
+    received_by: document.getElementById('income-received-by').value,
+    notes: document.getElementById('income-notes').value
+  };
+  let res;
+  if (editId) {
+    res = await apiCall(`/api/income/${editId}`, 'PUT', data);
+    if (res) { showToast('success','Income updated'); cancelIncomeEdit(); loadIncome(); }
+  } else {
+    res = await apiCall('/api/income', 'POST', data);
+    if (res) {
+      showToast('success','Income recorded!');
+      if (parseFloat(data.amount) >= 1000) showConfetti();
+      document.getElementById('income-form').reset();
+      setDefaultDates();
+      loadIncome();
+    }
+  }
+}
+
+async function editIncome(id) {
+  const res = await apiCall('/api/income');
+  if (!res) return;
+  const inc = res.data.find(i => i.id === id);
+  if (!inc) return;
+  document.getElementById('income-date').value = inc.date;
+  document.getElementById('income-source').value = inc.source;
+  document.getElementById('income-description').value = inc.description;
+  document.getElementById('income-amount').value = inc.amount;
+  document.getElementById('income-received-by').value = inc.received_by;
+  document.getElementById('income-notes').value = inc.notes || '';
+  document.getElementById('income-edit-id').value = id;
+  document.getElementById('income-submit-btn').textContent = '💾 Update Income';
+  document.getElementById('income-form').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelIncomeEdit() {
+  document.getElementById('income-form').reset();
+  document.getElementById('income-edit-id').value = '';
+  document.getElementById('income-submit-btn').textContent = '💾 Add Income';
+  setDefaultDates();
+}
+
+function deleteIncome(id, desc) {
+  showModal('Delete Income', `Delete "${desc}"?`, async () => {
+    const res = await apiCall(`/api/income/${id}`, 'DELETE');
+    if (res) { showToast('success','Income deleted'); loadIncome(); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CREDIT CARDS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadCreditCards() {
+  const res = await apiCall('/api/credit-cards');
+  if (!res) return;
+  const grid = document.getElementById('credit-card-list');
+  if (!res.data.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">💳</div>No credit cards added</div>';
+    return;
+  }
+  grid.innerHTML = res.data.map(c => {
+    const util = c.utilization;
+    const utilClass = util > 80 ? 'danger' : '';
+    return `
+    <div class="cc-card">
+      <div class="cc-name">${c.card_name}</div>
+      <div class="cc-owner">👤 ${c.owner}</div>
+      <div class="cc-balance">${formatCurrency(c.balance)}</div>
+      <div class="cc-limit">${c.credit_limit ? `Limit: ${formatCurrency(c.credit_limit)}` : 'No limit set'}</div>
+      ${c.credit_limit ? `
+      <div class="cc-util-bar">
+        <div class="cc-util-fill ${utilClass}" style="width:${Math.min(util||0,100)}%"></div>
+      </div>
+      <div style="font-size:0.78rem;opacity:0.85;margin-top:0.25rem;">${util||0}% utilization</div>` : ''}
+      <div class="cc-actions">
+        <button onclick="editCreditCard(${c.id})">✏️ Edit</button>
+        <button onclick="deleteCreditCard(${c.id},'${c.card_name}')">🗑️ Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+  populateCreditCardDropdowns();
+}
+
+async function submitCreditCardForm(e) {
+  e.preventDefault();
+  const editId = document.getElementById('cc-edit-id').value;
+  const data = {
+    owner: document.getElementById('credit-card-owner').value,
+    card_name: document.getElementById('credit-card-name').value.trim(),
+    credit_limit: document.getElementById('credit-card-limit').value || null,
+    manual_balance: document.getElementById('credit-card-manual-balance').value || null
+  };
+  let res;
+  if (editId) {
+    res = await apiCall(`/api/credit-cards/${editId}`, 'PUT', data);
+    if (res) { showToast('success','Card updated'); document.getElementById('credit-card-form').reset(); document.getElementById('cc-edit-id').value=''; loadCreditCards(); }
+  } else {
+    res = await apiCall('/api/credit-cards', 'POST', data);
+    if (res) { showToast('success','Card added'); document.getElementById('credit-card-form').reset(); loadCreditCards(); }
+  }
+}
+
+async function editCreditCard(id) {
+  const res = await apiCall('/api/credit-cards');
+  if (!res) return;
+  const card = res.data.find(c => c.id === id);
+  if (!card) return;
+  document.getElementById('credit-card-owner').value = card.owner;
+  document.getElementById('credit-card-name').value = card.card_name;
+  document.getElementById('credit-card-limit').value = card.credit_limit || '';
+  document.getElementById('credit-card-manual-balance').value = card.manual_balance || '';
+  document.getElementById('cc-edit-id').value = id;
+  document.getElementById('credit-card-form').scrollIntoView({behavior:'smooth'});
+}
+
+function deleteCreditCard(id, name) {
+  showModal('Delete Card', `Delete "${name}"? Expense associations will be cleared.`, async () => {
+    const res = await apiCall(`/api/credit-cards/${id}`, 'DELETE');
+    if (res) { showToast('success','Card deleted'); loadCreditCards(); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BUDGETS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadBudgets() {
+  const res = await apiCall('/api/budgets');
+  if (!res) return;
+  const container = document.getElementById('budget-list');
+  if (!res.data.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">🎯</div>No budgets set yet.<br><button class="btn-sm" style="margin-top:0.75rem;" onclick="copyLastMonthBudgets()">📋 Copy Last Month</button></div>';
+    return;
+  }
+  const months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  container.innerHTML = res.data.map(b => {
+    const momHtml = b.mom_change !== null
+      ? `<span class="mom-badge ${b.mom_change > 5 ? 'mom-up' : b.mom_change < -5 ? 'mom-down' : 'mom-flat'}">${b.mom_change > 0 ? '▲' : '▼'} ${Math.abs(b.mom_change)}%</span>`
+      : '';
+    const rolloverHtml = b.rollover > 0
+      ? `<span style="font-size:0.78rem;color:var(--success);margin-left:0.5rem;">+${formatCurrency(b.rollover)} rollover</span>`
+      : '';
+    return `
+    <div class="budget-item">
+      <div class="budget-info">
+        <div>
+          <strong>${b.category}</strong>
+          <span style="color:var(--text-secondary);font-size:0.85rem;margin-left:0.5rem;">${months[b.month]} ${b.year}</span>
+          ${momHtml}
+          ${rolloverHtml}
+          <span class='sparkline-wrap'><canvas class='sparkline' id='sparkline-${b.category.replace(/[^a-z0-9]/gi,"-")}' width='60' height='20'></canvas></span>
+        </div>
+        <div style="text-align:right;">
+          <span class="${b.is_over?'amount-negative':'amount-positive'}">${formatCurrency(b.spent)}</span>
+          <span style="color:var(--text-secondary);"> / ${formatCurrency(b.effective_amount)}</span>
+          <span class="badge ${b.is_over?'badge-danger':b.percentage>=80?'badge-warning':'badge-primary'}" style="margin-left:0.5rem;">${b.percentage}%</span>
+          <button class="btn-sm btn-danger" style="margin-left:0.5rem;" onclick="deleteBudget(${b.id})">🗑️</button>
+        </div>
+      </div>
+      <div class="budget-progress">
+        <div class="budget-fill ${b.is_over?'over':b.percentage>=80?'warn':''}" style="width:${Math.min(b.percentage,100)}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+  loadSavingsGoals();
+}
+
+async function submitBudgetForm(e) {
+  e.preventDefault();
+  const data = {
+    category: document.getElementById('budget-category').value,
+    amount: document.getElementById('budget-amount').value,
+    month: document.getElementById('budget-month').value,
+    year: document.getElementById('budget-year').value
+  };
+  const res = await apiCall('/api/budgets', 'POST', data);
+  if (res) { showToast('success','Budget set'); document.getElementById('budget-form').reset(); loadBudgets(); }
+}
+
+function deleteBudget(id) {
+  showModal('Delete Budget','Delete this budget?', async () => {
+    const res = await apiCall(`/api/budgets/${id}`, 'DELETE');
+    if (res) { showToast('success','Budget deleted'); loadBudgets(); }
+  });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GLOBAL SEARCH
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _searchTimer = null;
+
+async function globalSearch(query) {
+  const box = document.getElementById('search-results');
+  if (!query || query.trim().length < 2) { box.style.display = 'none'; return; }
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(async () => {
+    const q = query.trim().toLowerCase();
+    const [expRes, incRes, billRes] = await Promise.all([
+      apiCall('/api/expenses'),
+      apiCall('/api/income'),
+      apiCall('/api/bills')
+    ]);
+    const results = [];
+    if (expRes) expRes.data.filter(e =>
+      e.description.toLowerCase().includes(q) || e.category.toLowerCase().includes(q)
+    ).slice(0,5).forEach(e => results.push({
+      label: `💸 ${e.description}`, sub: `${formatDate(e.date)} · ${e.category}`,
+      amount: formatCurrency(e.amount), cls: 'amount-negative',
+      action: () => { switchTab('spending'); }
+    }));
+    if (incRes) incRes.data.filter(i =>
+      i.description.toLowerCase().includes(q) || i.source.toLowerCase().includes(q)
+    ).slice(0,3).forEach(i => results.push({
+      label: `💵 ${i.description}`, sub: `${formatDate(i.date)} · ${i.source}`,
+      amount: formatCurrency(i.amount), cls: 'amount-positive',
+      action: () => { switchTab('income'); }
+    }));
+    if (billRes) billRes.data.filter(b =>
+      b.name.toLowerCase().includes(q)
+    ).slice(0,3).forEach(b => results.push({
+      label: `📅 ${b.name}`, sub: `Due ${formatDate(b.due_date)}`,
+      amount: formatCurrency(b.amount), cls: 'amount-negative',
+      action: () => { switchTab('spending'); }
+    }));
+
+    if (!results.length) {
+      box.innerHTML = '<div class="search-result-item"><span style="color:var(--text-secondary);">No results found</span></div>';
+    } else {
+      box.innerHTML = results.map((r, i) => `
+        <div class="search-result-item" onclick="_searchActions[${i}]()">
+          <div>
+            <div style="font-weight:600;font-size:0.9rem;">${r.label}</div>
+            <div class="search-result-label">${r.sub}</div>
+          </div>
+          <strong class="${r.cls}">${r.amount}</strong>
+        </div>`).join('');
+      window._searchActions = results.map(r => () => { r.action(); box.style.display='none'; document.getElementById('global-search').value=''; });
+    }
+    box.style.display = 'block';
+  }, 250);
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrapper')) {
+    const box = document.getElementById('search-results');
+    if (box) box.style.display = 'none';
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BILLS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadBills() {
+  const res = await apiCall('/api/bills');
+  if (!res) return;
+  const container = document.getElementById('bills-list');
+  if (!res.data.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📅</div>No bills added</div>';
+    return;
+  }
+  container.innerHTML = res.data.map(b => {
+    const d = b.days_until;
+    const dueCls = d < 0 ? 'overdue' : d <= 3 ? 'soon' : d <= 7 ? 'week' : '';
+    const dueLabel = d === null ? '' : d < 0 ? `${Math.abs(d)} days overdue` : d === 0 ? 'Due today' : `Due in ${d} days`;
+    return `
+    <div class="bill-item ${b.is_paid?'paid':''}">
+      <div>
+        <strong>${b.name}</strong>
+        ${b.category?`<span class="badge badge-primary" style="margin-left:0.5rem;">${b.category}</span>`:''}
+        ${b.is_recurring?`<span class="badge badge-warning" style="margin-left:0.4rem;">🔄 ${b.frequency||'monthly'}</span>`:''}
+        <div class="bill-due ${dueCls}">${formatDate(b.due_date)} — ${dueLabel}</div>
+      </div>
+      <div class="flex-gap">
+        <strong class="${b.is_paid?'':'amount-negative'}">${formatCurrency(b.amount)}</strong>
+        <button class="btn-sm ${b.is_paid?'btn-secondary':'btn-success'}" onclick="toggleBillPaid(${b.id},'${b.name.replace(/'/g,"\\'")}',${b.amount},'${b.category||''}','${b.due_date}')">${b.is_paid?'↩️ Unpay':'✅ Pay'}</button>
+        <button class="btn-sm btn-danger" onclick="deleteBill(${b.id},'${b.name.replace(/'/g,"\\'")}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleBillFrequency(cb) {
+  document.getElementById('bill-frequency-group').style.display = cb.checked ? 'block' : 'none';
+}
+
+async function submitBillForm(e) {
+  e.preventDefault();
+  const isRecurring = document.getElementById('bill-is-recurring').checked;
+  const data = {
+    name: document.getElementById('bill-name').value.trim(),
+    amount: document.getElementById('bill-amount').value,
+    due_date: document.getElementById('bill-due-date').value,
+    category: document.getElementById('bill-category').value,
+    notes: document.getElementById('bill-notes').value,
+    is_recurring: isRecurring,
+    frequency: document.getElementById('bill-frequency').value
+  };
+  const res = await apiCall('/api/bills', 'POST', data);
+  if (res) {
+    showToast('success', isRecurring ? '🔄 Recurring bill added' : 'Bill added');
+    document.getElementById('bill-form').reset();
+    document.getElementById('bill-frequency-group').style.display = 'none';
+    loadBills();
+  }
+}
+
+async function toggleBillPaid(id, name, amount, category, dueDate) {
+  const res = await apiCall(`/api/bills/${id}/toggle`, 'POST');
+  if (!res) return;
+  // If bill is now paid, auto-create a spending entry
+  if (res.is_paid) {
+    const expenseData = {
+      date: dueDate || new Date().toISOString().split('T')[0],
+      category: category || 'Bills',
+      description: name,
+      amount: amount,
+      paid_by: currentUser,
+      payment_method: '',
+      notes: 'Auto-created from bill payment'
+    };
+    const expRes = await apiCall('/api/expenses', 'POST', expenseData);
+    if (expRes) {
+      const nextMsg = res.next_bill_created ? ' — next bill scheduled automatically' : '';
+      showToast('success', `✅ Bill paid & added to Spending${nextMsg}`);
+      loadExpenses();
+    }
+  } else {
+    showToast('info', 'Bill marked unpaid');
+  }
+  loadBills();
+}
+
+function deleteBill(id, name) {
+  showModal('Delete Bill', `Delete bill "${name}"?`, async () => {
+    const res = await apiCall(`/api/bills/${id}`, 'DELETE');
+    if (res) { showToast('success','Bill deleted'); loadBills(); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RECURRING
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadRecurring() {
+  const res = await apiCall('/api/recurring');
+  if (!res) return;
+  const container = document.getElementById('recurring-list');
+  if (!res.data.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">🔄</div>No recurring transactions</div>';
+    return;
+  }
+  container.innerHTML = `<div class="glass-card"><div class="card-title">Scheduled Transactions</div>` +
+    res.data.map(r => `
+    <div class="bill-item">
+      <div>
+        <strong>${r.description}</strong>
+        <span class="badge badge-${r.type==='income'?'success':'danger'}" style="margin-left:0.5rem;">${r.type}</span>
+        <span class="badge badge-primary" style="margin-left:0.25rem;">${r.frequency}</span>
+        <div class="bill-due">Next: ${formatDate(r.next_date)} — ${r.person}</div>
+      </div>
+      <div class="flex-gap">
+        <strong class="${r.type==='income'?'amount-positive':'amount-negative'}">${formatCurrency(r.amount)}</strong>
+        <button class="btn-sm btn-success" onclick="processRecurring(${r.id},'${r.description.replace(/'/g,"\\'")}')">▶ Process</button>
+        <button class="btn-sm btn-danger" onclick="deleteRecurring(${r.id},'${r.description.replace(/'/g,"\\'")}')">🗑️</button>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+async function submitRecurringForm(e) {
+  e.preventDefault();
+  const data = {
+    type: document.getElementById('rec-type').value,
+    frequency: document.getElementById('rec-frequency').value,
+    next_date: document.getElementById('rec-next-date').value,
+    description: document.getElementById('rec-description').value,
+    amount: document.getElementById('rec-amount').value,
+    category: document.getElementById('rec-category').value,
+    person: document.getElementById('rec-person').value
+  };
+  const res = await apiCall('/api/recurring', 'POST', data);
+  if (res) { showToast('success','Recurring transaction saved'); document.getElementById('recurring-form').reset(); setDefaultDates(); loadRecurring(); }
+}
+
+function processRecurring(id, desc) {
+  showModal('Process Transaction', `Process "${desc}" now? It will be automatically added to your spending or income records.`, async () => {
+    const res = await apiCall(`/api/recurring/${id}/process`, 'POST');
+    if (res) {
+      showToast('success', `✅ "${desc}" processed & added to records`);
+      loadRecurring();
+      loadExpenses();
+      loadDashboard();
+    }
+  });
+}
+
+function deleteRecurring(id, desc) {
+  showModal('Delete Recurring', `Delete "${desc}"?`, async () => {
+    const res = await apiCall(`/api/recurring/${id}`, 'DELETE');
+    if (res) { showToast('success','Deleted'); loadRecurring(); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REPORTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function generateMonthlyReport() {
+  const res = await apiCall('/api/stats/monthly-trend');
+  if (!res) return;
+  const body = document.getElementById('monthly-report-body');
+  body.innerHTML = `<table class="expense-table">
+    <thead><tr><th>Month</th><th>Income</th><th>Expenses</th><th>Net</th></tr></thead>
+    <tbody>${res.data.map(r => {
+      const net = r.income - r.expenses;
+      return `<tr>
+        <td>${r.month}</td>
+        <td class="amount-positive">${formatCurrency(r.income)}</td>
+        <td class="amount-negative">${formatCurrency(r.expenses)}</td>
+        <td class="${net>=0?'amount-positive':'amount-negative'}">${formatCurrency(net)}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACCOUNT / USERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function changePassword(e) {
+  e.preventDefault();
+  const current = document.getElementById('current-password').value;
+  const newPass = document.getElementById('new-password').value;
+  const confirm = document.getElementById('confirm-password').value;
+  if (newPass !== confirm) { showToast('error', 'New passwords do not match'); return; }
+  if (newPass.length < 8) { showToast('error', 'Password must be at least 8 characters'); return; }
+  const res = await apiCall('/api/users/change-password', 'POST', {current_password: current, new_password: newPass});
+  if (res) { showToast('success', 'Password changed!'); document.getElementById('password-form').reset(); }
+}
+
+async function loadUsers() {
+  const me = await apiCall('/api/auth/me');
+  if (!me) return;
+  if (me.user.is_admin) {
+    document.getElementById('user-management-card').style.display = 'block';
+    document.getElementById('backup-card').style.display = 'block';
+    document.getElementById('audit-log-card').style.display = 'block';
+    const res = await apiCall('/api/users');
+    if (!res) return;
+    const container = document.getElementById('users-list');
+    container.innerHTML = `<table class="expense-table">
+      <thead><tr><th>Username</th><th>Display Name</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead>
+      <tbody>${res.data.map(u => `
+        <tr>
+          <td>${u.username}</td>
+          <td>${u.display_name || '<em style="color:var(--text-tertiary)">Not set</em>'}</td>
+          <td><span class="badge ${u.is_admin?'badge-danger':'badge-primary'}">${u.is_admin?'Admin':'User'}</span></td>
+          <td>${u.created_at ? u.created_at.split('T')[0] : ''}</td>
+          <td>${u.id !== me.user.id ? `<button class="btn-sm btn-danger" onclick="deleteUser(${u.id},'${u.username}')">🗑️</button>` : '<em style="color:var(--text-tertiary)">You</em>'}</td>
+        </tr>`).join('')}
+      </tbody></table>`;
+  }
+}
+
+async function createUser(e) {
+  e.preventDefault();
+  const data = {
+    username: document.getElementById('new-username').value.trim(),
+    display_name: document.getElementById('new-user-display-name').value.trim(),
+    password: document.getElementById('new-user-password').value,
+    is_admin: document.getElementById('new-user-admin').checked
+  };
+  const res = await apiCall('/api/users', 'POST', data);
+  if (res) { showToast('success','User created'); document.getElementById('new-user-form').reset(); document.getElementById('new-user-display-name').value=''; loadUsers(); }
+}
+
+function deleteUser(id, name) {
+  showModal('Delete User', `Delete user "${name}"? This cannot be undone.`, async () => {
+    const res = await apiCall(`/api/users/${id}`, 'DELETE');
+    if (res) { showToast('success','User deleted'); loadUsers(); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFETTI 🎉
+// ═══════════════════════════════════════════════════════════════════════════
+
+function showConfetti() {
+  for (let i = 0; i < 80; i++) {
+    const el = document.createElement('div');
+    el.style.cssText = `position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:9999;
+      top:-10px;left:${Math.random()*100}vw;
+      background:hsl(${Math.random()*360},80%,60%);
+      animation:confettiFall ${1+Math.random()*2}s linear forwards;`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 3000);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+
+function setDefaultDates() {
+  const t = today();
+  ['expense-date','income-date','bill-due-date','rec-next-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.value) el.value = t;
+  });
+  // Set default budget month/year
+  const now = new Date();
+  const bm = document.getElementById('budget-month');
+  const by = document.getElementById('budget-year');
+  if (bm && !bm.value) bm.value = now.getMonth() + 1;
+  if (by && !by.value) by.value = now.getFullYear();
+}
+
+let currentUser = '';
+
+async function init() {
+  // Theme
+  // Read theme from localStorage OR cookie (mobile PWA fallback)
+  let savedTheme = '';
+  try { savedTheme = localStorage.getItem('theme') || ''; } catch(e) {}
+  if (!savedTheme) {
+    const match = document.cookie.match(/(?:^|;\s*)theme=([^;]*)/);
+    if (match) savedTheme = match[1];
+  }
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark-mode');
+    document.getElementById('theme-toggle').textContent = '☀️';
+  }
+  // User greeting
+  const me = await apiCall('/api/auth/me');
+  if (me) {
+    currentUser = me.user.username;
+    const displayName = me.user.display_name || me.user.username;
+    document.getElementById('user-greeting').textContent = `Hi, ${displayName} 👋`;
+  }
+  // Load data
+  await loadCategories();
+  await populateUserDropdowns();
+  await populateCreditCardDropdowns();
+  loadCurrencies();
+  checkOnboarding();
+  setDefaultDates();
+  loadDashboard();
+  loadBills();
+  loadRecurring();
+}
+
+// Add confetti keyframe
+const style = document.createElement('style');
+style.textContent = '@keyframes confettiFall { to { transform: translateY(100vh) rotate(720deg); opacity:0; } }';
+document.head.appendChild(style);
+
+init();
+
+
+// ── Profile ──────────────────────────────────────────────────────────────────
+
+async function loadProfile() {
+  const me = await apiCall('/api/auth/me');
+  if (!me) return;
+  document.getElementById('profile-display-name').value = me.user.display_name || '';
+  document.getElementById('profile-username').value = me.user.username;
+}
+
+async function updateProfile(e) {
+  e.preventDefault();
+  const display_name = document.getElementById('profile-display-name').value.trim();
+  const res = await apiCall('/api/users/profile', 'PUT', { display_name });
+  if (res) {
+    showToast('success', 'Profile updated');
+    document.getElementById('user-greeting').textContent = `Hi, ${display_name || document.getElementById('profile-username').value} 👋`;
+  }
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RECEIPTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _receiptExpenseId = null;
+let _receiptCurrentFile = null;
+
+function openReceiptModal(expenseId, currentFilename) {
+  _receiptExpenseId = expenseId;
+  _receiptCurrentFile = currentFilename;
+  const preview = document.getElementById('receipt-preview');
+  const deleteBtn = document.getElementById('receipt-delete-btn');
+  document.getElementById('receipt-file-input').value = '';
+
+  if (currentFilename) {
+    const ext = currentFilename.split('.').pop().toLowerCase();
+    if (ext === 'pdf') {
+      preview.innerHTML = `<a href="/receipts/${currentFilename}" target="_blank" style="color:var(--primary);font-weight:600;">📄 View PDF Receipt</a>`;
+    } else {
+      preview.innerHTML = `<img src="/receipts/${currentFilename}" style="max-width:100%;max-height:200px;border-radius:10px;object-fit:contain;" alt="Receipt">`;
+    }
+    deleteBtn.style.display = 'inline-flex';
+  } else {
+    preview.innerHTML = '<div style="color:var(--text-tertiary);padding:1rem;">No receipt attached</div>';
+    deleteBtn.style.display = 'none';
+  }
+
+  document.getElementById('receipt-modal-backdrop').classList.add('active');
+}
+
+function closeReceiptModal() {
+  document.getElementById('receipt-modal-backdrop').classList.remove('active');
+  _receiptExpenseId = null;
+}
+
+async function saveReceipt() {
+  const fileInput = document.getElementById('receipt-file-input');
+  if (!fileInput.files.length) {
+    showToast('error', 'Please select a file first');
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  try {
+    const res = await fetch(`/api/expenses/${_receiptExpenseId}/receipt`, {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('success', '🧾 Receipt saved');
+      closeReceiptModal();
+      loadExpenses();
+    } else {
+      showToast('error', data.error || 'Upload failed');
+    }
+  } catch(e) {
+    showToast('error', 'Upload failed');
+  }
+}
+
+async function deleteReceiptFromModal() {
+  const res = await apiCall(`/api/expenses/${_receiptExpenseId}/receipt`, 'DELETE');
+  if (res) {
+    showToast('success', 'Receipt removed');
+    closeReceiptModal();
+    loadExpenses();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadNotificationPrefs() {
+  // Check if mail is configured (show banner if not)
+  const statusRes = await apiCall('/api/admin/mail-status');
+  if (statusRes && !statusRes.configured) {
+    document.getElementById('mail-status-banner').style.display = 'block';
+  }
+  const res = await apiCall('/api/users/notifications');
+  if (!res) return;
+  const d = res.data;
+  document.getElementById('notif-email').value = d.email || '';
+  document.getElementById('notif-bills').checked = !!d.notify_bills;
+  document.getElementById('notif-budgets').checked = !!d.notify_budgets;
+  document.getElementById('notif-monthly').checked = !!d.notify_monthly;
+}
+
+async function saveNotificationPrefs(e) {
+  e.preventDefault();
+  const data = {
+    email: document.getElementById('notif-email').value.trim(),
+    notify_bills: document.getElementById('notif-bills').checked,
+    notify_budgets: document.getElementById('notif-budgets').checked,
+    notify_monthly: document.getElementById('notif-monthly').checked
+  };
+  const res = await apiCall('/api/users/notifications', 'PUT', data);
+  if (res) showToast('success', 'Notification preferences saved');
+}
+
+async function sendTestNotification() {
+  const email = document.getElementById('notif-email').value.trim();
+  if (!email) { showToast('error', 'Please enter your email address first'); return; }
+  showToast('info', 'Sending test email...');
+  const res = await apiCall('/api/notifications/test', 'POST');
+  if (res) showToast('success', res.message || 'Test email sent!');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BACKUP & RESTORE
+// ═══════════════════════════════════════════════════════════════════════════
+
+function downloadBackup() {
+  const a = document.createElement('a');
+  a.href = '/api/backup';
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast('success', 'Backup download started');
+}
+
+async function uploadRestore() {
+  const fileInput = document.getElementById('restore-file');
+  const statusEl = document.getElementById('restore-status');
+  if (!fileInput.files.length) {
+    showToast('error', 'Please select a backup file first');
+    return;
+  }
+  showModal(
+    '⚠️ Confirm Restore',
+    'This will replace ALL existing data with the backup file contents. This cannot be undone. Are you sure?',
+    async () => {
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      statusEl.innerHTML = '<span style="color:var(--text-secondary);">Restoring...</span>';
+      try {
+        const res = await fetch('/api/restore', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const c = data.counts;
+          statusEl.innerHTML = `<span style="color:var(--success);">✅ Restore successful!<br>
+            Expenses: ${c.expenses} · Income: ${c.income} · Bills: ${c.bills} · 
+            Recurring: ${c.recurring} · Budgets: ${c.budgets} · Cards: ${c.credit_cards}</span>`;
+          showToast('success', 'Data restored successfully');
+          fileInput.value = '';
+          loadDashboard();
+        } else {
+          statusEl.innerHTML = `<span style="color:var(--danger);">❌ ${data.error}</span>`;
+          showToast('error', data.error);
+        }
+      } catch(e) {
+        statusEl.innerHTML = `<span style="color:var(--danger);">❌ Upload failed</span>`;
+        showToast('error', 'Restore failed');
+      }
+    }
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// QUICK ADD
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function openQuickAdd() {
+  const backdrop = document.getElementById('quick-modal-backdrop');
+  backdrop.classList.add('active');
+  document.getElementById('qa-date').value = today();
+  // Populate category and paid-by dropdowns
+  const catRes = await apiCall('/api/categories');
+  if (catRes) {
+    const sel = document.getElementById('qa-category');
+    sel.innerHTML = '<option value="">-- Category --</option>';
+    catRes.data.forEach(c => sel.insertAdjacentHTML('beforeend', `<option value="${c.name}">${c.name}</option>`));
+  }
+  const userRes = await apiCall('/api/users/usernames');
+  if (userRes) {
+    const sel = document.getElementById('qa-paid-by');
+    sel.innerHTML = '<option value="">-- Person --</option>';
+    userRes.data.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u; opt.textContent = u;
+      if (u === currentUser) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+function closeQuickAdd(e) {
+  if (!e || e.target === document.getElementById('quick-modal-backdrop')) {
+    document.getElementById('quick-modal-backdrop').classList.remove('active');
+  }
+}
+
+async function submitQuickAdd(e) {
+  e.preventDefault();
+  const data = {
+    date: document.getElementById('qa-date').value,
+    category: document.getElementById('qa-category').value,
+    description: document.getElementById('qa-description').value.trim(),
+    amount: document.getElementById('qa-amount').value,
+    paid_by: document.getElementById('qa-paid-by').value,
+    payment_method: '', notes: ''
+  };
+  const res = await apiCall('/api/expenses', 'POST', data);
+  if (res) {
+    showToast('success', `✅ Expense added`);
+    document.getElementById('quick-modal-backdrop').classList.remove('active');
+    e.target.reset();
+    document.getElementById('qa-date').value = today();
+    loadDashboard();
+    if (document.getElementById('spending-tab').classList.contains('active')) loadExpenses();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BUDGET COPY + ROLLOVER
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function copyLastMonthBudgets() {
+  const res = await apiCall('/api/budgets/copy-last-month', 'POST');
+  if (res) {
+    showToast('success', `📋 Copied ${res.copied} budgets from last month (with rollover)`);
+    loadBudgets();
+    loadDashboard();
+  }
+}
+
+async function applyRollover() {
+  const res = await apiCall('/api/budgets/apply-rollover', 'POST');
+  if (res) {
+    showToast('success', `🔄 Rollover applied to ${res.updated} budget categories`);
+    loadBudgets();
+    loadDashboard();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SAVINGS GOALS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadSavingsGoals() {
+  const res = await apiCall('/api/savings-goals');
+  if (!res) return;
+  const container = document.getElementById('savings-goals-list');
+  if (!res.data.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:1.5rem;"><div class="icon">💰</div>No savings goals set</div>';
+    return;
+  }
+  container.innerHTML = res.data.map(g => {
+    const pct = g.progress;
+    const daysLabel = g.days_left < 0 ? 'Past due' : g.days_left === 0 ? 'Due today' : `${g.days_left} days left`;
+    return `<div class="goal-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem;">
+        <div>
+          <strong style="font-size:1rem;">${g.name}</strong>
+          <div style="font-size:0.82rem;color:var(--text-secondary);margin-top:0.2rem;">${daysLabel} · Target: ${formatDate(g.target_date)}</div>
+        </div>
+        <div style="text-align:right;">
+          <span class="amount-positive">${formatCurrency(g.current_savings)}</span>
+          <span style="color:var(--text-secondary);"> / ${formatCurrency(g.target_amount)}</span>
+          <button class="btn-sm btn-danger" style="margin-left:0.5rem;" onclick="deleteSavingsGoal(${g.id},'${g.name.replace(/'/g,"\'")}')">🗑️</button>
+        </div>
+      </div>
+      <div class="goal-progress-bar">
+        <div class="goal-progress-fill ${pct >= 100 ? 'complete' : ''}" style="width:${Math.min(pct,100)}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text-secondary);">
+        <span>${pct}% achieved</span>
+        ${!g.on_track && g.days_left > 0 ? `<span>Save <strong class="amount-negative">${formatCurrency(g.monthly_needed)}/mo</strong> to reach goal</span>` : g.on_track ? '<span style="color:var(--success);">🎉 Goal reached!</span>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function submitSavingsGoal(e) {
+  e.preventDefault();
+  const data = {
+    name: document.getElementById('goal-name').value.trim(),
+    target_amount: document.getElementById('goal-amount').value,
+    target_date: document.getElementById('goal-date').value
+  };
+  const res = await apiCall('/api/savings-goals', 'POST', data);
+  if (res) {
+    showToast('success', 'Savings goal added');
+    document.getElementById('savings-goal-form').reset();
+    loadSavingsGoals();
+  }
+}
+
+function deleteSavingsGoal(id, name) {
+  showModal('Delete Goal', `Delete goal "${name}"?`, async () => {
+    const res = await apiCall(`/api/savings-goals/${id}`, 'DELETE');
+    if (res) { showToast('success','Goal deleted'); loadSavingsGoals(); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SPENDING BY PERSON
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadPersonSpending() {
+  const res = await apiCall('/api/stats/spending-by-person');
+  if (!res) return;
+  const container = document.getElementById('dashboard-person-spending');
+  if (!res.data.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:1rem;">No spending this month</div>';
+    return;
+  }
+  container.innerHTML = res.data.map(p => `
+    <div class="person-card">
+      <div class="name">${p.paid_by}</div>
+      <div class="amount">${formatCurrency(p.total)}</div>
+    </div>`).join('');
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DASHBOARD MONTH NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _dashboardYear = new Date().getFullYear();
+let _dashboardMonth = new Date().getMonth() + 1;
+const _monthNames = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function shiftDashboardMonth(dir) {
+  _dashboardMonth += dir;
+  if (_dashboardMonth > 12) { _dashboardMonth = 1; _dashboardYear++; }
+  if (_dashboardMonth < 1)  { _dashboardMonth = 12; _dashboardYear--; }
+  updateDashboardMonthLabel();
+  loadDashboardForMonth();
+}
+
+function updateDashboardMonthLabel() {
+  const now = new Date();
+  const isCurrentMonth = _dashboardYear === now.getFullYear() && _dashboardMonth === now.getMonth()+1;
+  document.getElementById('dashboard-month-label').textContent =
+    isCurrentMonth ? '📅 This Month' : `📅 ${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
+  document.getElementById('dashboard-month-display').textContent =
+    `${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
+}
+
+async function loadDashboardForMonth() {
+  const monthStr = `${_dashboardYear}-${String(_dashboardMonth).padStart(2,'0')}`;
+  const stats = await apiCall(`/api/stats/summary-by-month?month=${monthStr}`);
+  if (stats) {
+    const net = stats.monthly_income - stats.monthly_expenses;
+    const netEl = document.getElementById('stat-net-saved');
+    netEl.textContent = formatCurrency(net);
+    netEl.className = `value ${net >= 0 ? 'success' : 'danger'}`;
+    document.getElementById('stat-monthly-expenses').textContent = formatCurrency(stats.monthly_expenses);
+    document.getElementById('stat-monthly-income').textContent = formatCurrency(stats.monthly_income);
+    document.getElementById('stat-left-after-bills').textContent = formatCurrency(stats.left_after_bills);
+    document.getElementById('stat-unpaid-bills').textContent = formatCurrency(stats.unpaid_bills_total);
+    document.getElementById('stat-cc-balance').textContent = formatCurrency(stats.total_credit_card_balance);
+    document.getElementById('stat-total-income').textContent = formatCurrency(stats.total_income);
+    // Budget % for selected month
+    const budgets = await apiCall('/api/budgets');
+    if (budgets) {
+      const mb = budgets.data.filter(b => b.month == _dashboardMonth && b.year == _dashboardYear);
+      const totalBudget = mb.reduce((s,b) => s+b.effective_amount, 0);
+      const totalSpent  = mb.reduce((s,b) => s+b.spent, 0);
+      const pct = totalBudget > 0 ? Math.round((totalSpent/totalBudget)*100) : null;
+      const pctEl = document.getElementById('stat-budget-pct');
+      if (pct !== null) {
+        pctEl.textContent = `${pct}%`;
+        pctEl.className = `value ${pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : 'success'}`;
+      } else {
+        pctEl.textContent = '—';
+        pctEl.className = 'value';
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPANDABLE EXPENSE ROWS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function toggleExpenseDetail(id) {
+  const row = document.getElementById(`expense-detail-${id}`);
+  if (!row) return;
+  row.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DUPLICATE DETECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _forceSubmitExpense = false;
+let _pendingExpenseData = null;
+
+function forceSubmitExpense() {
+  _forceSubmitExpense = true;
+  document.getElementById('dup-warning').classList.remove('show');
+  document.getElementById('expense-form').dispatchEvent(new Event('submit', {bubbles:true, cancelable:true}));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CURRENCIES
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadCurrencies() {
+  const res = await apiCall('/api/currencies');
+  if (!res) return;
+
+  // Populate expense form dropdown
+  const sel = document.getElementById('expense-currency');
+  if (sel) {
+    sel.innerHTML = '';
+    res.data.forEach(c => {
+      sel.insertAdjacentHTML('beforeend',
+        `<option value="${c.code}" ${c.is_home ? 'selected' : ''}>${c.code} — ${c.name}</option>`);
+    });
+  }
+
+  // Show currencies list
+  const container = document.getElementById('currencies-list');
+  if (!container) return;
+  if (!res.data.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">💱</div>No currencies</div>';
+    return;
+  }
+  container.innerHTML = `<table class="expense-table">
+    <thead><tr><th>Code</th><th>Name</th><th>Symbol</th><th>Rate to Home</th><th>Status</th><th></th></tr></thead>
+    <tbody>${res.data.map(c => `
+      <tr>
+        <td><strong>${c.code}</strong></td>
+        <td>${c.name}</td>
+        <td>${c.symbol}</td>
+        <td>${c.is_home ? '1.0 (home)' : c.rate_to_home}</td>
+        <td>${c.is_home ? '<span class="badge badge-success">🏠 Home</span>' : '<span class="badge badge-primary">Foreign</span>'}</td>
+        <td>${!c.is_home ? `<button class="btn-sm btn-danger" onclick="deleteCurrency(${c.id},'${c.code}')">🗑️</button>` : ''}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+async function submitCurrency(e) {
+  e.preventDefault();
+  const data = {
+    code: document.getElementById('currency-code').value.toUpperCase().trim(),
+    name: document.getElementById('currency-name').value.trim(),
+    symbol: document.getElementById('currency-symbol').value.trim(),
+    rate_to_home: document.getElementById('currency-rate').value,
+    is_home: document.getElementById('currency-is-home').checked
+  };
+  const res = await apiCall('/api/currencies', 'POST', data);
+  if (res) {
+    showToast('success', `${data.code} added`);
+    document.getElementById('currency-form').reset();
+    loadCurrencies();
+  }
+}
+
+function deleteCurrency(id, code) {
+  showModal('Delete Currency', `Remove ${code}?`, async () => {
+    const res = await apiCall(`/api/currencies/${id}`, 'DELETE');
+    if (res) { showToast('success', `${code} removed`); loadCurrencies(); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUDIT LOG
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadAuditLog() {
+  const table = document.getElementById('audit-filter-table')?.value || '';
+  const res = await apiCall(`/api/audit-log?limit=100${table ? '&table='+table : ''}`);
+  if (!res) return;
+  const container = document.getElementById('audit-log-list');
+  if (!res.data.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:1.5rem;">No audit entries yet</div>';
+    return;
+  }
+  container.innerHTML = res.data.map(a => {
+    let changes = '';
+    try {
+      const c = JSON.parse(a.changes || '{}');
+      if (c.description) changes = c.description;
+      if (c.before && c.after) {
+        const diffs = Object.keys(c.after).filter(k => c.before[k] != c.after[k]);
+        changes = diffs.map(k => `${k}: ${c.before[k]} → ${c.after[k]}`).join(', ');
+      }
+    } catch(e) {}
+    return `<div class="audit-row">
+      <span class="audit-action audit-${a.action.toLowerCase()}">${a.action}</span>
+      <div style="flex:1;">
+        <strong>${a.table_name}</strong> #${a.record_id || '—'}
+        ${changes ? `<span style="color:var(--text-secondary);"> — ${changes}</span>` : ''}
+        <div style="font-size:0.78rem;color:var(--text-tertiary);margin-top:0.2rem;">
+          by <strong>${a.username}</strong> · ${a.created_at ? a.created_at.replace('T',' ').substring(0,16) : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+</script>
+</body>
+</html>
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// SPENDING INSIGHTS + FORECAST
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadInsights() {
+  const res = await apiCall('/api/insights');
+  if (!res) return;
+
+  // Forecast badge on hero card
+  if (res.forecast) {
+    document.getElementById('forecast-badge').style.display = 'inline-flex';
+    document.getElementById('forecast-value').textContent = formatCurrency(res.forecast);
+  }
+
+  const container = document.getElementById('insights-list');
+  if (!res.data.length) {
+    container.innerHTML = '<div style="color:var(--text-secondary);font-size:0.88rem;padding:0.5rem 0;">Add more transactions to generate insights.</div>';
+    return;
+  }
+  container.innerHTML = res.data.map(i => `
+    <div class="insight-card insight-${i.severity}">
+      <div class="insight-icon">${i.icon}</div>
+      <div>
+        <div class="insight-title">${i.title}</div>
+        <div class="insight-msg">${i.message}</div>
+      </div>
+    </div>`).join('');
+
+  // Also update trend chart with forecast line
+  if (res.forecast && window._trendChart) {
+    const labels = window._trendChart.data.labels;
+    const now = new Date();
+    const curLabel = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const idx = labels.indexOf(curLabel);
+    if (idx >= 0) {
+      if (!window._trendChart.data.datasets.find(d => d.label === 'Forecast')) {
+        const forecastData = new Array(labels.length).fill(null);
+        forecastData[idx] = res.forecast;
+        window._trendChart.data.datasets.push({
+          label: 'Forecast',
+          data: forecastData,
+          borderColor: 'rgba(102,126,234,0.6)',
+          borderDash: [6,4],
+          borderWidth: 2,
+          pointRadius: 6,
+          pointBackgroundColor: 'rgba(102,126,234,0.8)',
+          fill: false,
+          tension: 0
+        });
+        window._trendChart.update();
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CATEGORY SPARKLINES
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadSparklines() {
+  const res = await apiCall('/api/stats/category-sparklines');
+  if (!res) return;
+  for (const [cat, data] of Object.entries(res.data)) {
+    const id = 'sparkline-' + cat.replace(/[^a-z0-9]/gi, '-');
+    const canvas = document.getElementById(id);
+    if (!canvas) continue;
+    const ctx = canvas.getContext('2d');
+    const vals = data.values;
+    const max = Math.max(...vals, 1);
+    const w = 60, h = 20, pts = vals.length;
+    ctx.clearRect(0,0,w,h);
+    // Draw sparkline polyline
+    ctx.beginPath();
+    ctx.strokeStyle = vals[vals.length-1] > vals[0] ? '#ef4444' : '#10b981';
+    ctx.lineWidth = 1.5;
+    vals.forEach((v, i) => {
+      const x = (i / (pts-1)) * w;
+      const y = h - (v / max) * (h - 2) - 1;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    // Fill area under
+    ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+    ctx.fillStyle = vals[vals.length-1] > vals[0] ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)';
+    ctx.fill();
+  }
+}
+
+// Patch loadBudgets to call sparklines after render
+const _origLoadBudgets = loadBudgets;
+async function loadBudgets() {
+  await _origLoadBudgets();
+  setTimeout(loadSparklines, 100);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BILL SPLITTING
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _splitExpenseId = null;
+let _splitAmount = 0;
+let _splitMode = 'even';
+let _splitUsers = [];
+
+async function openSplitModal(expenseId, desc, amount) {
+  _splitExpenseId = expenseId;
+  _splitAmount = parseFloat(amount);
+  _splitMode = 'even';
+
+  document.getElementById('split-expense-info').innerHTML =
+    `<strong>${desc}</strong> — <span class="amount-negative">${formatCurrency(_splitAmount)}</span>`;
+
+  // Load users
+  const uRes = await apiCall('/api/users/usernames');
+  _splitUsers = uRes ? uRes.data : [currentUser];
+
+  // Load existing splits
+  const sRes = await apiCall(`/api/expenses/${expenseId}/splits`);
+  const existing = sRes ? sRes.data : [];
+
+  renderSplitRows(existing);
+  document.querySelectorAll('.split-mode-tab').forEach((t,i) => t.classList.toggle('active', i===0));
+  document.getElementById('split-modal-backdrop').classList.add('active');
+}
+
+function closeSplitModal() {
+  document.getElementById('split-modal-backdrop').classList.remove('active');
+}
+
+function setSplitMode(mode, btn) {
+  _splitMode = mode;
+  document.querySelectorAll('.split-mode-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderSplitRows([]);
+}
+
+function renderSplitRows(existing) {
+  const container = document.getElementById('split-rows-container');
+  const existingMap = {};
+  existing.forEach(s => existingMap[s.username] = s);
+
+  if (_splitMode === 'even') {
+    const each = _splitAmount / _splitUsers.length;
+    container.innerHTML = _splitUsers.map(u => `
+      <div class="split-row">
+        <span>${u}</span>
+        <span style="color:var(--text-secondary);font-size:0.85rem;">${formatCurrency(each)}</span>
+        <input type="hidden" data-user="${u}" data-amount="${each.toFixed(2)}">
+      </div>`).join('');
+  } else if (_splitMode === 'pct') {
+    const defPct = (100 / _splitUsers.length).toFixed(1);
+    container.innerHTML = _splitUsers.map(u => {
+      const ex = existingMap[u];
+      const pct = ex ? ex.split_pct || defPct : defPct;
+      return `<div class="split-row">
+        <span>${u}</span>
+        <input type="number" min="0" max="100" step="0.1" value="${pct}"
+          data-user="${u}" data-type="pct"
+          onchange="recalcSplits()" style="width:80px;text-align:right;">
+        <span style="font-size:0.82rem;color:var(--text-secondary);" id="split-amt-${u}">
+          ${formatCurrency(_splitAmount * pct / 100)}
+        </span>
+      </div>`;
+    }).join('');
+  } else {
+    const defAmt = (_splitAmount / _splitUsers.length).toFixed(2);
+    container.innerHTML = _splitUsers.map(u => {
+      const ex = existingMap[u];
+      const amt = ex ? ex.split_amount : defAmt;
+      return `<div class="split-row">
+        <span>${u}</span>
+        <input type="number" min="0" step="0.01" value="${amt}"
+          data-user="${u}" data-type="amount"
+          onchange="validateSplitAmounts()" style="width:100px;text-align:right;">
+      </div>`;
+    }).join('');
+  }
+}
+
+function recalcSplits() {
+  _splitUsers.forEach(u => {
+    const inp = document.querySelector(`[data-user="${u}"][data-type="pct"]`);
+    const lbl = document.getElementById(`split-amt-${u}`);
+    if (inp && lbl) lbl.textContent = formatCurrency(_splitAmount * parseFloat(inp.value||0) / 100);
+  });
+  validateSplitAmounts();
+}
+
+function validateSplitAmounts() {
+  const validation = document.getElementById('split-validation');
+  if (_splitMode === 'pct') {
+    const total = _splitUsers.reduce((s,u) => {
+      const inp = document.querySelector(`[data-user="${u}"][data-type="pct"]`);
+      return s + parseFloat(inp?.value||0);
+    }, 0);
+    if (Math.abs(total - 100) > 0.1) {
+      validation.textContent = `Percentages must add up to 100% (currently ${total.toFixed(1)}%)`;
+    } else { validation.textContent = ''; }
+  } else if (_splitMode === 'amount') {
+    const total = _splitUsers.reduce((s,u) => {
+      const inp = document.querySelector(`[data-user="${u}"][data-type="amount"]`);
+      return s + parseFloat(inp?.value||0);
+    }, 0);
+    if (Math.abs(total - _splitAmount) > 0.02) {
+      validation.textContent = `Amounts must add up to ${formatCurrency(_splitAmount)} (currently ${formatCurrency(total)})`;
+    } else { validation.textContent = ''; }
+  }
+}
+
+async function saveSplits() {
+  if (document.getElementById('split-validation').textContent) return;
+  const splits = [];
+  if (_splitMode === 'even') {
+    const each = _splitAmount / _splitUsers.length;
+    _splitUsers.forEach(u => splits.push({username:u, amount:each, pct: 100/_splitUsers.length}));
+  } else if (_splitMode === 'pct') {
+    _splitUsers.forEach(u => {
+      const inp = document.querySelector(`[data-user="${u}"][data-type="pct"]`);
+      const pct = parseFloat(inp?.value||0);
+      splits.push({username:u, amount:_splitAmount*pct/100, pct});
+    });
+  } else {
+    _splitUsers.forEach(u => {
+      const inp = document.querySelector(`[data-user="${u}"][data-type="amount"]`);
+      splits.push({username:u, amount:parseFloat(inp?.value||0)});
+    });
+  }
+  const res = await apiCall(`/api/expenses/${_splitExpenseId}/splits`, 'POST', {splits});
+  if (res) {
+    showToast('success', '🤝 Splits saved');
+    closeSplitModal();
+    loadSplitsSummary();
+  }
+}
+
+async function loadSplitsSummary() {
+  const res = await apiCall('/api/splits/summary');
+  if (!res) return;
+  const card = document.getElementById('widget-splits');
+  const container = document.getElementById('dashboard-splits-list');
+  if (!res.data.length) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  // Group by username (ower)
+  const byUser = {};
+  res.data.forEach(r => {
+    if (!byUser[r.username]) byUser[r.username] = [];
+    byUser[r.username].push(r);
+  });
+  container.innerHTML = Object.entries(byUser).map(([user, rows]) => {
+    const total = rows.reduce((s,r) => s+r.split_amount, 0);
+    const details = rows.map(r => `${r.description} (${formatCurrency(r.split_amount)} to ${r.paid_by})`).join(', ');
+    return `<div class="split-owed-item">
+      <div>
+        <strong>${user}</strong> owes
+        <span style="color:var(--danger);font-weight:700;"> ${formatCurrency(total)}</span>
+        <div style="font-size:0.78rem;color:var(--text-secondary);">${details}</div>
+      </div>
+      <button class="btn-sm btn-success" onclick="settleUserSplits('${user}',${JSON.stringify(rows.map(r=>r.id))})">✅ Settle</button>
+    </div>`;
+  }).join('');
+}
+
+async function settleUserSplits(user, ids) {
+  for (const id of ids) {
+    await apiCall(`/api/expenses/split/${id}/settle`, 'POST');
+  }
+  showToast('success', `${user}'s splits marked settled`);
+  loadSplitsSummary();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADVANCED SEARCH
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _advSearchActive = false;
+
+function toggleAdvSearch() {
+  const panel = document.getElementById('adv-search-panel');
+  panel.classList.toggle('open');
+  _advSearchActive = panel.classList.contains('open');
+  // Populate person dropdown
+  const sel = document.getElementById('adv-person');
+  if (sel.options.length <= 1) {
+    apiCall('/api/users/usernames').then(r => {
+      if (r) r.data.forEach(u => sel.insertAdjacentHTML('beforeend', `<option value="${u}">${u}</option>`));
+    });
+  }
+}
+
+async function runAdvSearch() {
+  const params = new URLSearchParams();
+  const q = document.getElementById('adv-q').value.trim();
+  const person = document.getElementById('adv-person').value;
+  const method = document.getElementById('adv-method').value;
+  const amtMin = document.getElementById('adv-amt-min').value;
+  const amtMax = document.getElementById('adv-amt-max').value;
+  const start = document.getElementById('expense-filter-start').value;
+  const end = document.getElementById('expense-filter-end').value;
+  const cat = document.getElementById('expense-filter-category').value;
+
+  if (q) params.set('q', q);
+  if (cat) params.set('category', cat);
+  if (person) params.set('person', person);
+  if (method) params.set('method', method);
+  if (start) params.set('start', start);
+  if (end) params.set('end', end);
+  if (amtMin) params.set('amt_min', amtMin);
+  if (amtMax) params.set('amt_max', amtMax);
+
+  const res = await apiCall(`/api/search/advanced?${params}`);
+  if (!res) return;
+
+  document.getElementById('adv-search-summary').textContent =
+    `${res.count} result${res.count!==1?'s':''} · Total: ${formatCurrency(res.total)}`;
+
+  // Render results into expense table
+  const tbody = document.getElementById('expense-list');
+  if (!res.data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">🔍</div>No results found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = res.data.map(e => {
+    const hasForeign = e.currency && e.currency !== 'USD' && e.original_amount;
+    const currencyBadge = hasForeign ? `<span class="currency-badge">(${e.original_amount} ${e.currency})</span>` : '';
+    return `
+    <tr style="cursor:pointer;" onclick="toggleExpenseDetail(${e.id})">
+      <td>${formatDate(e.date)}</td>
+      <td><span class="badge badge-primary">${e.category}</span></td>
+      <td>${e.description}</td>
+      <td class="amount-negative">${formatCurrency(e.amount)}${currencyBadge}</td>
+      <td>${e.paid_by}</td>
+      <td>${e.payment_method || '-'}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn-sm btn-warning" onclick="editExpense(${e.id})">✏️</button>
+        <button class="btn-sm ${e.receipt_filename ? 'btn-success' : 'btn-secondary'}" onclick="openReceiptModal(${e.id},'${e.receipt_filename||''}')">🧾</button>
+        <button class="btn-sm btn-danger" onclick="deleteExpense(${e.id},'${e.description.replace(/'/g,"\\'")}')">🗑️</button>
+      </td>
+    </tr>
+    <tr class="expense-row-detail" id="expense-detail-${e.id}">
+      <td colspan="7">
+        ${e.notes ? `<strong>Notes:</strong> ${e.notes}<br>` : ''}
+        ${hasForeign ? `<strong>Original:</strong> ${e.original_amount} ${e.currency}<br>` : ''}
+        ${e.receipt_filename ? `<strong>Receipt:</strong> <a href="/receipts/${e.receipt_filename}" target="_blank" style="color:var(--primary);">View 🧾</a>` : '<em>No receipt</em>'}
+        <span style="float:right;color:var(--text-tertiary);font-size:0.78rem;">ID #${e.id}</span>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function clearAdvSearch() {
+  ['adv-q','adv-amt-min','adv-amt-max'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['adv-person','adv-method'].forEach(id => { const el=document.getElementById(id); if(el) el.selectedIndex=0; });
+  document.getElementById('adv-search-summary').textContent = '';
+  loadExpenses();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WIDGET TOGGLE
+// ═══════════════════════════════════════════════════════════════════════════
+
+const WIDGETS = [
+  {id:'widget-insights',    label:'💡 Insights',          default:true},
+  {id:'widget-splits',      label:'🤝 Who Owes What',      default:true},
+  {id:'stat-card-unpaid',   label:'💰 Unpaid Bills Stat',  default:true},
+  {id:'stat-card-left',     label:'💳 Left After Bills',   default:true},
+  {id:'stat-card-cc',       label:'💳 CC Balance',         default:true},
+  {id:'stat-card-income',   label:'📊 All-Time Income',    default:true},
+  {id:'card-trend',         label:'📈 12-Month Trend',     default:true},
+  {id:'card-category',      label:'🍕 Category Chart',     default:true},
+  {id:'card-bills',         label:'⚠️ Upcoming Bills',     default:true},
+  {id:'card-budgets',       label:'🎯 Budget Status',      default:true},
+  {id:'card-person',        label:'👤 By Person',          default:true},
+  {id:'card-savings',       label:'💰 Savings Chart',      default:true},
+];
+
+let _widgetVisibility = {};
+
+async function loadWidgetPrefs() {
+  const res = await apiCall('/api/widgets');
+  WIDGETS.forEach(w => _widgetVisibility[w.id] = w.default);
+  if (res && res.data.length) {
+    res.data.forEach(r => { _widgetVisibility[r.widget_id] = !!r.is_visible; });
+  }
+  applyWidgetVisibility();
+}
+
+function applyWidgetVisibility() {
+  WIDGETS.forEach(w => {
+    const el = document.getElementById(w.id);
+    if (el) el.style.display = _widgetVisibility[w.id] ? '' : 'none';
+  });
+}
+
+function openWidgetToggle() {
+  const container = document.getElementById('widget-toggle-list');
+  container.innerHTML = WIDGETS.map(w => `
+    <div class="widget-toggle-item ${_widgetVisibility[w.id] ? 'visible' : 'hidden'}"
+         onclick="toggleWidget('${w.id}',this)" data-id="${w.id}">
+      <span>${_widgetVisibility[w.id] ? '✅' : '⬜'}</span>
+      <span>${w.label}</span>
+    </div>`).join('');
+  document.getElementById('widget-modal-backdrop').classList.add('active');
+}
+
+function toggleWidget(id, el) {
+  _widgetVisibility[id] = !_widgetVisibility[id];
+  el.classList.toggle('visible', _widgetVisibility[id]);
+  el.classList.toggle('hidden', !_widgetVisibility[id]);
+  el.querySelector('span').textContent = _widgetVisibility[id] ? '✅' : '⬜';
+}
+
+function closeWidgetToggle() {
+  document.getElementById('widget-modal-backdrop').classList.remove('active');
+}
+
+async function saveWidgetPrefs() {
+  const widgets = WIDGETS.map(w => ({id: w.id, visible: _widgetVisibility[w.id]}));
+  const res = await apiCall('/api/widgets', 'POST', {widgets});
+  if (res) {
+    applyWidgetVisibility();
+    showToast('success', 'Dashboard layout saved');
+    closeWidgetToggle();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ONBOARDING
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ONBOARDING_STEPS = [
+  {
+    title: '👋 Welcome to Kash!',
+    sub: "Let's get you set up in about 2 minutes. We'll walk through the essentials so you can start tracking your finances right away.",
+    content: '',
+    action: null
+  },
+  {
+    title: '💱 Set Your Home Currency',
+    sub: "Tell Kash what currency you use day-to-day. All your totals and reports will display in this currency.",
+    content: `<div class="form-group">
+      <label>Home Currency</label>
+      <select id="ob-currency" style="max-width:280px;">
+        <option value="USD">USD — US Dollar ($)</option>
+        <option value="EUR">EUR — Euro (€)</option>
+        <option value="GBP">GBP — British Pound (£)</option>
+        <option value="CAD">CAD — Canadian Dollar (C$)</option>
+        <option value="AUD">AUD — Australian Dollar (A$)</option>
+        <option value="JPY">JPY — Japanese Yen (¥)</option>
+      </select>
+    </div>`,
+    action: async () => {
+      const code = document.getElementById('ob-currency')?.value || 'USD';
+      const symbols = {USD:'$',EUR:'€',GBP:'£',CAD:'C$',AUD:'A$',JPY:'¥'};
+      const names = {USD:'US Dollar',EUR:'Euro',GBP:'British Pound',CAD:'Canadian Dollar',AUD:'Australian Dollar',JPY:'Japanese Yen'};
+      await apiCall('/api/currencies', 'POST', {code, name:names[code]||code, symbol:symbols[code]||code, rate_to_home:1, is_home:true});
+      loadCurrencies();
+    }
+  },
+  {
+    title: '🎯 Set Your First Budget',
+    sub: "Budgets help you stay on track. Set a monthly limit for your biggest spending category.",
+    content: `<div class="form-grid" style="grid-template-columns:1fr 1fr;gap:0.75rem;">
+      <div class="form-group"><label>Category</label><select id="ob-budget-cat"><option value="Groceries">Groceries</option><option value="Dining">Dining</option><option value="Transport">Transport</option><option value="Entertainment">Entertainment</option><option value="Utilities">Utilities</option></select></div>
+      <div class="form-group"><label>Monthly Limit</label><input type="number" id="ob-budget-amt" placeholder="500.00" step="0.01" min="1"></div>
+    </div>`,
+    action: async () => {
+      const cat = document.getElementById('ob-budget-cat')?.value;
+      const amt = document.getElementById('ob-budget-amt')?.value;
+      if (cat && amt) {
+        const now = new Date();
+        await apiCall('/api/budgets', 'POST', {category:cat, amount:parseFloat(amt), month:now.getMonth()+1, year:now.getFullYear()});
+      }
+    }
+  },
+  {
+    title: '📅 Add a Recurring Bill',
+    sub: "Got a monthly bill like rent or Netflix? Add it once and Kash will remind you automatically.",
+    content: `<div class="form-grid" style="grid-template-columns:1fr 1fr;gap:0.75rem;">
+      <div class="form-group"><label>Bill Name</label><input type="text" id="ob-bill-name" placeholder="e.g. Rent"></div>
+      <div class="form-group"><label>Amount</label><input type="number" id="ob-bill-amt" placeholder="0.00" step="0.01" min="0.01"></div>
+      <div class="form-group"><label>Due Date</label><input type="date" id="ob-bill-date"></div>
+    </div>`,
+    action: async () => {
+      const name = document.getElementById('ob-bill-name')?.value?.trim();
+      const amt = document.getElementById('ob-bill-amt')?.value;
+      const date = document.getElementById('ob-bill-date')?.value;
+      if (name && amt && date) {
+        await apiCall('/api/bills', 'POST', {name, amount:parseFloat(amt), due_date:date, is_recurring:true, frequency:'monthly'});
+      }
+    }
+  },
+  {
+    title: '🔔 Enable Notifications',
+    sub: "Get email reminders for bills and budget alerts. You can change these any time in the Account tab.",
+    content: `<div class="form-group" style="margin-bottom:0.75rem;">
+      <label>Your Email</label>
+      <input type="email" id="ob-email" placeholder="your@email.com">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0.5rem;">
+      <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;">
+        <input type="checkbox" id="ob-notif-bills" checked style="width:auto;accent-color:var(--primary);"> 📅 Bill reminders
+      </label>
+      <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;">
+        <input type="checkbox" id="ob-notif-budgets" checked style="width:auto;accent-color:var(--primary);"> 🎯 Budget alerts
+      </label>
+      <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;">
+        <input type="checkbox" id="ob-notif-monthly" checked style="width:auto;accent-color:var(--primary);"> 📊 Monthly summary
+      </label>
+    </div>`,
+    action: async () => {
+      const email = document.getElementById('ob-email')?.value?.trim();
+      if (email) {
+        await apiCall('/api/users/notifications', 'PUT', {
+          email,
+          notify_bills: document.getElementById('ob-notif-bills')?.checked,
+          notify_budgets: document.getElementById('ob-notif-budgets')?.checked,
+          notify_monthly: document.getElementById('ob-notif-monthly')?.checked
+        });
+      }
+    }
+  },
+  {
+    title: '🎉 You\'re all set!',
+    sub: "Kash is ready to go. Add your first expense using the ＋ button, or explore any tab to get started. Your data is saved automatically.",
+    content: `<div style="text-align:center;padding:1rem 0;font-size:3rem;">💸</div>`,
+    action: null
+  }
+];
+
+let _obStep = 0;
+
+async function checkOnboarding() {
+  const res = await apiCall('/api/onboarding');
+  if (res && !res.completed) {
+    _obStep = res.step || 0;
+    showOnboardingStep(_obStep);
+  }
+}
+
+function showOnboardingStep(step) {
+  const s = ONBOARDING_STEPS[step];
+  if (!s) { completeOnboarding(); return; }
+
+  // Dots
+  const dots = document.getElementById('onboarding-dots');
+  dots.innerHTML = ONBOARDING_STEPS.map((_,i) =>
+    `<div class="onboarding-step-dot ${i < step ? 'done' : i === step ? 'active' : ''}"></div>`
+  ).join('');
+
+  document.getElementById('onboarding-title').textContent = s.title;
+  document.getElementById('onboarding-sub').textContent = s.sub;
+  document.getElementById('onboarding-step-content').innerHTML = s.content || '';
+
+  // Set default date for bill step
+  if (step === 3) {
+    const d = document.getElementById('ob-bill-date');
+    if (d) { const now = new Date(); d.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`; }
+  }
+
+  const nextBtn = document.getElementById('onboarding-next-btn');
+  nextBtn.textContent = step === ONBOARDING_STEPS.length - 1 ? '🚀 Start Using Kash' : 'Next →';
+
+  document.getElementById('onboarding-backdrop').classList.add('active');
+}
+
+async function nextOnboardingStep() {
+  const s = ONBOARDING_STEPS[_obStep];
+  if (s && s.action) await s.action();
+
+  _obStep++;
+  await apiCall('/api/onboarding', 'POST', {step: _obStep, completed: _obStep >= ONBOARDING_STEPS.length});
+
+  if (_obStep >= ONBOARDING_STEPS.length) {
+    completeOnboarding();
+  } else {
+    showOnboardingStep(_obStep);
+  }
+}
+
+async function skipOnboarding() {
+  await apiCall('/api/onboarding', 'POST', {step: ONBOARDING_STEPS.length, completed: true});
+  completeOnboarding();
+}
+
+function completeOnboarding() {
+  document.getElementById('onboarding-backdrop').classList.remove('active');
+  loadDashboard();
+}
+
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// SHARING SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Mine-only filter state per section
+const _mineOnly = { expenses: false, income: false, bills: false, budgets: false };
+
+function toggleMineFilter(section, btn) {
+  _mineOnly[section] = !_mineOnly[section];
+  btn.classList.toggle('active', _mineOnly[section]);
+  btn.textContent = _mineOnly[section] ? '👥 Show All' : '👤 Mine Only';
+  // Reload the relevant section
+  if (section === 'expenses') loadExpenses();
+  if (section === 'income')   loadIncome();
+  if (section === 'bills')    loadBills();
+  if (section === 'budgets')  loadBudgets();
+}
+
+// Patch apiCall for mine_only — sections that support it append the param
+const _origLoadExpenses = loadExpenses;
+async function loadExpenses() {
+  // Add mine_only param to expense API calls
+  const mineParam = _mineOnly.expenses ? '&mine_only=1' : '';
+  // We patch via the filter row's existing start/end/cat
+  const start = document.getElementById('expense-filter-start')?.value || '';
+  const end   = document.getElementById('expense-filter-end')?.value   || '';
+  const cat   = document.getElementById('expense-filter-category')?.value || '';
+  const res   = await apiCall(`/api/expenses?start_date=${start}&end_date=${end}&category=${cat}${mineParam}`);
+  if (!res) return;
+  const tbody = document.getElementById('expense-list');
+  if (!res.data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">💸</div>No expenses found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = res.data.map(e => {
+    const hasForeign = e.currency && e.currency !== 'USD' && e.original_amount;
+    const currencyBadge = hasForeign ? `<span class="currency-badge">(${e.original_amount} ${e.currency})</span>` : '';
+    const isOwner = !e.owner || e.owner === currentUser;
+    const sharedTag = !isOwner ? `<span class="shared-badge">🔗 ${e.owner}</span>` : '';
+    return `
+    <tr style="cursor:pointer;" onclick="toggleExpenseDetail(${e.id})">
+      <td>${formatDate(e.date)}</td>
+      <td><span class="badge badge-primary">${e.category}</span></td>
+      <td>${e.description}${sharedTag}</td>
+      <td class="amount-negative">${formatCurrency(e.amount)}${currencyBadge}</td>
+      <td>${e.paid_by}</td>
+      <td>${e.payment_method || '-'}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn-sm btn-warning" onclick="editExpense(${e.id})">✏️</button>
+        <button class="btn-sm ${e.receipt_filename ? 'btn-success' : 'btn-secondary'}" onclick="openReceiptModal(${e.id},'${e.receipt_filename||''}')">🧾</button>
+        <button class="btn-sm btn-secondary" onclick="openSplitModal(${e.id},'${e.description.replace(/'/g,"\\'")}',${e.amount})">🤝</button>
+        ${isOwner ? `<button class="btn-sm btn-secondary" onclick="openShareModal('expenses',${e.id},'${e.description.replace(/'/g,"\\'")}')">🔗</button>` : ''}
+        <button class="btn-sm btn-danger" onclick="deleteExpense(${e.id},'${e.description.replace(/'/g,"\\'")}')">🗑️</button>
+      </td>
+    </tr>
+    <tr class="expense-row-detail" id="expense-detail-${e.id}">
+      <td colspan="7">
+        ${e.notes ? `<strong>Notes:</strong> ${e.notes}<br>` : ''}
+        ${hasForeign ? `<strong>Original:</strong> ${e.original_amount} ${e.currency}<br>` : ''}
+        ${!isOwner ? `<strong>Shared by:</strong> ${e.owner}<br>` : ''}
+        ${e.receipt_filename ? `<strong>Receipt:</strong> <a href="/receipts/${e.receipt_filename}" target="_blank" style="color:var(--primary);">View 🧾</a>` : '<em>No receipt</em>'}
+        <span style="float:right;color:var(--text-tertiary);font-size:0.78rem;">ID #${e.id}</span>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Share Modal ──────────────────────────────────────────────────────────────
+
+let _shareTable = null;
+let _shareRecordId = null;
+
+async function openShareModal(tableName, recordId, label) {
+  _shareTable = tableName;
+  _shareRecordId = recordId;
+
+  document.getElementById('share-record-info').innerHTML =
+    `<strong>${tableName.replace('_',' ')}</strong>: ${label}`;
+
+  // Load current shares
+  const res = await apiCall(`/api/sharing/${tableName}/${recordId}`);
+  renderCurrentShares(res);
+
+  // Populate user dropdown — exclude self and already-shared users
+  const uRes = await apiCall('/api/users/usernames');
+  const sel = document.getElementById('share-user-select');
+  sel.innerHTML = '<option value="">-- Select user --</option>';
+  const alreadyShared = res ? res.data.map(s => s.shared_with) : [];
+  if (uRes) {
+    uRes.data
+      .filter(u => u !== currentUser && !alreadyShared.includes(u))
+      .forEach(u => sel.insertAdjacentHTML('beforeend', `<option value="${u}">${u}</option>`));
+  }
+
+  document.getElementById('share-modal-backdrop').classList.add('active');
+}
+
+function renderCurrentShares(res) {
+  const container = document.getElementById('share-current-list');
+  if (!res || !res.data.length) {
+    container.innerHTML = '<div style="color:var(--text-secondary);font-size:0.85rem;padding:0.5rem 0;">Not shared with anyone yet</div>';
+    return;
+  }
+  container.innerHTML = res.data.map(s => `
+    <div class="share-user-row">
+      <div>
+        <strong>${s.shared_with}</strong>
+        <span style="font-size:0.8rem;color:var(--text-secondary);margin-left:0.5rem;">
+          ${s.can_edit ? 'Can view & edit' : 'View only'}
+        </span>
+      </div>
+      <button class="btn-sm btn-danger" onclick="removeShare('${s.shared_with}')">✕ Remove</button>
+    </div>`).join('');
+}
+
+async function addShare() {
+  const shareWith = document.getElementById('share-user-select').value;
+  if (!shareWith) { showToast('error', 'Select a user first'); return; }
+  const res = await apiCall(`/api/sharing/${_shareTable}/${_shareRecordId}`, 'POST', {
+    share_with: shareWith, can_edit: true
+  });
+  if (res) {
+    showToast('success', `Shared with ${shareWith}`);
+    const updated = await apiCall(`/api/sharing/${_shareTable}/${_shareRecordId}`);
+    renderCurrentShares(updated);
+    // Refresh user dropdown
+    const sel = document.getElementById('share-user-select');
+    const opt = sel.querySelector(`option[value="${shareWith}"]`);
+    if (opt) opt.remove();
+    sel.value = '';
+  }
+}
+
+async function removeShare(sharedWith) {
+  const res = await apiCall(`/api/sharing/${_shareTable}/${_shareRecordId}/${sharedWith}`, 'DELETE');
+  if (res) {
+    showToast('success', `Removed share for ${sharedWith}`);
+    const updated = await apiCall(`/api/sharing/${_shareTable}/${_shareRecordId}`);
+    renderCurrentShares(updated);
+    // Add back to dropdown
+    const sel = document.getElementById('share-user-select');
+    if (!sel.querySelector(`option[value="${sharedWith}"]`)) {
+      sel.insertAdjacentHTML('beforeend', `<option value="${sharedWith}">${sharedWith}</option>`);
+    }
+  }
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal-backdrop').classList.remove('active');
+  _shareTable = null;
+  _shareRecordId = null;
+}
+
+// ── Add Mine toggle to bills and budgets sections ─────────────────────────────
+
+// Patch bill rendering to show shared badge and share button
+const _origLoadBillsInner = loadBills;
+const _patchedLoadBills = async function() {
+  const mineParam = _mineOnly.bills ? '?mine_only=1' : '';
+  const res = await apiCall(`/api/bills${mineParam}`);
+  if (!res) return;
+  const container = document.getElementById('bills-list');
+  if (!res.data.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📅</div>No bills added</div>';
+    return;
+  }
+  container.innerHTML = res.data.map(b => {
+    const d = b.days_until;
+    const dueCls = d < 0 ? 'overdue' : d <= 3 ? 'soon' : d <= 7 ? 'week' : '';
+    const dueLabel = d === null ? '' : d < 0 ? `${Math.abs(d)} days overdue` : d === 0 ? 'Due today' : `Due in ${d} days`;
+    const isOwner = !b.owner || b.owner === currentUser;
+    return `
+    <div class="bill-item ${b.is_paid?'paid':''}">
+      <div>
+        <strong>${b.name}</strong>
+        ${b.category?`<span class="badge badge-primary" style="margin-left:0.5rem;">${b.category}</span>`:''}
+        ${b.is_recurring?`<span class="badge badge-warning" style="margin-left:0.4rem;">🔄 ${b.frequency||'monthly'}</span>`:''}
+        ${!isOwner?`<span class="shared-badge">🔗 ${b.owner}</span>`:''}
+        <div class="bill-due ${dueCls}">${formatDate(b.due_date)} — ${dueLabel}</div>
+      </div>
+      <div class="flex-gap">
+        <strong class="${b.is_paid?'':'amount-negative'}">${formatCurrency(b.amount)}</strong>
+        <button class="btn-sm ${b.is_paid?'btn-secondary':'btn-success'}" onclick="toggleBillPaid(${b.id},'${b.name.replace(/'/g,"\\'")}',${b.amount},'${b.category||''}','${b.due_date}')">${b.is_paid?'↩️ Unpay':'✅ Pay'}</button>
+        ${isOwner?`<button class="btn-sm btn-secondary" onclick="openShareModal('bills',${b.id},'${b.name.replace(/'/g,"\\'")}')">🔗</button>`:''}
+        <button class="btn-sm btn-danger" onclick="deleteBill(${b.id},'${b.name.replace(/'/g,"\\'")}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+};
+
+// Override loadBills
+window.loadBills = _patchedLoadBills;
+
+</script>
