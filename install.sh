@@ -312,12 +312,11 @@ Description=Kash
 After=network.target
 
 [Service]
-Type=notify
+Type=simple
 User=appuser
 WorkingDirectory=/opt/kash
 EnvironmentFile=/opt/kash/.env
-ExecStart=/opt/kash/venv/bin/gunicorn --config /opt/kash/gunicorn.conf.py "app:app"
-ExecReload=/bin/kill -s HUP \$MAINPID
+ExecStart=/opt/kash/venv/bin/gunicorn --config /opt/kash/gunicorn.conf.py main:app
 Restart=always
 RestartSec=5
 StandardOutput=journal
