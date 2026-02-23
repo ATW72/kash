@@ -1582,6 +1582,271 @@ def sharing_summary():
     conn.close()
     return jsonify({'shared_with_me': shared_with_me, 'shared_by_me': shared_by_me}), 200
 
+
+# ── Import ────────────────────────────────────────────────────────────────────
+
+@app.route('/api/import/preview', methods=['POST'])
+@login_required
+def import_preview():
+    """Accept a CSV/Excel upload, parse it, return rows for user review."""
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    f = request.files['file']
+    filename = f.filename.lower()
+
+    try:
+        if filename.endswith('.csv'):
+            import csv, io
+            text = f.read().decode('utf-8-sig')  # handle BOM
+            reader = csv.DictReader(io.StringIO(text))
+            rows = [row for row in reader]
+            headers = reader.fieldnames or []
+        elif filename.endswith(('.xlsx', '.xls')):
+            import openpyxl
+            wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+            ws = wb.active
+            all_rows = list(ws.iter_rows(values_only=True))
+            if not all_rows:
+                return jsonify({'error': 'Empty file'}), 400
+            headers = [str(h) if h is not None else '' for h in all_rows[0]]
+            rows = [dict(zip(headers, [str(v) if v is not None else '' for v in row])) for row in all_rows[1:]]
+        else:
+            return jsonify({'error': 'Only CSV and Excel files are supported'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Could not parse file: {str(e)}'}), 400
+
+    if not rows:
+        return jsonify({'error': 'File contains no data rows'}), 400
+
+    # Auto-detect column mapping
+    def find_col(candidates, headers):
+        for c in candidates:
+            for h in headers:
+                if c.lower() in h.lower():
+                    return h
+        return None
+
+    date_col   = find_col(['date','posted','transaction date','trans date'], headers)
+    desc_col   = find_col(['description','memo','narrative','details','payee','merchant'], headers)
+    amount_col = find_col(['amount','debit','credit','sum','total'], headers)
+    debit_col  = find_col(['debit','withdrawal','charge'], headers)
+    credit_col = find_col(['credit','deposit','payment'], headers)
+
+    # Get existing categories for suggestions
+    conn = get_db_connection()
+    categories = [r['name'] for r in conn.execute("SELECT name FROM categories ORDER BY name").fetchall()]
+    conn.close()
+
+    # Rule-based category matching
+    category_rules = {
+        'Groceries':      ['walmart','kroger','safeway','aldi','trader joe','whole foods','publix','costco','sams club','food','grocery','supermarket'],
+        'Dining Out':     ['restaurant','mcdonald','burger','pizza','starbucks','coffee','cafe','taco','chipotle','panera','doordash','ubereats','grubhub','dining'],
+        'Transportation': ['shell','exxon','bp','chevron','gas','fuel','uber','lyft','parking','transit','toll','auto','car wash'],
+        'Utilities':      ['electric','water','gas','utility','utilities','comcast','verizon','at&t','internet','phone','cable','spectrum'],
+        'Entertainment':  ['netflix','hulu','disney','spotify','amazon prime','apple','google play','steam','cinema','movie','theater','ticketmaster'],
+        'Healthcare':     ['pharmacy','cvs','walgreens','hospital','doctor','dental','vision','medical','health','clinic'],
+        'Shopping':       ['amazon','target','best buy','home depot','lowes','macy','nordstrom','gap','zara','online','shop'],
+        'Education':      ['school','tuition','university','college','udemy','coursera','book','education'],
+        'Mortgage':       ['mortgage','loan','wells fargo','chase','bank of america','payment'],
+    }
+
+    def suggest_category(desc):
+        if not desc:
+            return 'Other'
+        desc_lower = desc.lower()
+        for cat, keywords in category_rules.items():
+            if any(k in desc_lower for k in keywords):
+                return cat
+        return 'Other'
+
+    def parse_amount(val):
+        if not val:
+            return None
+        try:
+            return float(str(val).replace('$','').replace(',','').replace(' ','').strip())
+        except:
+            return None
+
+    def parse_date(val):
+        if not val:
+            return None
+        for fmt in ['%Y-%m-%d','%m/%d/%Y','%m/%d/%y','%d/%m/%Y','%d-%m-%Y','%Y/%m/%d']:
+            try:
+                from datetime import datetime as dt
+                return dt.strptime(str(val).strip(), fmt).strftime('%Y-%m-%d')
+            except:
+                continue
+        return str(val).strip()
+
+    # Build preview rows
+    preview = []
+    for i, row in enumerate(rows[:500]):  # cap at 500 rows
+        date   = parse_date(row.get(date_col, '')) if date_col else ''
+        desc   = str(row.get(desc_col, '')).strip() if desc_col else ''
+
+        # Determine amount and type
+        tx_type = 'expense'
+        amount  = None
+
+        if debit_col and credit_col:
+            debit  = parse_amount(row.get(debit_col))
+            credit = parse_amount(row.get(credit_col))
+            if debit and debit > 0:
+                amount = debit
+                tx_type = 'expense'
+            elif credit and credit > 0:
+                amount = credit
+                tx_type = 'income'
+        elif amount_col:
+            raw = parse_amount(row.get(amount_col))
+            if raw is not None:
+                if raw < 0:
+                    amount = abs(raw)
+                    tx_type = 'expense'
+                else:
+                    amount = raw
+                    tx_type = 'income'
+
+        if not date or not desc or not amount:
+            continue
+
+        preview.append({
+            'row_id':   i,
+            'date':     date,
+            'description': desc,
+            'amount':   round(amount, 2),
+            'type':     tx_type,
+            'category': suggest_category(desc),
+            'import':   True,
+        })
+
+    if not preview:
+        return jsonify({'error': 'Could not detect valid transactions. Check your column mapping.'}), 400
+
+    return jsonify({
+        'data':     preview,
+        'headers':  headers,
+        'mapping':  {'date': date_col, 'description': desc_col, 'amount': amount_col},
+        'categories': categories,
+        'count':    len(preview),
+    }), 200
+
+
+@app.route('/api/import/confirm', methods=['POST'])
+@login_required
+def import_confirm():
+    """Save selected transactions, skipping duplicates."""
+    data = request.json or {}
+    rows = data.get('rows', [])
+    paid_by = session['username']
+
+    conn = get_db_connection()
+    imported = 0
+    skipped  = 0
+
+    for row in rows:
+        if not row.get('import'):
+            continue
+        tx_type  = row.get('type', 'expense')
+        date     = row.get('date', '')
+        desc     = row.get('description', '')
+        amount   = float(row.get('amount', 0))
+        category = row.get('category', 'Other')
+
+        if not date or not desc or not amount:
+            continue
+
+        if tx_type == 'expense':
+            # Check duplicate: same date + description + amount
+            exists = conn.execute(
+                "SELECT id FROM expenses WHERE date=? AND description=? AND amount=?",
+                (date, desc, amount)).fetchone()
+            if exists:
+                skipped += 1
+                continue
+            conn.execute(
+                "INSERT INTO expenses (date,category,description,amount,paid_by,owner) VALUES (?,?,?,?,?,?)",
+                (date, category, desc, amount, paid_by, paid_by))
+        else:
+            exists = conn.execute(
+                "SELECT id FROM income WHERE date=? AND description=? AND amount=?",
+                (date, desc, amount)).fetchone()
+            if exists:
+                skipped += 1
+                continue
+            conn.execute(
+                "INSERT INTO income (date,source,description,amount,received_by,owner) VALUES (?,?,?,?,?,?)",
+                (date, category, desc, amount, paid_by, paid_by))
+        imported += 1
+
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'imported': imported, 'skipped': skipped}), 200
+
+
+@app.route('/api/import/ollama-categorize', methods=['POST'])
+@login_required
+def ollama_categorize():
+    """Send descriptions to Ollama for AI categorization."""
+    ollama_url = Config.OLLAMA_URL
+    if not ollama_url:
+        return jsonify({'error': 'Ollama not configured'}), 400
+
+    data = request.json or {}
+    descriptions = data.get('descriptions', [])
+    categories   = data.get('categories', [])
+
+    if not descriptions:
+        return jsonify({'error': 'No descriptions provided'}), 400
+
+    import urllib.request, json as jsonlib
+    prompt = f"""You are a financial transaction categorizer. 
+Given these categories: {', '.join(categories)}
+Categorize each transaction description below. Reply with ONLY a JSON array of category strings, one per transaction, in the same order.
+Descriptions:
+{chr(10).join(f'{i+1}. {d}' for i, d in enumerate(descriptions))}
+Reply with ONLY a JSON array like: ["Groceries","Dining Out","Transportation"]"""
+
+    try:
+        payload = jsonlib.dumps({
+            'model': Config.OLLAMA_MODEL,
+            'prompt': prompt,
+            'stream': False
+        }).encode('utf-8')
+        req = urllib.request.Request(
+            f"{ollama_url.rstrip('/')}/api/generate",
+            data=payload,
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            result = jsonlib.loads(resp.read())
+        response_text = result.get('response', '[]').strip()
+        # Extract JSON array from response
+        import re
+        match = re.search(r'\[.*?\]', response_text, re.DOTALL)
+        if match:
+            cats = jsonlib.loads(match.group())
+            return jsonify({'categories': cats}), 200
+        return jsonify({'error': 'Could not parse Ollama response'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Ollama request failed: {str(e)}'}), 500
+
+
+@app.route('/api/import/ollama-status')
+@login_required
+def ollama_status():
+    """Check if Ollama is configured and reachable."""
+    ollama_url = Config.OLLAMA_URL
+    if not ollama_url:
+        return jsonify({'configured': False, 'url': ''}), 200
+    import urllib.request
+    try:
+        with urllib.request.urlopen(f"{ollama_url.rstrip('/')}/api/tags", timeout=5) as resp:
+            return jsonify({'configured': True, 'url': ollama_url, 'reachable': True}), 200
+    except:
+        return jsonify({'configured': True, 'url': ollama_url, 'reachable': False}), 200
+
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
 @app.route('/api/stats/summary')

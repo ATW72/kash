@@ -21,3 +21,7 @@ class Config:
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', '')
     MAIL_FROM_NAME = os.environ.get('MAIL_FROM_NAME', 'Kash')
     MAIL_ENABLED = bool(os.environ.get('MAIL_USERNAME', ''))
+
+    # Ollama
+    OLLAMA_URL   = os.environ.get('OLLAMA_URL', '')
+    OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'llama3.1:8b')

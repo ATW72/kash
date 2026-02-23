@@ -297,6 +297,8 @@ MAIL_USE_TLS=true
 MAIL_USERNAME=${MAIL_USER}
 MAIL_PASSWORD=${MAIL_PASS}
 MAIL_FROM_NAME=${MAIL_NAME}
+OLLAMA_URL=
+OLLAMA_MODEL=llama3.1:8b
 ENV
     chown appuser:appuser /opt/kash/.env
     chmod 600 /opt/kash/.env

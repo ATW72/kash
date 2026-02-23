@@ -996,6 +996,27 @@ canvas.sparkline { vertical-align:middle; }
   width:100%; max-width:420px; box-shadow:0 20px 60px rgba(0,0,0,0.4); }
 .force-pw-modal h2 { margin:0 0 0.5rem; font-size:1.4rem; }
 .force-pw-modal p  { color:var(--text-secondary); margin:0 0 1.5rem; font-size:0.9rem; }
+
+/* ── Import Tab ── */
+.import-dropzone {
+  border:2px dashed var(--border); border-radius:14px; padding:3rem 2rem;
+  text-align:center; cursor:pointer; transition:all 0.2s;
+  background:var(--bg-secondary); }
+.import-dropzone:hover, .import-dropzone.drag-over {
+  border-color:var(--primary); background:rgba(102,126,234,0.05); }
+.import-dropzone .dz-icon { font-size:3rem; margin-bottom:1rem; }
+.import-preview-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.import-preview-table th { background:var(--bg-secondary); padding:0.6rem 0.75rem; text-align:left; font-weight:600; font-size:0.78rem; color:var(--text-secondary); }
+.import-preview-table td { padding:0.5rem 0.75rem; border-bottom:1px solid var(--border); }
+.import-preview-table tr.skip-row { opacity:0.4; }
+.import-type-badge { font-size:0.72rem; padding:0.15rem 0.5rem; border-radius:6px; font-weight:600; }
+.import-type-expense { background:rgba(239,68,68,0.12); color:#ef4444; }
+.import-type-income  { background:rgba(16,185,129,0.12); color:#10b981; }
+.ollama-status { display:inline-flex; align-items:center; gap:0.4rem; font-size:0.82rem; }
+.ollama-dot { width:8px; height:8px; border-radius:50%; }
+.ollama-dot.green { background:#10b981; }
+.ollama-dot.red   { background:#ef4444; }
+.ollama-dot.grey  { background:#9ca3af; }
 </style>
 </head>
 <body>
@@ -1023,6 +1044,7 @@ canvas.sparkline { vertical-align:middle; }
   <button class="tab-button" data-tab="budgets"><span class="tab-icon">🎯</span><span class="tab-label">Budgets</span></button>
   <button class="tab-button" data-tab="reports"><span class="tab-icon">📈</span><span class="tab-label">Reports</span></button>
   <button class="tab-button" data-tab="currencies"><span class="tab-icon">💱</span><span class="tab-label">Currencies</span></button>
+  <button class="tab-button" data-tab="import"><span class="tab-icon">📥</span><span class="tab-label">Import</span></button>
   <button class="tab-button" data-tab="account"><span class="tab-icon">⚙️</span><span class="tab-label">Account</span></button>
 </div>
 
@@ -1480,6 +1502,88 @@ canvas.sparkline { vertical-align:middle; }
 </div>
 
 <!-- ═══════════════ ACCOUNT ═══════════════ -->
+
+<!-- ── Import Tab ── -->
+<div class="tab-content" id="import-tab">
+  <div class="glass-card" style="max-width:900px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+      <div>
+        <div class="card-title" style="margin-bottom:0.25rem;">📥 Import Bank Statement</div>
+        <div style="font-size:0.85rem;color:var(--text-secondary);">Upload a CSV or Excel export from your bank. Supports any bank format.</div>
+      </div>
+      <div id="ollama-status-badge" class="ollama-status">
+        <span class="ollama-dot grey" id="ollama-dot"></span>
+        <span id="ollama-status-text">Checking Ollama...</span>
+      </div>
+    </div>
+
+    <!-- Step 1: Upload -->
+    <div id="import-step-1">
+      <div class="import-dropzone" id="import-dropzone" onclick="document.getElementById('import-file-input').click()">
+        <div class="dz-icon">📂</div>
+        <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem;">Drop your bank CSV or Excel file here</div>
+        <div style="color:var(--text-secondary);font-size:0.85rem;">or click to browse — supports .csv and .xlsx</div>
+        <input type="file" id="import-file-input" accept=".csv,.xlsx,.xls" style="display:none;" onchange="handleImportFile(this.files[0])">
+      </div>
+    </div>
+
+    <!-- Step 2: Preview & Review -->
+    <div id="import-step-2" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;">
+        <div>
+          <strong id="import-count-label">0 transactions found</strong>
+          <span style="color:var(--text-secondary);font-size:0.85rem;margin-left:0.75rem;">Review and adjust before importing</span>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button class="btn-sm btn-secondary" onclick="resetImport()">↩️ Start Over</button>
+          <button class="btn-sm btn-secondary" id="ollama-btn" onclick="runOllamaCategories()" style="display:none;">🤖 AI Categorize</button>
+          <button class="btn-sm" onclick="confirmImport()">✅ Import Selected</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="import-preview-table">
+          <thead>
+            <tr>
+              <th style="width:40px;"><input type="checkbox" id="import-select-all" onchange="toggleSelectAll(this)" checked></th>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Type</th>
+              <th>Category</th>
+            </tr>
+          </thead>
+          <tbody id="import-preview-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Step 3: Result -->
+    <div id="import-step-3" style="display:none;text-align:center;padding:2rem 0;">
+      <div style="font-size:3rem;margin-bottom:1rem;">✅</div>
+      <div id="import-result-text" style="font-size:1.2rem;font-weight:600;margin-bottom:0.5rem;"></div>
+      <div id="import-skip-text" style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:1.5rem;"></div>
+      <button class="btn-sm" onclick="resetImport()">📥 Import Another File</button>
+    </div>
+  </div>
+
+  <!-- Ollama Settings -->
+  <div class="glass-card" style="max-width:900px;margin-top:1.5rem;">
+    <div class="card-title">🤖 AI Categorization (Ollama)</div>
+    <p style="font-size:0.875rem;color:var(--text-secondary);margin:0 0 1rem;">Connect to a local Ollama instance for smarter transaction categorization. Your data never leaves your network.</p>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Ollama URL</label>
+        <input type="text" id="ollama-url-input" class="form-control" placeholder="e.g. http://192.168.1.100:11434">
+      </div>
+      <div class="form-group">
+        <label>Model</label>
+        <input type="text" id="ollama-model-input" class="form-control" placeholder="llama3.1:8b">
+      </div>
+    </div>
+    <button class="btn-sm" onclick="saveOllamaSettings()" style="margin-top:0.5rem;">💾 Save & Test Connection</button>
+  </div>
+</div>
+
 <div class="tab-content" id="account-tab">
   <div class="glass-card" style="max-width:500px;">
     <div class="card-title">👤 Your Profile</div>
@@ -4256,4 +4360,208 @@ async function saveEditUser() {
     loadUsers();
   }
 }
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// IMPORT
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _importRows      = [];
+let _importCategories = [];
+let _ollamaAvailable = false;
+
+// ── Drag and drop ─────────────────────────────────────────────────────────
+const _dz = () => document.getElementById('import-dropzone');
+document.addEventListener('DOMContentLoaded', () => {
+  const dz = _dz();
+  if (!dz) return;
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleImportFile(file);
+  });
+});
+
+// ── Ollama status check ───────────────────────────────────────────────────
+async function checkOllamaStatus() {
+  const res = await apiCall('/api/import/ollama-status');
+  const dot  = document.getElementById('ollama-dot');
+  const text = document.getElementById('ollama-status-text');
+  const btn  = document.getElementById('ollama-btn');
+  if (!res) return;
+  if (!res.configured) {
+    dot.className  = 'ollama-dot grey';
+    text.textContent = 'Ollama not configured';
+    _ollamaAvailable = false;
+  } else if (res.reachable) {
+    dot.className  = 'ollama-dot green';
+    text.textContent = `Ollama connected (${res.url})`;
+    _ollamaAvailable = true;
+    if (btn) btn.style.display = '';
+  } else {
+    dot.className  = 'ollama-dot red';
+    text.textContent = `Ollama unreachable (${res.url})`;
+    _ollamaAvailable = false;
+  }
+  // Load saved settings into fields
+  if (res.url) {
+    const urlInput = document.getElementById('ollama-url-input');
+    if (urlInput) urlInput.value = res.url;
+  }
+}
+
+// ── File handling ─────────────────────────────────────────────────────────
+async function handleImportFile(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['csv','xlsx','xls'].includes(ext)) {
+    showToast('error', 'Only CSV and Excel files are supported');
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  showToast('info', '⏳ Parsing file...');
+  try {
+    const resp = await fetch('/api/import/preview', { method:'POST', body: formData });
+    const data = await resp.json();
+    if (!resp.ok || data.error) { showToast('error', data.error || 'Parse failed'); return; }
+    _importRows       = data.data;
+    _importCategories = data.categories;
+    renderImportPreview();
+    document.getElementById('import-step-1').style.display = 'none';
+    document.getElementById('import-step-2').style.display = '';
+    if (_ollamaAvailable) document.getElementById('ollama-btn').style.display = '';
+  } catch(e) {
+    showToast('error', 'Upload failed: ' + e.message);
+  }
+}
+
+// ── Render preview table ──────────────────────────────────────────────────
+function renderImportPreview() {
+  const selected = _importRows.filter(r => r.import).length;
+  document.getElementById('import-count-label').textContent =
+    `${_importRows.length} transactions found — ${selected} selected`;
+
+  const catOptions = _importCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  document.getElementById('import-preview-tbody').innerHTML = _importRows.map((r, i) => `
+    <tr class="${r.import ? '' : 'skip-row'}" id="import-row-${i}">
+      <td><input type="checkbox" ${r.import ? 'checked' : ''} onchange="toggleImportRow(${i},this.checked)"></td>
+      <td style="white-space:nowrap;">${r.date}</td>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.description}">${r.description}</td>
+      <td style="white-space:nowrap;font-weight:600;">$${r.amount.toFixed(2)}</td>
+      <td>
+        <select class="form-control" style="padding:0.2rem 0.4rem;font-size:0.78rem;width:90px;"
+          onchange="changeImportType(${i},this.value)">
+          <option value="expense" ${r.type==='expense'?'selected':''}>💸 Expense</option>
+          <option value="income"  ${r.type==='income' ?'selected':''}>💵 Income</option>
+        </select>
+      </td>
+      <td>
+        <select class="form-control" style="padding:0.2rem 0.4rem;font-size:0.78rem;"
+          onchange="changeImportCategory(${i},this.value)">
+          ${_importCategories.map(c => `<option value="${c}" ${r.category===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </td>
+    </tr>`).join('');
+}
+
+function toggleImportRow(i, checked) {
+  _importRows[i].import = checked;
+  document.getElementById(`import-row-${i}`).classList.toggle('skip-row', !checked);
+  const selected = _importRows.filter(r => r.import).length;
+  document.getElementById('import-count-label').textContent =
+    `${_importRows.length} transactions found — ${selected} selected`;
+}
+
+function changeImportType(i, val)     { _importRows[i].type = val; }
+function changeImportCategory(i, val) { _importRows[i].category = val; }
+
+function toggleSelectAll(cb) {
+  _importRows.forEach((r, i) => {
+    r.import = cb.checked;
+    const row = document.getElementById(`import-row-${i}`);
+    if (row) {
+      row.querySelector('input[type=checkbox]').checked = cb.checked;
+      row.classList.toggle('skip-row', !cb.checked);
+    }
+  });
+  const selected = _importRows.filter(r => r.import).length;
+  document.getElementById('import-count-label').textContent =
+    `${_importRows.length} transactions found — ${selected} selected`;
+}
+
+// ── Ollama AI categorize ──────────────────────────────────────────────────
+async function runOllamaCategories() {
+  const btn = document.getElementById('ollama-btn');
+  btn.textContent = '⏳ Categorizing...';
+  btn.disabled = true;
+  const descriptions = _importRows.map(r => r.description);
+  const res = await apiCall('/api/import/ollama-categorize', 'POST', {
+    descriptions, categories: _importCategories
+  });
+  btn.textContent = '🤖 AI Categorize';
+  btn.disabled = false;
+  if (res && res.categories) {
+    res.categories.forEach((cat, i) => {
+      if (_importRows[i] && _importCategories.includes(cat)) {
+        _importRows[i].category = cat;
+      }
+    });
+    renderImportPreview();
+    showToast('success', '🤖 AI categorization complete!');
+  }
+}
+
+// ── Confirm import ────────────────────────────────────────────────────────
+async function confirmImport() {
+  const selected = _importRows.filter(r => r.import);
+  if (!selected.length) { showToast('error', 'No rows selected'); return; }
+  const res = await apiCall('/api/import/confirm', 'POST', { rows: selected });
+  if (res) {
+    document.getElementById('import-step-2').style.display = 'none';
+    document.getElementById('import-step-3').style.display = '';
+    document.getElementById('import-result-text').textContent =
+      `✅ ${res.imported} transaction${res.imported !== 1 ? 's' : ''} imported successfully`;
+    document.getElementById('import-skip-text').textContent =
+      res.skipped ? `${res.skipped} duplicate${res.skipped !== 1 ? 's' : ''} skipped` : '';
+  }
+}
+
+function resetImport() {
+  _importRows = [];
+  document.getElementById('import-step-1').style.display = '';
+  document.getElementById('import-step-2').style.display = 'none';
+  document.getElementById('import-step-3').style.display = 'none';
+  document.getElementById('import-file-input').value = '';
+}
+
+// ── Ollama settings save ──────────────────────────────────────────────────
+async function saveOllamaSettings() {
+  const url   = document.getElementById('ollama-url-input').value.trim();
+  const model = document.getElementById('ollama-model-input').value.trim() || 'llama3.1:8b';
+  // Save via .env update endpoint or just store in localStorage for now
+  localStorage.setItem('ollama_url',   url);
+  localStorage.setItem('ollama_model', model);
+  showToast('info', '⏳ Testing connection...');
+  await checkOllamaStatus();
+}
+
+// ── Load Ollama settings on tab switch ────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const savedUrl   = localStorage.getItem('ollama_url');
+  const savedModel = localStorage.getItem('ollama_model');
+  if (savedUrl) {
+    const el = document.getElementById('ollama-url-input');
+    if (el) el.value = savedUrl;
+  }
+  if (savedModel) {
+    const el = document.getElementById('ollama-model-input');
+    if (el) el.value = savedModel || 'llama3.1:8b';
+  }
+  checkOllamaStatus();
+});
 </script>
