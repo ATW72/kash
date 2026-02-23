@@ -1914,6 +1914,48 @@ def create_user():
         'message': f'User created and welcome email sent to {email}' if email_sent else f'User created but email failed — temp password: {temp_password}'
     }), 201
 
+
+@app.route('/api/users/<int:uid>', methods=['PUT'])
+@admin_required
+def update_user(uid):
+    data = request.json or {}
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': 'User not found'}), 404
+
+    username     = data.get('username', row['username']).strip()
+    display_name = data.get('display_name', row['display_name'] or '').strip()
+    email        = data.get('email', row['email'] or '').strip()
+    is_admin     = 1 if data.get('is_admin') else 0
+
+    # Check username uniqueness if changed
+    if username != row['username']:
+        exists = conn.execute("SELECT id FROM users WHERE username=? AND id!=?", (username, uid)).fetchone()
+        if exists:
+            conn.close()
+            return jsonify({'error': 'Username already taken'}), 400
+
+    conn.execute("UPDATE users SET username=?,display_name=?,email=?,is_admin=? WHERE id=?",
+                 (username, display_name, email, is_admin, uid))
+
+    # Reset password if requested
+    reset_sent = False
+    if data.get('reset_password') and email:
+        temp_password = ''.join(__import__('secrets').choice(__import__('string').ascii_letters + __import__('string').digits) for _ in range(12))
+        phash = generate_password_hash(temp_password, method='pbkdf2:sha256')
+        conn.execute("UPDATE users SET password_hash=?,must_change_password=1 WHERE id=?", (phash, uid))
+        conn.commit()
+        conn.close()
+        html = build_welcome_email(username, display_name, temp_password, request.host_url.rstrip('/'))
+        reset_sent = send_email(email, '🔐 Kash — Your Password Has Been Reset', html)
+        return jsonify({'success': True, 'reset_sent': reset_sent}), 200
+
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True}), 200
+
 @app.route('/api/users/<int:uid>', methods=['DELETE'])
 @admin_required
 def delete_user(uid):
