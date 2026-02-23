@@ -83,9 +83,18 @@ multi-currency support, receipt photos, and a mobile-friendly PWA experience.
 - Real-time search across expenses, income, and bills from the header bar
 - Results grouped by type, click any result to jump directly to that record
 
+### 🔒 Privacy & Sharing
+- **Private by default** — every record is only visible to the user who created it
+- **Opt-in sharing** — share any expense, income entry, credit card, bill, budget, or savings goal with specific users
+- Shared users get **view and edit** access
+- **Mine Only toggle** on every list — filter to just your own records at any time
+- Shared items show a 🔗 badge with the owner's name so you always know the source
+- Only the owner can share or unshare a record
+- Admin has the same access as any regular user — no special data privileges
+
 ### 👥 Multi-User
 - Unlimited users with display names, individual logins, and per-user notifications
-- Admin and standard user roles
+- Admin and standard user roles — admin manages users and app settings only
 
 ### 💡 Spending Insights & Forecast
 - **Month-end forecast** — projects your total spending based on your current daily pace, shown on the dashboard hero card and trend chart
@@ -128,14 +137,29 @@ multi-currency support, receipt photos, and a mobile-friendly PWA experience.
 
 ## 🚀 Proxmox LXC Installation
 
-Run this on your Proxmox host:
+### Fresh Install
+
+Run this single command on your **Proxmox host** shell:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/spendtracker/main/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/main/install.sh)"
 ```
 
-The installer creates a Debian LXC, installs all dependencies, sets up systemd,
-and prompts for admin credentials and optional Gmail notifications.
+The installer will prompt you for:
+- **Container ID** — e.g. `121`
+- **Storage pool** — e.g. `local-lvm`
+- **Hostname** — defaults to `kash`
+- **Admin username & password** — your Kash login
+- **Gmail address & app password** — optional, for email notifications
+
+It then automatically:
+1. Creates a Debian LXC with recommended resources
+2. Installs Python, dependencies, and sets up a virtualenv
+3. Writes the `.env` config file
+4. Creates and enables the `kash` systemd service
+5. Starts the app and confirms it's healthy
+
+Once complete, Kash is available at `http://<container-ip>:5000`
 
 ### 📦 Recommended Container Resources
 
@@ -164,7 +188,7 @@ Replace `121` with your container ID. No data is touched.
 ## 🔄 Updating
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/spendtracker/main/update.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/main/update.sh)"
 ```
 
 Or manually (replace 121 with your CTID):
@@ -172,12 +196,12 @@ Or manually (replace 121 with your CTID):
 ```bash
 pct exec 121 -- bash -c "
   cd /tmp &&
-  wget -q https://github.com/ATW72/spendtracker/releases/latest/download/spendtracker.zip &&
-  unzip -o spendtracker.zip &&
-  cp -r spendtracker/* /opt/spendtracker/ &&
-  chown -R appuser:appuser /opt/spendtracker &&
-  systemctl restart spendtracker &&
-  rm -rf /tmp/spendtracker /tmp/spendtracker.zip &&
+  wget -q https://github.com/ATW72/kash/releases/latest/download/kash.zip &&
+  unzip -o kash.zip &&
+  cp -r kash/* /opt/kash/ &&
+  chown -R appuser:appuser /opt/kash &&
+  systemctl restart kash &&
+  rm -rf /tmp/kash /tmp/kash.zip &&
   echo Done
 "
 ```
@@ -189,7 +213,7 @@ Your database is never touched during an update.
 ## 📧 Email Notifications Setup
 
 1. Google Account → Security → 2-Step Verification → App Passwords → generate one for Kash
-2. Add to `/opt/spendtracker/.env` on the LXC:
+2. Add to `/opt/kash/.env` on the LXC:
 
 ```env
 MAIL_USERNAME=yourgmail@gmail.com
@@ -197,7 +221,7 @@ MAIL_PASSWORD=your_app_password
 MAIL_FROM_NAME=Kash
 ```
 
-3. `systemctl restart spendtracker`
+3. `systemctl restart kash`
 4. Each user adds their email in the Account tab and picks which alerts they want
 
 ---
@@ -218,7 +242,7 @@ MAIL_FROM_NAME=Kash
 | `APP_LOGIN_USERNAME` | `admin` | Admin username |
 | `APP_LOGIN_PASSWORD` | `admin123` | Admin password — change this! |
 | `FLASK_SECRET_KEY` | auto | Session secret key |
-| `APP_DATABASE_PATH` | `/opt/spendtracker/data/expenses.db` | Database path |
+| `APP_DATABASE_PATH` | `/opt/kash/data/expenses.db` | Database path |
 | `MAIL_SERVER` | `smtp.gmail.com` | SMTP server |
 | `MAIL_PORT` | `587` | SMTP port |
 | `MAIL_USERNAME` | *(empty)* | Gmail address |
@@ -230,8 +254,8 @@ MAIL_FROM_NAME=Kash
 ## 🛠️ Local Development
 
 ```bash
-git clone https://github.com/ATW72/spendtracker.git
-cd spendtracker
+git clone https://github.com/ATW72/kash.git
+cd kash
 pip install -r requirements.txt
 export APP_DATABASE_PATH=./data/expenses.db
 export APP_LOGIN_USERNAME=admin
