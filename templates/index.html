@@ -1510,14 +1510,15 @@ canvas.sparkline { vertical-align:middle; }
       <div class="form-grid">
         <div class="form-group"><label>Username</label><input type="text" id="new-username" required></div>
         <div class="form-group"><label>Display Name</label><input type="text" id="new-user-display-name" placeholder="e.g. Anthony"></div>
-        <div class="form-group"><label>Password</label><input type="password" id="new-user-password" required></div>
+        <div class="form-group"><label>Email Address</label><input type="email" id="new-user-email" placeholder="their@email.com" required></div>
         <div class="form-group" style="justify-content:flex-end; padding-top:1.4rem;">
           <label style="display:flex;align-items:center;gap:0.5rem;">
             <input type="checkbox" id="new-user-admin" style="width:auto;"> Admin
           </label>
         </div>
       </div>
-      <button type="submit" style="margin-top:0.75rem;">Add User</button>
+      <p style="font-size:0.82rem;color:var(--text-secondary);margin:0.5rem 0 0.75rem;">A temporary password will be auto-generated and emailed to the user. They will be required to set their own password on first login.</p>
+      <button type="submit" style="margin-top:0.75rem;">➕ Create User & Send Welcome Email</button>
     </form>
     <div id="users-list"></div>
   </div>
@@ -2695,14 +2696,22 @@ async function loadUsers() {
 
 async function createUser(e) {
   e.preventDefault();
-  const data = {
-    username: document.getElementById('new-username').value.trim(),
-    display_name: document.getElementById('new-user-display-name').value.trim(),
-    password: document.getElementById('new-user-password').value,
-    is_admin: document.getElementById('new-user-admin').checked
-  };
-  const res = await apiCall('/api/users', 'POST', data);
-  if (res) { showToast('success','User created'); document.getElementById('new-user-form').reset(); document.getElementById('new-user-display-name').value=''; loadUsers(); }
+  const username    = document.getElementById('new-username').value.trim();
+  const displayName = document.getElementById('new-user-display-name').value.trim();
+  const email       = document.getElementById('new-user-email').value.trim();
+  const isAdmin     = document.getElementById('new-user-admin').checked;
+  if (!username) { showToast('error', 'Username is required'); return; }
+  if (!email)    { showToast('error', 'Email is required — it\'s how they receive their login details'); return; }
+  const res = await apiCall('/api/users', 'POST', { username, display_name: displayName, email, is_admin: isAdmin });
+  if (res) {
+    if (res.email_sent) {
+      showToast('success', `✅ Account created — welcome email sent to ${email}`);
+    } else {
+      showToast('warning', `⚠️ Account created but email failed. ${res.message}`);
+    }
+    document.getElementById('new-user-form').reset();
+    loadUsers();
+  }
 }
 
 function deleteUser(id, name) {
