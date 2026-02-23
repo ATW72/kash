@@ -773,14 +773,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .tab-icon { font-size: 1rem; line-height: 1; }
 .tab-label { white-space: nowrap; }
 
-/* ── Quick-add FAB ── */
-.fab { position: fixed; bottom: 5.5rem; right: 1.25rem; width: 56px; height: 56px;
-  border-radius: 50%; background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-  color: white; font-size: 1.6rem; display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 20px rgba(102,126,234,0.5); z-index: 150; cursor: pointer;
-  border: none; transition: transform 0.2s, box-shadow 0.2s; }
-.fab:hover { transform: scale(1.1); box-shadow: 0 8px 28px rgba(102,126,234,0.6); }
-@media (min-width: 641px) { .fab { bottom: 1.5rem; } }
+
 
 /* ── Quick-add modal ── */
 .quick-modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; }
@@ -928,11 +921,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   }
   .toast { min-width: unset; font-size: 0.85rem; }
 
-  /* ── FAB — above nav bar with safe area ── */
-  .fab {
-    bottom: calc(4.8rem + env(safe-area-inset-bottom));
-    right: 1rem; width: 52px; height: 52px; font-size: 1.5rem;
-  }
+
 
   /* ── Bill items ── */
   .bill-item { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
@@ -1962,7 +1951,7 @@ canvas.sparkline { vertical-align:middle; }
 
 
 <!-- ── Floating Quick-Add Button ── -->
-<button class="fab" onclick="openQuickAdd()" title="Quick Add Expense">＋</button>
+
 
 <!-- ── Quick-Add Modal ── -->
 <div class="quick-modal-backdrop" id="quick-modal-backdrop" onclick="closeQuickAdd(event)">
