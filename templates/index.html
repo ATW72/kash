@@ -1135,11 +1135,11 @@ canvas.sparkline { vertical-align:middle; }
   <button class="mobile-nav-btn" data-tab="spending" onclick="switchTabMobile('spending',this)">
     <span class="mn-icon">💸</span><span class="mn-label">Spending</span>
   </button>
+  <button class="mobile-nav-btn" data-tab="bills" onclick="switchTabMobile('bills',this)">
+    <span class="mn-icon">📅</span><span class="mn-label">Bills</span>
+  </button>
   <button class="mobile-nav-btn" data-tab="income" onclick="switchTabMobile('income',this)">
     <span class="mn-icon">💵</span><span class="mn-label">Income</span>
-  </button>
-  <button class="mobile-nav-btn" data-tab="budgets" onclick="switchTabMobile('budgets',this)">
-    <span class="mn-icon">🎯</span><span class="mn-label">Budgets</span>
   </button>
   <button class="mobile-nav-btn" id="more-btn" onclick="openMoreDrawer()">
     <span class="mn-icon">☰</span><span class="mn-label">More</span>
@@ -1151,6 +1151,9 @@ canvas.sparkline { vertical-align:middle; }
 <div class="more-drawer" id="more-drawer" style="display:none;">
   <div class="more-drawer-handle"></div>
   <div class="more-drawer-grid">
+    <button class="more-drawer-item" data-tab="budgets" onclick="switchTabMobile('budgets');closeMoreDrawer()">
+      <span class="mdi">🎯</span><span>Budgets</span>
+    </button>
     <button class="more-drawer-item" data-tab="credit-cards" onclick="switchTabMobile('credit-cards');closeMoreDrawer()">
       <span class="mdi">💳</span><span>Cards</span>
     </button>
