@@ -170,6 +170,23 @@ interactive_setup() {
     MAIL_PASS=""
     MAIL_NAME="Kash"
   fi
+
+  echo ""
+  echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
+  echo -e "${TAB}${YW}AI Categorization — Ollama (optional — press Enter to skip)${CL}"
+  echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}
+"
+  echo -e "${TAB}${INFO} Enter the URL of your Ollama instance for AI transaction categorization"
+  echo -e "${TAB}${INFO} Example: http://192.168.1.100:11434
+"
+  read -r -p "${TAB}Ollama URL (or press Enter to skip): " OLLAMA_URL
+  if [ -n "$OLLAMA_URL" ]; then
+    read -r -p "${TAB}Ollama model [llama3.1:8b]: " OLLAMA_MODEL
+    OLLAMA_MODEL="${OLLAMA_MODEL:-llama3.1:8b}"
+  else
+    OLLAMA_URL=""
+    OLLAMA_MODEL="llama3.1:8b"
+  fi
 }
 
 # ── Confirm summary ───────────────────────────────────────────────────────────
@@ -192,6 +209,11 @@ confirm_settings() {
     echo -e "${TAB}Email notify   : ${GN}${MAIL_USER}${CL}"
   else
     echo -e "${TAB}Email notify   : ${YW}Not configured (can add later)${CL}"
+  fi
+  if [ -n "$OLLAMA_URL" ]; then
+    echo -e "${TAB}Ollama AI      : ${GN}${OLLAMA_URL} (${OLLAMA_MODEL})${CL}"
+  else
+    echo -e "${TAB}Ollama AI      : ${YW}Not configured (can add later)${CL}"
   fi
   echo ""
   read -r -p "${TAB}Proceed with installation? [y/N]: " CONFIRM
@@ -297,8 +319,8 @@ MAIL_USE_TLS=true
 MAIL_USERNAME=${MAIL_USER}
 MAIL_PASSWORD=${MAIL_PASS}
 MAIL_FROM_NAME=${MAIL_NAME}
-OLLAMA_URL=
-OLLAMA_MODEL=llama3.1:8b
+OLLAMA_URL=${OLLAMA_URL}
+OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.1:8b}
 ENV
     chown appuser:appuser /opt/kash/.env
     chmod 600 /opt/kash/.env
