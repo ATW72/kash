@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Anthony SpendTracker - Proxmox LXC Installer
+# Kash - Proxmox LXC Installer
 # Inspired by the community helper scripts at tteck.github.io/Proxmox
 #
 # Usage (run on Proxmox HOST shell):
-#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/spendtracker/main/install.sh)"
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/main/install.sh)"
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
 # ── GitHub source ─────────────────────────────────────────────────────────────
 GITHUB_USER="ATW72"
-GITHUB_REPO="spendtracker"
+GITHUB_REPO="kash"
 GITHUB_BRANCH="main"
-RELEASE_ZIP="https://github.com/${GITHUB_USER}/${GITHUB_REPO}/releases/latest/download/spendtracker.zip"
+RELEASE_ZIP="https://github.com/${GITHUB_USER}/${GITHUB_REPO}/releases/latest/download/kash.zip"
 RAW_BASE="https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}"
 
 # ── Colour & formatting ───────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ header_info() {
   _\ \/ _ \/ -_) _  \/ _  / / / / __/ _ `/ __/ /  '_/ -_) __/
  /___/ .__/\__/_//_/_\_,_/ /_/ /_/  \_,_/\__/ /_/\_\\__/_/
     /_/
-         Anthony SpendTracker — Proxmox LXC Installer
+         Kash — Proxmox LXC Installer
 EOF
   echo -e "\n${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}\n"
 }
@@ -104,8 +104,8 @@ interactive_setup() {
     msg_error "Container ID ${CTID} already exists. Choose another."
   fi
 
-  read -r -p "${TAB}Hostname [spendtracker]: " HOSTNAME
-  HOSTNAME="${HOSTNAME:-spendtracker}"
+  read -r -p "${TAB}Hostname [kash]: " HOSTNAME
+  HOSTNAME="${HOSTNAME:-kash}"
 
   echo ""
   echo -e "${TAB}Available storage pools:"
@@ -162,12 +162,12 @@ interactive_setup() {
   if [ -n "$MAIL_USER" ]; then
     read -r -s -p "${TAB}App password: " MAIL_PASS
     echo ""
-    read -r -p "${TAB}From name [SpendTracker]: " MAIL_NAME
-    MAIL_NAME="${MAIL_NAME:-SpendTracker}"
+    read -r -p "${TAB}From name [Kash]: " MAIL_NAME
+    MAIL_NAME="${MAIL_NAME:-Kash}"
   else
     MAIL_USER=""
     MAIL_PASS=""
-    MAIL_NAME="SpendTracker"
+    MAIL_NAME="Kash"
   fi
 }
 
@@ -186,7 +186,7 @@ confirm_settings() {
   echo -e "${TAB}Disk           : ${GN}${DISK}GB${CL}"
   echo -e "${TAB}App port       : ${GN}${APP_PORT}${CL}"
   echo -e "${TAB}Admin user     : ${GN}${ADMIN_USER}${CL}"
-  echo -e "${TAB}Source         : ${GN}GitHub — ATW72/spendtracker${CL}"
+  echo -e "${TAB}Source         : ${GN}GitHub — ATW72/kash${CL}"
   if [ -n "$MAIL_USER" ]; then
     echo -e "${TAB}Email notify   : ${GN}${MAIL_USER}${CL}"
   else
@@ -247,28 +247,28 @@ build_container() {
     apt-get update -qq &>/dev/null
     apt-get install -y -qq python3 python3-pip python3-venv unzip curl wget sqlite3 &>/dev/null
     useradd -m -s /bin/bash appuser &>/dev/null || true
-    mkdir -p /opt/spendtracker/data /opt/spendtracker/exports
-    chown -R appuser:appuser /opt/spendtracker
+    mkdir -p /opt/kash/data /opt/kash/exports
+    chown -R appuser:appuser /opt/kash
   " &>/dev/null &
   spinner $! "Installing system dependencies"
   msg_ok "System dependencies installed"
 
   # Pull app files directly from GitHub — no SCP needed
-  msg_info "Downloading SpendTracker from GitHub"
+  msg_info "Downloading Kash from GitHub"
   pct exec "$CTID" -- bash -c "
-    wget -q '${RELEASE_ZIP}' -O /tmp/spendtracker.zip
-    cd /tmp && unzip -q spendtracker.zip
-    cp -r spendtracker/* /opt/spendtracker/
-    chown -R appuser:appuser /opt/spendtracker
-    rm -rf /tmp/spendtracker /tmp/spendtracker.zip
+    wget -q '${RELEASE_ZIP}' -O /tmp/kash.zip
+    cd /tmp && unzip -q kash.zip
+    cp -r kash/* /opt/kash/
+    chown -R appuser:appuser /opt/kash
+    rm -rf /tmp/kash /tmp/kash.zip
   " &>/dev/null &
-  spinner $! "Downloading SpendTracker from GitHub"
+  spinner $! "Downloading Kash from GitHub"
   msg_ok "Application files deployed"
 
   # Python venv
   msg_info "Setting up Python environment"
   pct exec "$CTID" -- bash -c "
-    cd /opt/spendtracker
+    cd /opt/kash
     python3 -m venv venv &>/dev/null
     venv/bin/pip install --quiet --upgrade pip &>/dev/null
     venv/bin/pip install --quiet -r requirements.txt &>/dev/null
@@ -280,11 +280,11 @@ build_container() {
   # Write .env
   msg_info "Writing configuration"
   pct exec "$CTID" -- bash -c "
-    cat > /opt/spendtracker/.env << ENV
+    cat > /opt/kash/.env << ENV
 APP_HOST=0.0.0.0
 APP_PORT=${APP_PORT}
 APP_DEBUG=false
-APP_DATABASE_PATH=/opt/spendtracker/data/expenses.db
+APP_DATABASE_PATH=/opt/kash/data/expenses.db
 APP_LOGIN_USERNAME=${ADMIN_USER}
 APP_LOGIN_PASSWORD=${ADMIN_PASS}
 FLASK_SECRET_KEY=${SECRET_KEY}
@@ -297,25 +297,25 @@ MAIL_USERNAME=${MAIL_USER}
 MAIL_PASSWORD=${MAIL_PASS}
 MAIL_FROM_NAME=${MAIL_NAME}
 ENV
-    chown appuser:appuser /opt/spendtracker/.env
-    chmod 600 /opt/spendtracker/.env
+    chown appuser:appuser /opt/kash/.env
+    chmod 600 /opt/kash/.env
   " &>/dev/null
   msg_ok "Configuration written"
 
   # Systemd service
   msg_info "Creating systemd service"
   pct exec "$CTID" -- bash -c "
-    cat > /etc/systemd/system/spendtracker.service << SERVICE
+    cat > /etc/systemd/system/kash.service << SERVICE
 [Unit]
-Description=Anthony SpendTracker
+Description=Kash
 After=network.target
 
 [Service]
 Type=simple
 User=appuser
-WorkingDirectory=/opt/spendtracker
-EnvironmentFile=/opt/spendtracker/.env
-ExecStart=/opt/spendtracker/venv/bin/python main.py
+WorkingDirectory=/opt/kash
+EnvironmentFile=/opt/kash/.env
+ExecStart=/opt/kash/venv/bin/python main.py
 Restart=always
 RestartSec=5
 StandardOutput=journal
@@ -325,8 +325,8 @@ StandardError=journal
 WantedBy=multi-user.target
 SERVICE
     systemctl daemon-reload &>/dev/null
-    systemctl enable spendtracker &>/dev/null
-    systemctl start spendtracker &>/dev/null
+    systemctl enable kash &>/dev/null
+    systemctl start kash &>/dev/null
   " &>/dev/null &
   spinner $! "Creating systemd service"
   msg_ok "Systemd service enabled and started"
@@ -344,7 +344,7 @@ post_install() {
   echo ""
   echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
   if [ "$HEALTH" = "ok" ]; then
-    echo -e "${TAB}${GN}✓ SpendTracker is running successfully!${CL}"
+    echo -e "${TAB}${GN}✓ Kash is running successfully!${CL}"
   else
     echo -e "${TAB}${YW}⚠ Service started but health check inconclusive (may still be booting)${CL}"
   fi
@@ -357,12 +357,12 @@ post_install() {
   echo ""
   echo -e "${TAB}${YW}Manage the container:${CL}"
   echo -e "${TAB}  Open shell   → ${BL}pct enter ${CTID}${CL}"
-  echo -e "${TAB}  View logs    → ${BL}pct exec ${CTID} -- journalctl -u spendtracker -f${CL}"
-  echo -e "${TAB}  Restart app  → ${BL}pct exec ${CTID} -- systemctl restart spendtracker${CL}"
+  echo -e "${TAB}  View logs    → ${BL}pct exec ${CTID} -- journalctl -u kash -f${CL}"
+  echo -e "${TAB}  Restart app  → ${BL}pct exec ${CTID} -- systemctl restart kash${CL}"
   echo -e "${TAB}  Stop LXC     → ${BL}pct stop ${CTID}${CL}"
   echo ""
   echo -e "${TAB}${YW}To reinstall or update:${CL}"
-  echo -e "${TAB}  ${BL}bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ATW72/spendtracker/main/install.sh)\"${CL}"
+  echo -e "${TAB}  ${BL}bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/main/install.sh)\"${CL}"
   echo ""
   echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}\n"
 }
