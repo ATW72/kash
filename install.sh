@@ -30,7 +30,7 @@ TAB="  "
 # ── Header ────────────────────────────────────────────────────────────────────
 header_info() {
   clear
-  cat << "EOF"
+  cat << "BANNER"
   _  __          _
  | |/ /__ _ ___| |__
  | ' // _` / __| '_ \
@@ -38,7 +38,7 @@ header_info() {
  |_|\_\__,_|___/_| |_|
 
          Kash — Proxmox LXC Installer
-EOF
+BANNER
   echo -e "\n${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}\n"
 }
 
@@ -81,7 +81,6 @@ preflight() {
   fi
   msg_ok "Internet connectivity confirmed"
 
-  # Verify GitHub release is reachable
   if ! curl -fsSL --head "$RELEASE_ZIP" &>/dev/null; then
     msg_warn "Could not reach GitHub release. Check that the release exists at:"
     echo -e "${TAB}  ${BL}${RELEASE_ZIP}${CL}"
@@ -129,6 +128,47 @@ interactive_setup() {
   read -r -p "${TAB}Disk size in GB [16]: " DISK
   DISK="${DISK:-16}"
 
+  # ── Network — static or DHCP ───────────────────────────────────────────────
+  echo ""
+  echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
+  echo -e "${TAB}${YW}Network Configuration${CL}"
+  echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}\n"
+
+  read -r -p "${TAB}Use static IP? [y/N]: " USE_STATIC
+  if [[ "${USE_STATIC,,}" =~ ^(y|yes)$ ]]; then
+    echo ""
+    echo -e "${TAB}${INFO} Enter the static IP in CIDR notation, e.g. ${YW}192.168.1.50/24${CL}"
+    while true; do
+      read -r -p "${TAB}Static IP (e.g. 192.168.1.50/24): " STATIC_IP
+      # Basic validation — must contain a / and look like an IP
+      if [[ "$STATIC_IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$ ]]; then
+        break
+      fi
+      echo -e "${TAB}${RD}Invalid format. Use CIDR notation like 192.168.1.50/24${CL}"
+    done
+
+    while true; do
+      read -r -p "${TAB}Gateway (e.g. 192.168.1.1): " GATEWAY
+      if [[ "$GATEWAY" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+        break
+      fi
+      echo -e "${TAB}${RD}Invalid gateway format. Enter an IP like 192.168.1.1${CL}"
+    done
+
+    read -r -p "${TAB}DNS server [${GATEWAY}]: " DNS_SERVER
+    DNS_SERVER="${DNS_SERVER:-$GATEWAY}"
+
+    NET_CONFIG="name=eth0,bridge=${BRIDGE},ip=${STATIC_IP},gw=${GATEWAY}"
+    NET_DISPLAY="${STATIC_IP} (gateway: ${GATEWAY})"
+  else
+    NET_CONFIG="name=eth0,bridge=${BRIDGE},ip=dhcp"
+    NET_DISPLAY="DHCP"
+    STATIC_IP=""
+    GATEWAY=""
+    DNS_SERVER=""
+  fi
+
+  # ── Application settings ───────────────────────────────────────────────────
   echo ""
   echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
   echo -e "${TAB}${YW}Application Settings${CL}"
@@ -151,12 +191,11 @@ interactive_setup() {
 
   SECRET_KEY=$(openssl rand -hex 32)
 
-  # Mail settings (optional)
+  # ── Mail settings (optional) ───────────────────────────────────────────────
   echo ""
   echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
   echo -e "${TAB}${YW}Email Notifications (optional — press Enter to skip)${CL}"
-  echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}
-"
+  echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}\n"
   echo -e "${TAB}${INFO} For Gmail: use your Gmail address and an App Password"
   echo -e "${TAB}${INFO} (Google Account → Security → 2-Step → App Passwords)\n"
   read -r -p "${TAB}Gmail address (or SMTP username): " MAIL_USER
@@ -171,14 +210,13 @@ interactive_setup() {
     MAIL_NAME="Kash"
   fi
 
+  # ── Ollama (optional) ──────────────────────────────────────────────────────
   echo ""
   echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
   echo -e "${TAB}${YW}AI Categorization — Ollama (optional — press Enter to skip)${CL}"
-  echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}
-"
+  echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}\n"
   echo -e "${TAB}${INFO} Enter the URL of your Ollama instance for AI transaction categorization"
-  echo -e "${TAB}${INFO} Example: http://192.168.1.100:11434
-"
+  echo -e "${TAB}${INFO} Example: http://192.168.1.100:11434\n"
   read -r -p "${TAB}Ollama URL (or press Enter to skip): " OLLAMA_URL
   if [ -n "$OLLAMA_URL" ]; then
     read -r -p "${TAB}Ollama model [llama3.1:8b]: " OLLAMA_MODEL
@@ -199,7 +237,7 @@ confirm_settings() {
   echo -e "${TAB}Hostname       : ${GN}${HOSTNAME}${CL}"
   echo -e "${TAB}Storage        : ${GN}${STORAGE}${CL}"
   echo -e "${TAB}Bridge         : ${GN}${BRIDGE}${CL}"
-  echo -e "${TAB}Network        : ${GN}DHCP${CL}"
+  echo -e "${TAB}Network        : ${GN}${NET_DISPLAY}${CL}"
   echo -e "${TAB}CPU / RAM      : ${GN}${CORES} cores / ${MEMORY}MB${CL}"
   echo -e "${TAB}Disk           : ${GN}${DISK}GB${CL}"
   echo -e "${TAB}App port       : ${GN}${APP_PORT}${CL}"
@@ -242,7 +280,7 @@ build_container() {
     msg_ok "Ubuntu 22.04 template already cached"
   fi
 
-  # Create container
+  # Create container with static IP or DHCP
   msg_info "Creating LXC container (ID: ${CTID})"
   pct create "$CTID" "local:vztmpl/${TEMPLATE}" \
     --hostname "$HOSTNAME" \
@@ -250,7 +288,7 @@ build_container() {
     --memory "$MEMORY" \
     --swap 256 \
     --rootfs "${STORAGE}:${DISK}" \
-    --net0 "name=eth0,bridge=${BRIDGE},ip=dhcp" \
+    --net0 "$NET_CONFIG" \
     --unprivileged 1 \
     --features nesting=1 \
     --onboot 1 \
@@ -262,6 +300,16 @@ build_container() {
   pct start "$CTID" &>/dev/null
   sleep 6
   msg_ok "Container started"
+
+  # Set DNS if static IP was chosen
+  if [ -n "$DNS_SERVER" ]; then
+    msg_info "Configuring DNS"
+    pct exec "$CTID" -- bash -c "
+      echo 'nameserver ${DNS_SERVER}' > /etc/resolv.conf
+      chattr +i /etc/resolv.conf
+    " &>/dev/null
+    msg_ok "DNS set to ${DNS_SERVER} (locked)"
+  fi
 
   # Install system deps
   msg_info "Installing system dependencies"
@@ -276,7 +324,7 @@ build_container() {
   spinner $! "Installing system dependencies"
   msg_ok "System dependencies installed"
 
-  # Pull app files directly from GitHub — no SCP needed
+  # Pull app files from GitHub
   msg_info "Downloading Kash from GitHub"
   pct exec "$CTID" -- bash -c "
     wget -q '${RELEASE_ZIP}' -O /tmp/kash.zip
@@ -361,8 +409,13 @@ SERVICE
 post_install() {
   sleep 3
 
-  CONTAINER_IP=$(pct exec "$CTID" -- bash -c \
-    "ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'" 2>/dev/null || echo "Check DHCP lease")
+  if [ -n "$STATIC_IP" ]; then
+    # Static IP — we know it exactly, strip the CIDR suffix
+    CONTAINER_IP="${STATIC_IP%%/*}"
+  else
+    CONTAINER_IP=$(pct exec "$CTID" -- bash -c \
+      "ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'" 2>/dev/null || echo "Check DHCP lease")
+  fi
 
   HEALTH=$(pct exec "$CTID" -- curl -sf "http://localhost:${APP_PORT}/health" 2>/dev/null && echo "ok" || echo "fail")
 
@@ -386,8 +439,8 @@ post_install() {
   echo -e "${TAB}  Restart app  → ${BL}pct exec ${CTID} -- systemctl restart kash${CL}"
   echo -e "${TAB}  Stop LXC     → ${BL}pct stop ${CTID}${CL}"
   echo ""
-  echo -e "${TAB}${YW}To reinstall or update:${CL}"
-  echo -e "${TAB}  ${BL}bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/main/install.sh)\"${CL}"
+  echo -e "${TAB}${YW}To update Kash:${CL}"
+  echo -e "${TAB}  ${BL}bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/main/update.sh)\"${CL}"
   echo ""
   echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}\n"
 }
