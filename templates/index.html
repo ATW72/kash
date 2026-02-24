@@ -863,27 +863,253 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 /* ════════════════════════════════════════════════════════
-   MOBILE — Complete 10/10 Overhaul
+   MOBILE — Matching Preview Design
    ════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
 
-  /* ── Safe area & body ── */
+  /* ── Body ── */
   body { background: var(--bg-secondary); }
 
-  /* ── Header — compact, safe area aware ── */
+  /* ── Header ── */
   .header {
     padding: 0.6rem 1rem;
     padding-top: calc(0.6rem + env(safe-area-inset-top));
-    position: sticky; top: 0; z-index: 100;
+    justify-content: space-between;
   }
-  .header h1 { font-size: 1.2rem; }
-  .header-right span { display: none; }
-  .header-left h1 { font-size: 1.15rem; }
-
-  /* ── Desktop tabs — hide on mobile ── */
+  /* Hide desktop search, theme toggle, widget toggle text */
+  .desktop-search { display: none !important; }
   .tabs { display: none !important; }
 
-  /* ── Mobile bottom nav bar ── */
+  /* Header right: just search icon + avatar */
+  .header-right { gap: 0.5rem; margin-left: 0; }
+  .header-right > span { display: none !important; }
+
+  /* Hide the greeting text and chevron inside trigger */
+  .profile-trigger #user-greeting { display: none !important; }
+  .profile-trigger #profile-chevron { display: none !important; }
+
+  /* Avatar circle */
+  .profile-trigger {
+    background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+    border: 2px solid rgba(255,255,255,0.25) !important;
+    border-radius: 50% !important;
+    width: 34px !important;
+    height: 34px !important;
+    padding: 0 !important;
+    font-weight: 800 !important;
+    font-size: 0.88rem !important;
+    color: #071c2e !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Search icon button — rounded square */
+  .mobile-search-btn {
+    display: flex !important;
+    background: rgba(255,255,255,0.12) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    border-radius: 10px !important;
+    width: 34px !important;
+    height: 34px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: white !important;
+  }
+
+  /* ── Main content ── */
+  .main {
+    padding: 0.75rem 0.75rem calc(5.5rem + env(safe-area-inset-bottom)) !important;
+    max-width: 100%;
+  }
+
+  /* ── Cards ── */
+  .glass-card { padding: 0.875rem; border-radius: 16px; margin-bottom: 0.75rem; }
+  .glass-card:hover { transform: none; }
+  .card-title { font-size: 0.88rem; margin-bottom: 0.75rem; }
+
+  /* ── Hero card: 2x2 grid ── */
+  .hero-card { padding: 1rem; border-radius: 18px; }
+  .hero-grid { grid-template-columns: 1fr 1fr !important; gap: 0.75rem; }
+  .hero-stat .value { font-size: 1.2rem !important; }
+  .hero-stat .label { font-size: 0.68rem !important; }
+  /* Hide extra stats (keep only first 2 in the 2x2) */
+  .hero-divider { display: none; }
+
+  /* ── Stat cards → horizontal scroll pills ── */
+  .stats-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    gap: 0.6rem !important;
+    scrollbar-width: none;
+    padding-bottom: 0.25rem;
+    flex-wrap: nowrap !important;
+    grid-template-columns: unset !important;
+    margin-bottom: 0.75rem;
+  }
+  .stats-grid::-webkit-scrollbar { display: none; }
+  .stat-card {
+    flex: 0 0 auto !important;
+    min-width: 110px !important;
+    width: auto !important;
+    padding: 0.75rem 0.875rem !important;
+    border-radius: 14px !important;
+  }
+  .stat-card h3 { font-size: 0.6rem !important; }
+  .stat-card p { font-size: 1rem !important; }
+
+  /* ── Dashboard grids → single column ── */
+  .dashboard-grid-3, .dashboard-grid-2 { grid-template-columns: 1fr; gap: 0.75rem; }
+
+  /* ── Expense cards: icon + body + amount row layout ── */
+  .expense-cards-mobile { display: flex; flex-direction: column; gap: 0.5rem; }
+  .expense-card-mobile {
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 0.75rem 0.875rem;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0.75rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    flex-wrap: nowrap;
+    transition: background 0.15s;
+  }
+  .expense-card-mobile:active { background: var(--card-bg) !important; }
+  .expense-card-mobile .ec-icon {
+    display: flex !important;
+    width: 36px; height: 36px; flex-shrink: 0;
+    border-radius: 10px;
+    background: rgba(0,212,170,0.1);
+    align-items: center; justify-content: center;
+    font-size: 1.05rem;
+  }
+  .expense-card-mobile .ec-top { display: none !important; }
+  .expense-card-mobile .ec-body { flex: 1; min-width: 0; }
+  .expense-card-mobile .ec-desc {
+    font-weight: 600; font-size: 0.88rem;
+    color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .expense-card-mobile .ec-meta {
+    font-size: 0.72rem; color: var(--text-secondary);
+    margin-top: 2px; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap;
+  }
+  .expense-card-mobile .ec-amount {
+    font-weight: 800; font-size: 0.95rem;
+    color: var(--danger); white-space: nowrap; flex-shrink: 0;
+  }
+  .expense-card-mobile .ec-amount.income { color: var(--success); }
+  .expense-card-mobile .ec-detail {
+    display: none; width: 100%;
+    font-size: 0.8rem; color: var(--text-secondary);
+    padding-top: 0.5rem; margin-top: 0.35rem;
+    border-top: 1px solid var(--border);
+  }
+  .expense-card-mobile .ec-detail.open { display: block; }
+  .expense-card-mobile .ec-actions { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+  .expense-card-mobile.expanded { flex-wrap: wrap; }
+
+  /* Hide desktop table, show mobile cards */
+  .expense-table-wrapper { display: none !important; }
+  .expense-cards-mobile { display: flex !important; }
+
+  /* ── Tables (non-expense) ── */
+  .table-scroll-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; }
+  .expense-table { font-size: 0.8rem; min-width: 500px; }
+  .expense-table th, .expense-table td { padding: 0.55rem 0.65rem; }
+
+  /* ── Forms ── */
+  .form-grid { grid-template-columns: 1fr !important; gap: 0.625rem; }
+  input, select, textarea { font-size: 16px !important; border-radius: 10px; }
+  .filter-row { gap: 0.4rem; flex-wrap: wrap; }
+  .filter-row select, .filter-row input { font-size: 14px !important; padding: 0.4rem 0.6rem; }
+
+  /* ── Buttons ── */
+  .btn-sm { padding: 0.5rem 0.85rem; font-size: 0.82rem; }
+  .section-header { flex-wrap: wrap; gap: 0.5rem; }
+
+  /* ── Profile: full bottom sheet ── */
+  .profile-dropdown {
+    position: fixed !important;
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 24px 24px 0 0 !important;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+    animation: slideUp 0.25s ease !important;
+    z-index: 500 !important;
+  }
+  /* Drag handle */
+  .profile-dropdown::before {
+    content: '';
+    display: block;
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 12px auto 4px;
+  }
+  /* Bigger avatar in sheet header */
+  .profile-avatar { width: 48px !important; height: 48px !important; font-size: 1.2rem !important; }
+  .profile-dropdown-header { padding: 0.75rem 1rem 1rem !important; }
+  /* Menu items: full-width with arrow */
+  .profile-menu-item {
+    padding: 0.85rem 1rem !important;
+    font-size: 0.95rem !important;
+    border-radius: 0 !important;
+    border-bottom: 1px solid var(--border) !important;
+    margin-bottom: 0 !important;
+    width: 100%;
+  }
+  .profile-menu-item:last-child { border-bottom: none !important; }
+  .profile-menu-item:not(.profile-menu-danger)::after {
+    content: '›';
+    margin-left: auto;
+    color: var(--text-tertiary);
+    font-size: 1.1rem;
+    font-weight: 400;
+  }
+  /* Forms inside sheet sections */
+  .profile-dropdown-section { padding: 0.5rem 1rem !important; }
+  .profile-section-label { font-size: 0.7rem; }
+
+  /* ── Modals — slide up ── */
+  .modal-backdrop.active { align-items: flex-end; }
+  .modal {
+    border-radius: 24px 24px 0 0 !important;
+    padding: 1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom)) !important;
+    min-width: 100vw !important; max-width: 100vw !important;
+    animation: slideUp 0.25s ease;
+  }
+
+  /* ── Toast ── */
+  #toast-container {
+    bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+    right: 0.75rem; left: 0.75rem;
+  }
+  .toast { min-width: unset; font-size: 0.85rem; }
+
+  /* ── Bill items ── */
+  .bill-item { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .bill-item .flex-gap { width: 100%; justify-content: flex-end; }
+
+  /* ── Credit cards ── */
+  .credit-card-grid { grid-template-columns: 1fr; }
+
+  /* ── Search results ── */
+  .search-results { left: 0; right: 0; width: auto; }
+
+  /* ── Bottom nav ── */
   .mobile-nav {
     display: flex !important;
     position: fixed;
@@ -899,19 +1125,24 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     display: flex; flex-direction: column; align-items: center;
     gap: 0.18rem; background: none; border: none; cursor: pointer;
     color: var(--text-secondary); padding: 0.3rem 0.5rem;
-    min-width: 52px; border-radius: 12px; transition: all 0.15s;
+    min-width: 52px; border-radius: 12px;
     -webkit-tap-highlight-color: transparent;
+    position: relative;
   }
   .mobile-nav-btn.active { color: var(--primary); }
+  .mobile-nav-btn.active::before {
+    content: '';
+    position: absolute; top: -0.35rem;
+    width: 24px; height: 2px;
+    background: var(--primary);
+    border-radius: 0 0 2px 2px;
+  }
   .mobile-nav-btn .mn-icon { font-size: 1.45rem; line-height: 1; }
-  .mobile-nav-btn .mn-label { font-size: 0.62rem; font-weight: 600; white-space: nowrap; }
+  .mobile-nav-btn .mn-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
   .mobile-nav-btn.active .mn-icon { transform: translateY(-1px); }
 
   /* ── More drawer ── */
-  .more-drawer-backdrop {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.5); z-index: 400;
-  }
+  .more-drawer-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 400; }
   .more-drawer-backdrop.active { display: block; }
   .more-drawer {
     position: fixed; bottom: 0; left: 0; right: 0;
@@ -920,124 +1151,19 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     z-index: 401; animation: slideUp 0.25s ease;
     box-shadow: 0 -8px 40px rgba(0,0,0,0.2);
   }
-  .more-drawer-handle {
-    width: 40px; height: 4px; background: var(--border);
-    border-radius: 2px; margin: 0 auto 1rem;
-  }
-  .more-drawer-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;
-  }
-  @media (min-width: 400px) {
-    .more-drawer-grid { grid-template-columns: repeat(4, 1fr); }
-  }
+  .more-drawer-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 1rem; }
+  .more-drawer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+  @media (min-width: 400px) { .more-drawer-grid { grid-template-columns: repeat(4, 1fr); } }
   .more-drawer-item {
     display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
     padding: 0.85rem 0.5rem; border-radius: 14px; background: var(--bg-secondary);
-    border: none; cursor: pointer; color: var(--text-primary); font-size: 0.75rem;
-    font-weight: 600; transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+    border: none; cursor: pointer; color: var(--text-primary);
+    font-size: 0.75rem; font-weight: 600; transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
   }
   .more-drawer-item:active { transform: scale(0.95); }
   .more-drawer-item .mdi { font-size: 1.6rem; }
-  .more-drawer-item.active { background: rgba(102,126,234,0.12); color: var(--primary); }
-
-  /* ── Main content ── */
-  .main {
-    padding: 0.875rem 0.875rem calc(5.5rem + env(safe-area-inset-bottom)) !important;
-    max-width: 100%;
-  }
-
-  /* ── Cards ── */
-  .glass-card {
-    padding: 1rem; border-radius: 14px; margin-bottom: 0.875rem;
-  }
-  .glass-card:hover { transform: none; }
-  .card-title { font-size: 1rem; margin-bottom: 0.875rem; }
-
-  /* ── Stats grid ── */
-  .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.625rem; }
-  .stat-card { padding: 0.875rem; }
-
-  /* ── Hero card ── */
-  .hero-card { padding: 1.1rem; border-radius: 16px; }
-  .hero-grid { grid-template-columns: 1fr 1fr; gap: 0.625rem; }
-  .hero-stat .value { font-size: 1.1rem; }
-  .hero-stat .label { font-size: 0.7rem; }
-
-  /* ── Dashboard grids ── */
-  .dashboard-grid-3, .dashboard-grid-2 { grid-template-columns: 1fr; gap: 0.875rem; }
-
-  /* ── Tables — horizontal scroll with sticky first col ── */
-  .table-scroll-wrapper {
-    overflow-x: auto; -webkit-overflow-scrolling: touch;
-    border-radius: 10px; margin: 0 -0.125rem;
-  }
-  .expense-table { font-size: 0.8rem; min-width: 500px; }
-  .expense-table th, .expense-table td { padding: 0.55rem 0.65rem; }
-
-  /* ── Forms ── */
-  .form-grid { grid-template-columns: 1fr !important; gap: 0.625rem; }
-  input, select, textarea { font-size: 16px !important; border-radius: 10px; }
-  .filter-row { gap: 0.4rem; flex-wrap: wrap; }
-  .filter-row select, .filter-row input { font-size: 14px !important; padding: 0.4rem 0.6rem; }
-
-  /* ── Buttons ── */
-  .btn-sm { padding: 0.5rem 0.85rem; font-size: 0.82rem; border-radius: 8px; }
-  .section-header { flex-wrap: wrap; gap: 0.5rem; }
-
-  /* ── Modals — slide up from bottom ── */
-  .modal-backdrop.active { align-items: flex-end; }
-  .modal {
-    border-radius: 24px 24px 0 0 !important;
-    padding: 1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom)) !important;
-    min-width: 100vw !important; max-width: 100vw !important;
-    animation: slideUp 0.25s ease;
-  }
-  .modal h3 { font-size: 1.05rem; }
-
-  /* ── Toast — above nav bar ── */
-  #toast-container {
-    bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
-    right: 0.75rem; left: 0.75rem;
-  }
-  .toast { min-width: unset; font-size: 0.85rem; }
-
-
-
-  /* ── Expense cards on mobile (replaces table) ── */
-  .expense-cards-mobile { display: flex; flex-direction: column; gap: 0.6rem; }
-  .expense-card-mobile {
-    background: var(--card-bg); border: 1px solid var(--border);
-    border-radius: 14px; padding: 0.85rem 1rem;
-    display: flex; flex-direction: column; gap: 0.35rem;
-    cursor: pointer; transition: background 0.15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .expense-card-mobile:active { background: var(--bg-secondary); }
-  .expense-card-mobile .ec-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
-  .expense-card-mobile .ec-desc { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); flex: 1; line-height: 1.3; }
-  .expense-card-mobile .ec-amount { font-weight: 800; font-size: 1rem; color: var(--danger); white-space: nowrap; }
-  .expense-card-mobile .ec-amount.income { color: var(--success); }
-  .expense-card-mobile .ec-meta { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-  .expense-card-mobile .ec-date { font-size: 0.75rem; color: var(--text-secondary); }
-  .expense-card-mobile .ec-person { font-size: 0.75rem; color: var(--text-secondary); }
-  .expense-card-mobile .ec-actions { display: flex; gap: 0.4rem; margin-top: 0.2rem; }
-  .expense-card-mobile .ec-detail { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem; padding-top: 0.5rem; border-top: 1px solid var(--border); display: none; }
-  .expense-card-mobile .ec-detail.open { display: block; }
-
-  /* Hide table wrapper on mobile, show cards */
-  .mobile-hide-table .table-scroll-wrapper { display: none; }
-  .mobile-hide-table .expense-cards-mobile { display: flex; }
-  .expense-cards-mobile { display: none; }
-
-  /* ── Bill items ── */
-  .bill-item { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
-  .bill-item .flex-gap { width: 100%; justify-content: flex-end; }
-
-  /* ── Credit cards ── */
-  .credit-card-grid { grid-template-columns: 1fr; }
-
-  /* ── Search results ── */
-  .search-results { left: 0; right: 0; width: auto; }
+  .more-drawer-item.active { background: rgba(0,212,170,0.12); color: var(--primary); }
 }
 
 /* ── Hide mobile nav on desktop ── */
@@ -1384,6 +1510,7 @@ input:focus, select:focus, textarea:focus {
     <div class="profile-dropdown-wrapper" id="profile-dropdown-wrapper">
       <button class="profile-trigger" id="profile-trigger" onclick="toggleProfileDropdown()" aria-haspopup="true" aria-expanded="false">
         <span id="user-greeting">Hi, admin 👋</span>
+        <span id="profile-trigger-initial" style="display:none;font-weight:800;font-size:0.88rem;color:#071c2e;">A</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="profile-chevron" style="transition:transform 0.2s;flex-shrink:0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
       <div class="profile-dropdown" id="profile-dropdown">
@@ -2075,6 +2202,8 @@ input:focus, select:focus, textarea:focus {
     <button class="btn-sm" onclick="saveOllamaSettings()" style="margin-top:0.5rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save &amp; Test Connection</button>
   </div>
 </div>
+
+<div id="profile-sheet-backdrop" onclick="closeProfileDropdown()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:499;"></div>
 
 <!-- ── User Management Modal ── -->
 <div class="modal-backdrop" id="user-mgmt-modal-backdrop">
@@ -2806,25 +2935,26 @@ async function loadExpenses() {
 
   // Mobile cards
   if (cardContainer) {
+    const catIcon = c => ({'Groceries':'🛒','Dining Out':'🌮','Transportation':'🚗','Utilities':'⚡','Entertainment':'🎬','Healthcare':'💊','Shopping':'🛍️','Mortgage':'🏠','Child Support':'👶','Education':'📚'}[c] || '💳');
     cardContainer.innerHTML = res.data.map(e => `
-      <div class="expense-card-mobile" onclick="toggleExpenseCardDetail('ec-detail-${e.id}')">
-        <div class="ec-top">
+      <div class="expense-card-mobile" id="ecm-${e.id}" onclick="toggleExpenseCardDetail(${e.id})">
+        <div class="ec-icon">${catIcon(e.category)}</div>
+        <div class="ec-body">
           <div class="ec-desc">${e.description}</div>
-          <div class="ec-amount">${formatCurrency(e.amount)}</div>
+          <div class="ec-meta">
+            <span class="badge badge-primary" style="font-size:0.68rem;padding:1px 6px;">${e.category}</span>
+            · <span>${formatDate(e.date)}</span>
+            ${e.paid_by ? `· <span>${e.paid_by}</span>` : ''}
+            ${e.receipt_filename ? '<span>🧾</span>' : ''}
+          </div>
         </div>
-        <div class="ec-meta">
-          <span class="badge badge-primary" style="font-size:0.72rem;">${e.category}</span>
-          <span class="ec-date">${formatDate(e.date)}</span>
-          <span class="ec-person">· ${e.paid_by}</span>
-          ${e.payment_method ? `<span class="ec-person">· ${e.payment_method}</span>` : ''}
-          ${e.receipt_filename ? `<span style="font-size:0.75rem;">🧾</span>` : ''}
-        </div>
+        <div class="ec-amount">${formatCurrency(e.amount)}</div>
         <div class="ec-detail" id="ec-detail-${e.id}">
-          ${e.notes ? `<div><strong>Notes:</strong> ${e.notes}</div>` : ''}
+          ${e.notes ? `<div style="margin-bottom:0.35rem;"><strong>Notes:</strong> ${e.notes}</div>` : ''}
           <div class="ec-actions">
             <button class="btn-sm btn-warning" onclick="event.stopPropagation();editExpense(${e.id})">✏️ Edit</button>
-            <button class="btn-sm ${e.receipt_filename ? 'btn-success' : 'btn-secondary'}" onclick="event.stopPropagation();openReceiptModal(${e.id},'${e.receipt_filename||''}')">🧾 Receipt</button>
-            <button class="btn-sm btn-danger" onclick="event.stopPropagation();deleteExpense(${e.id},'${e.description.replace(/'/g,"\\'")}')">🗑️ Delete</button>
+            <button class="btn-sm ${e.receipt_filename ? 'btn-success' : 'btn-secondary'}" onclick="event.stopPropagation();openReceiptModal(${e.id},'${e.receipt_filename||''}')">🧾</button>
+            <button class="btn-sm btn-danger" onclick="event.stopPropagation();deleteExpense(${e.id},'${e.description.replace(/'/g,"\\'")}')">🗑️</button>
           </div>
         </div>
       </div>`).join('');
@@ -2842,8 +2972,10 @@ async function loadExpenses() {
 }
 
 function toggleExpenseCardDetail(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.toggle('open');
+  const detail = document.getElementById('ec-detail-' + id);
+  const card = document.getElementById('ecm-' + id);
+  if (detail) detail.classList.toggle('open');
+  if (card) card.classList.toggle('expanded');
 }
 
 function clearExpenseFilter() {
@@ -3539,6 +3671,9 @@ async function init() {
     if (ddName) ddName.textContent = displayName;
     if (ddUser) ddUser.textContent = me.user.username;
     if (avatar) avatar.textContent = displayName.charAt(0).toUpperCase();
+    const initialSpan = document.getElementById('profile-trigger-initial');
+    if (initialSpan) initialSpan.textContent = displayName.charAt(0).toUpperCase();
+    updateHeaderForScreenSize();
     if (me.user.is_admin) {
       const adminSec = document.getElementById('admin-dropdown-section');
       const adminDiv = document.getElementById('admin-dropdown-divider');
@@ -4789,6 +4924,19 @@ document.addEventListener('DOMContentLoaded', () => {
 // PROFILE DROPDOWN
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Swap greeting ↔ initial based on screen width
+function updateHeaderForScreenSize() {
+  const isMob = window.innerWidth <= 640;
+  const greeting = document.getElementById('user-greeting');
+  const initial = document.getElementById('profile-trigger-initial');
+  const chevron = document.getElementById('profile-chevron');
+  if (greeting) greeting.style.display = isMob ? 'none' : '';
+  if (initial) initial.style.display = isMob ? '' : 'none';
+  if (chevron) chevron.style.display = isMob ? 'none' : '';
+}
+window.addEventListener('resize', updateHeaderForScreenSize);
+document.addEventListener('DOMContentLoaded', updateHeaderForScreenSize);
+
 function toggleProfileDropdown() {
   const dropdown = document.getElementById('profile-dropdown');
   const trigger = document.getElementById('profile-trigger');
@@ -4799,6 +4947,9 @@ function toggleProfileDropdown() {
     dropdown.classList.add('open');
     trigger.classList.add('open');
     trigger.setAttribute('aria-expanded', 'true');
+    // Show backdrop on mobile
+    const backdrop = document.getElementById('profile-sheet-backdrop');
+    if (backdrop && window.innerWidth <= 640) backdrop.style.display = 'block';
   }
 }
 
@@ -4808,6 +4959,8 @@ function closeProfileDropdown() {
   dropdown.classList.remove('open');
   trigger.classList.remove('open');
   trigger.setAttribute('aria-expanded', 'false');
+  const backdrop = document.getElementById('profile-sheet-backdrop');
+  if (backdrop) backdrop.style.display = 'none';
 }
 
 // Close dropdown when clicking outside
