@@ -9,6 +9,10 @@
 
 set -euo pipefail
 
+# Normalize terminal type — prevents "unknown terminal" warnings (e.g. kitty, alacritty)
+[[ "$TERM" == *"kitty"* || "$TERM" == *"alacritty"* || "$TERM" == *"ghostty"* ]] && export TERM=xterm-256color
+[ -z "$TERM" ] && export TERM=xterm-256color
+
 # ── GitHub source ─────────────────────────────────────────────────────────────
 GITHUB_USER="ATW72"
 GITHUB_REPO="kash"
