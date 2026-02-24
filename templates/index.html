@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Kash">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js" onload="if(typeof lucide!=='undefined')lucide.createIcons()"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
 
 // ── Profile ──────────────────────────────────────────────────────────────────
@@ -380,7 +380,7 @@ function updateDashboardMonthLabel() {
   const now = new Date();
   const isCurrentMonth = _dashboardYear === now.getFullYear() && _dashboardMonth === now.getMonth()+1;
   document.getElementById('dashboard-month-label').textContent =
-    isCurrentMonth ? '<i data-lucide="calendar" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> This Month' : `📅 ${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
+    isCurrentMonth ? '<i data-lucide="calendar" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> This Month' : `<i data-lucide="calendar" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> ${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
   document.getElementById('dashboard-month-display').textContent =
     `${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
 }
@@ -1271,7 +1271,7 @@ input:focus, select:focus, textarea:focus {
 <body>
 <!-- Header -->
 <div class="header">
-  <h1><i data-lucide="banknote" style="width:22px;height:22px;display:inline-block;vertical-align:middle;margin-right:0.4rem;"></i> Kash</h1>
+  <h1><svg viewBox="0 0 88 26" height="22" style="vertical-align:middle;display:inline-block"><text y="21" font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="none" stroke="#00d4aa" stroke-width="1.3">K</text><text x="16" y="21" font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="#ffffff">ash</text></svg></h1>
   <!-- Desktop search -->
   <div class="search-wrapper desktop-search" style="flex:1; max-width:320px; margin: 0 1rem;">
     <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span>
@@ -1425,10 +1425,10 @@ input:focus, select:focus, textarea:focus {
 
   <!-- Secondary stats -->
   <div class="stats-grid" style="margin-bottom:1.25rem;">
-    <div class="stat-card" id="stat-card-unpaid"><h3>Unpaid Bills</h3><p id="stat-unpaid-bills" class="danger">$0.00</p></div>
-    <div class="stat-card" id="stat-card-left"><h3>Left After Bills</h3><p id="stat-left-after-bills">$0.00</p></div>
-    <div class="stat-card" id="stat-card-cc"><h3>CC Balance</h3><p id="stat-cc-balance" class="danger">$0.00</p></div>
-    <div class="stat-card" id="stat-card-income"><h3>All-Time Income</h3><p id="stat-total-income" class="success">$0.00</p></div>
+    <div class="stat-card" id="stat-card-unpaid"><h3>Unpaid Bills</h3><p id="stat-unpaid-bills" class="danger">$0.00</p><canvas id="sparkline-bills" height="24" style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas></div>
+    <div class="stat-card" id="stat-card-left"><h3>Left After Bills</h3><p id="stat-left-after-bills">$0.00</p><canvas id="sparkline-left" height="24" style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas></div>
+    <div class="stat-card" id="stat-card-cc"><h3>CC Balance</h3><p id="stat-cc-balance" class="danger">$0.00</p><canvas id="sparkline-cc" height="24" style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas></div>
+    <div class="stat-card" id="stat-card-income"><h3>All-Time Income</h3><p id="stat-total-income" class="success">$0.00</p><canvas id="sparkline-income" height="24" style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas></div>
   </div>
 
   <!-- Charts row -->
@@ -1438,9 +1438,15 @@ input:focus, select:focus, textarea:focus {
       <canvas id="trend-chart" height="200"></canvas>
     </div>
     <div class="glass-card" id="card-category">
-      <div class="card-title">🍕 Spending by Category <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">(click to filter)</span></div>
+      <div class="card-title"><i data-lucide="pie-chart" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Spending by Category <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">(click to filter)</span></div>
       <canvas id="category-chart" height="200"></canvas>
     </div>
+  </div>
+
+  <!-- NEW: Income vs Spending Area Chart — full width -->
+  <div class="glass-card" id="card-income-vs-spending" style="margin-bottom:1.25rem;">
+    <div class="card-title"><i data-lucide="trending-up" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Income vs Spending <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">last 12 months</span></div>
+    <canvas id="income-vs-spending-chart" height="120"></canvas>
   </div>
 
   <!-- Bills alerts + Budget mini -->
@@ -1474,7 +1480,7 @@ input:focus, select:focus, textarea:focus {
       </div>
     </div>
     <div class="glass-card" id="card-savings">
-      <div class="card-title"><i data-lucide="piggy-bank" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Cumulative Savings</div>
+      <div class="card-title"><i data-lucide="trending-up" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Cumulative Savings</div>
       <canvas id="savings-chart" height="160"></canvas>
     </div>
   </div>
@@ -1735,7 +1741,7 @@ input:focus, select:focus, textarea:focus {
   <!-- Savings Goals -->
   <div class="glass-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-      <div class="card-title" style="margin-bottom:0;"><i data-lucide="piggy-bank" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Savings Goals</div>
+      <div class="card-title" style="margin-bottom:0;"><i data-lucide="trending-up" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Savings Goals</div>
     </div>
     <form id="savings-goal-form" onsubmit="submitSavingsGoal(event)" style="margin-bottom:1.25rem;">
       <div class="form-grid">
@@ -1799,7 +1805,7 @@ input:focus, select:focus, textarea:focus {
   <!-- Audit Log — Admin Only -->
   <div class="glass-card" id="audit-log-card" style="max-width:900px;display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-      <div class="card-title" style="margin-bottom:0;"><i data-lucide="clipboard-list" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Audit Log <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary);">(Admin Only)</span></div>
+      <div class="card-title" style="margin-bottom:0;"><i data-lucide="list" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Audit Log <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary);">(Admin Only)</span></div>
       <div class="flex-gap">
         <select id="audit-filter-table" onchange="loadAuditLog()" style="font-size:0.85rem;padding:0.4rem 0.7rem;">
           <option value="">All tables</option>
@@ -2354,6 +2360,8 @@ async function loadDashboard() {
   loadTrendChart();
   loadCategoryChart();
   loadSavingsChart();
+  loadIncomeVsSpendingChart();
+  loadSparklines();
   loadDashboardBills();
   loadDashboardBudgets();
   loadPersonSpending();
@@ -2442,11 +2450,21 @@ async function loadTrendChart() {
     data: {
       labels,
       datasets: [
-        {label:'Expenses', data:exp, borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.1)', tension:0.4, fill:true},
-        {label:'Income', data:inc, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.1)', tension:0.4, fill:true}
+        {label:'Income', data:inc, borderColor:'#00d4aa', backgroundColor:'rgba(0,212,170,0.12)', tension:0.4, fill:true, pointBackgroundColor:'#00d4aa', pointRadius:3, borderWidth:2},
+        {label:'Expenses', data:exp, borderColor:'#ff6b8a', backgroundColor:'rgba(255,107,138,0.1)', tension:0.4, fill:true, pointBackgroundColor:'#ff6b8a', pointRadius:3, borderWidth:2}
       ]
     },
-    options: { responsive:true, plugins:{legend:{position:'top'}}, scales:{y:{beginAtZero:true}} }
+    options: {
+      responsive:true,
+      plugins:{
+        legend:{position:'top', labels:{color:'rgba(255,255,255,0.6)', usePointStyle:true, pointStyleWidth:8}},
+        tooltip:{backgroundColor:'rgba(13,17,23,0.95)', titleColor:'#fff', bodyColor:'rgba(255,255,255,0.7)', borderColor:'rgba(0,212,170,0.2)', borderWidth:1}
+      },
+      scales:{
+        y:{beginAtZero:true, grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'rgba(255,255,255,0.4)', callback:v=>'$'+v.toLocaleString()}},
+        x:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'rgba(255,255,255,0.4)'}}
+      }
+    }
   });
 }
 
@@ -2455,7 +2473,7 @@ async function loadCategoryChart() {
   const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const res = await apiCall(`/api/stats/spending-by-category?month=${month}`);
   if (!res || !res.data.length) return;
-  const colors = ['#667eea','#764ba2','#10b981','#ef4444','#f59e0b','#06b6d4','#8b5cf6','#ec4899','#f97316','#14b8a6','#84cc16'];
+  const colors = ['#00d4aa','#0891b2','#6366f1','#f59e0b','#ff6b8a','#10b981','#8b5cf6','#f97316','#06b6d4','#a855f7','#ec4899'];
   const ctx = document.getElementById('category-chart').getContext('2d');
   if (catChart) catChart.destroy();
   catChart = new Chart(ctx, {
@@ -2466,7 +2484,11 @@ async function loadCategoryChart() {
     },
     options: {
       responsive: true,
-      plugins: { legend: { position:'bottom' } },
+      cutout: '68%',
+      plugins: {
+        legend: { position:'bottom', labels:{color:'rgba(255,255,255,0.6)', usePointStyle:true, pointStyleWidth:8, padding:12} },
+        tooltip:{backgroundColor:'rgba(13,17,23,0.95)', titleColor:'#fff', bodyColor:'rgba(255,255,255,0.7)', borderColor:'rgba(0,212,170,0.2)', borderWidth:1}
+      },
       onClick: (evt, elements) => {
         if (!elements.length) return;
         const label = res.data[elements[0].index].category;
@@ -2494,25 +2516,122 @@ async function loadSavingsChart() {
       datasets: [{
         label: 'Cumulative Savings',
         data: savings,
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16,185,129,0.15)',
+        borderColor: '#00d4aa',
+        backgroundColor: 'rgba(0,212,170,0.12)',
         tension: 0.4,
         fill: true,
         pointRadius: 4,
-        pointBackgroundColor: savings.map(v => v >= 0 ? '#10b981' : '#ef4444')
+        pointBackgroundColor: savings.map(v => v >= 0 ? '#00d4aa' : '#ff6b8a')
       }]
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false } },
+      plugins: { legend: { display: false },
+        tooltip:{backgroundColor:'rgba(13,17,23,0.95)', titleColor:'#fff', bodyColor:'rgba(255,255,255,0.7)', borderColor:'rgba(0,212,170,0.2)', borderWidth:1}
+      },
       scales: {
         y: {
           beginAtZero: false,
-          ticks: { callback: v => '$' + v.toLocaleString() }
-        }
+          grid: {color:'rgba(255,255,255,0.04)'},
+          ticks: { color:'rgba(255,255,255,0.4)', callback: v => '$' + v.toLocaleString() }
+        },
+        x: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'rgba(255,255,255,0.4)'} }
       }
     }
   });
+}
+
+// Income vs Spending Area Chart
+let incomeVsSpendingChart = null;
+async function loadIncomeVsSpendingChart() {
+  const res = await apiCall('/api/stats/monthly-trend');
+  if (!res || !res.data.length) return;
+  const labels = res.data.map(r => r.month);
+  const inc = res.data.map(r => r.income);
+  const exp = res.data.map(r => r.expenses);
+  const ctx = document.getElementById('income-vs-spending-chart');
+  if (!ctx) return;
+  if (incomeVsSpendingChart) incomeVsSpendingChart.destroy();
+  incomeVsSpendingChart = new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Income',
+          data: inc,
+          borderColor: '#00d4aa',
+          backgroundColor: 'rgba(0,212,170,0.12)',
+          tension: 0.4, fill: true,
+          pointBackgroundColor: '#00d4aa', pointRadius: 3, borderWidth: 2
+        },
+        {
+          label: 'Spending',
+          data: exp,
+          borderColor: '#ff6b8a',
+          backgroundColor: 'rgba(255,107,138,0.08)',
+          tension: 0.4, fill: true,
+          pointBackgroundColor: '#ff6b8a', pointRadius: 3, borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position:'top', labels:{color:'rgba(255,255,255,0.6)', usePointStyle:true, pointStyleWidth:8} },
+        tooltip: { backgroundColor:'rgba(13,17,23,0.95)', titleColor:'#fff', bodyColor:'rgba(255,255,255,0.7)', borderColor:'rgba(0,212,170,0.2)', borderWidth:1,
+          callbacks: { label: ctx => ' ' + ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString() }
+        }
+      },
+      scales: {
+        y: { beginAtZero:true, grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'rgba(255,255,255,0.4)', callback:v=>'$'+v.toLocaleString()} },
+        x: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'rgba(255,255,255,0.4)'} }
+      }
+    }
+  });
+}
+
+// Sparkline renderer — draws a tiny area chart in a canvas
+const _sparklineCharts = {};
+function renderSparkline(canvasId, data, color) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx || !data || data.length < 2) return;
+  if (_sparklineCharts[canvasId]) _sparklineCharts[canvasId].destroy();
+  _sparklineCharts[canvasId] = new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: data.map((_,i) => i),
+      datasets: [{
+        data,
+        borderColor: color,
+        backgroundColor: color.replace(')', ',0.15)').replace('rgb','rgba'),
+        borderWidth: 1.5, fill: true, tension: 0.4,
+        pointRadius: 0, pointHoverRadius: 0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: false,
+      plugins: { legend:{display:false}, tooltip:{enabled:false} },
+      scales: {
+        x: { display:false },
+        y: { display:false, beginAtZero:false }
+      }
+    }
+  });
+}
+
+async function loadSparklines() {
+  const res = await apiCall('/api/stats/monthly-trend');
+  if (!res || !res.data.length) return;
+  const exp  = res.data.map(r => r.expenses);
+  const inc  = res.data.map(r => r.income);
+  const net  = res.data.map(r => r.income - r.expenses);
+  renderSparkline('sparkline-bills',  exp,  '#ff6b8a');
+  renderSparkline('sparkline-left',   net,  '#00d4aa');
+  renderSparkline('sparkline-cc',     exp,  '#ff6b8a');
+  renderSparkline('sparkline-income', inc,  '#00d4aa');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3616,7 +3735,7 @@ function updateDashboardMonthLabel() {
   const now = new Date();
   const isCurrentMonth = _dashboardYear === now.getFullYear() && _dashboardMonth === now.getMonth()+1;
   document.getElementById('dashboard-month-label').textContent =
-    isCurrentMonth ? '<i data-lucide="calendar" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> This Month' : `📅 ${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
+    isCurrentMonth ? '<i data-lucide="calendar" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> This Month' : `<i data-lucide="calendar" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> ${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
   document.getElementById('dashboard-month-display').textContent =
     `${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
 }
@@ -3780,15 +3899,29 @@ async function loadAuditLog() {
 </script>
 
 <script>
-// Init Lucide icons
-document.addEventListener('DOMContentLoaded', () => {
-  if (typeof lucide !== 'undefined') lucide.createIcons();
-});
-// Re-init after dynamic content loads
-const _origLucideInit = window._lucideInit || (() => {});
-window.refreshIcons = () => {
-  if (typeof lucide !== 'undefined') lucide.createIcons();
-};
+// Init Lucide icons — run immediately, on DOMContentLoaded, and after any dynamic render
+function _initLucide() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+}
+_initLucide();
+document.addEventListener('DOMContentLoaded', _initLucide);
+window.refreshIcons = _initLucide;
+
+// Auto-refresh after innerHTML changes via MutationObserver
+(function() {
+  const observer = new MutationObserver(function(mutations) {
+    let needsRefresh = false;
+    mutations.forEach(m => {
+      if (m.addedNodes.length) needsRefresh = true;
+    });
+    if (needsRefresh) _initLucide();
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+})();
 </script>
 </body>
 </html>
@@ -4164,6 +4297,7 @@ const WIDGETS = [
   {id:'stat-card-cc',       label:'💳 CC Balance',         default:true},
   {id:'stat-card-income',   label:'📊 All-Time Income',    default:true},
   {id:'card-trend',         label:'📈 12-Month Trend',     default:true},
+  {id:'card-income-vs-spending', label:'📊 Income vs Spending', default:true},
   {id:'card-category',      label:'🍕 Category Chart',     default:true},
   {id:'card-bills',         label:'<i data-lucide="alert-circle" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;color:var(--warning)"></i> Upcoming Bills',     default:true},
   {id:'card-budgets',       label:'<i data-lucide="target" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Budget Status',      default:true},
