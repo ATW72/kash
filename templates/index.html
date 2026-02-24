@@ -1116,6 +1116,20 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   /* ── Search results ── */
   .search-results { left: 0; right: 0; width: auto; }
 
+  /* ── Hide desktop-only header buttons ── */
+  .header-icon-btn  { display: none !important; }
+  #theme-toggle     { display: none !important; }
+  .desktop-only     { display: none !important; }
+  #profile-trigger-initial { display: flex !important; }
+
+  /* ── Fix hero card: always 2x2 on mobile ── */
+  .hero-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  .hero-stat .value { font-size: 1.15rem !important; }
+  .hero-stat .label { font-size: 0.65rem !important; opacity: 0.75 !important; }
+
   /* ── Bottom nav ── */
   .mobile-nav {
     display: flex !important;
@@ -1177,6 +1191,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 /* ── Hide mobile nav on desktop ── */
 @media (min-width: 641px) {
   .mobile-nav, .more-drawer, .more-drawer-backdrop { display: none !important; }
+  #profile-trigger-initial { display: none !important; }
 }
 /* ── Savings goal card ── */
 .goal-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px;
@@ -1513,9 +1528,9 @@ input:focus, select:focus, textarea:focus {
     <button class="mobile-search-btn" id="mobile-search-btn" onclick="openMobileSearch()" title="Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg></button>
     <div class="profile-dropdown-wrapper" id="profile-dropdown-wrapper">
       <button class="profile-trigger" id="profile-trigger" onclick="toggleProfileDropdown()" aria-haspopup="true" aria-expanded="false">
-        <span id="user-greeting">Hi, admin 👋</span>
-        <span id="profile-trigger-initial" style="display:none;font-weight:800;font-size:0.88rem;color:#071c2e;">A</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="profile-chevron" style="transition:transform 0.2s;flex-shrink:0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <span id="user-greeting" class="desktop-only">Hi, admin 👋</span>
+        <span id="profile-trigger-initial" style="font-weight:800;font-size:0.88rem;color:#071c2e;">A</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="profile-chevron" class="desktop-only" style="transition:transform 0.2s;flex-shrink:0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
       <div class="profile-dropdown" id="profile-dropdown">
         <div class="profile-dropdown-header">
@@ -3677,7 +3692,6 @@ async function init() {
     if (avatar) avatar.textContent = displayName.charAt(0).toUpperCase();
     const initialSpan = document.getElementById('profile-trigger-initial');
     if (initialSpan) initialSpan.textContent = displayName.charAt(0).toUpperCase();
-    updateHeaderForScreenSize();
     if (me.user.is_admin) {
       const adminSec = document.getElementById('admin-dropdown-section');
       const adminDiv = document.getElementById('admin-dropdown-divider');
@@ -4928,19 +4942,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // PROFILE DROPDOWN
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Swap greeting ↔ initial based on screen width
-function updateHeaderForScreenSize() {
-  const isMob = window.innerWidth <= 640;
-  const greeting = document.getElementById('user-greeting');
-  const initial = document.getElementById('profile-trigger-initial');
-  const chevron = document.getElementById('profile-chevron');
-  if (greeting) greeting.style.display = isMob ? 'none' : '';
-  if (initial) initial.style.display = isMob ? '' : 'none';
-  if (chevron) chevron.style.display = isMob ? 'none' : '';
-}
-window.addEventListener('resize', updateHeaderForScreenSize);
-document.addEventListener('DOMContentLoaded', updateHeaderForScreenSize);
-
+// Header display handled by CSS media queries
 function toggleProfileDropdown() {
   const dropdown = document.getElementById('profile-dropdown');
   const trigger = document.getElementById('profile-trigger');
