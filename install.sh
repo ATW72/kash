@@ -337,16 +337,18 @@ build_container() {
   spinner $! "Downloading Kash from GitHub"
   msg_ok "Application files deployed"
 
-  # Python venv
+  # Python venv — run synchronously so errors are not swallowed by the spinner
   msg_info "Setting up Python environment"
   pct exec "$CTID" -- bash -c "
+    set -e
     cd /opt/kash
-    python3 -m venv venv &>/dev/null
-    venv/bin/pip install --quiet --upgrade pip &>/dev/null
-    venv/bin/pip install --quiet -r requirements.txt &>/dev/null
+    python3 -m venv venv
+    venv/bin/pip install --upgrade pip --quiet
+    venv/bin/pip install -r requirements.txt --quiet
     chown -R appuser:appuser venv
-  " &>/dev/null &
-  spinner $! "Setting up Python environment"
+  " 2>&1 | sed 's/^/    /' || { msg_error "pip install failed — check output above"; }
+  # Verify gunicorn actually landed
+  pct exec "$CTID" -- test -f /opt/kash/venv/bin/gunicorn || msg_error "gunicorn not found after pip install — aborting"
   msg_ok "Python environment ready"
 
   # Write .env
