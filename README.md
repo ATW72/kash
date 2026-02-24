@@ -150,8 +150,8 @@ multi-user support, bank statement import, AI categorization, and a native-quali
 - **Midnight Teal palette** — deep navy (#0a2540 → #0d3d52) with electric teal (#00d4aa) accents
 - **Outlined K wordmark** — custom SVG logo where the K is a teal outline, unique to Kash
 - **Inline SVG icons** — all icons are self-contained inline SVGs, zero CDN dependency, fully offline-capable
-- **System font stack** — uses the device's native sans-serif (SF Pro on iOS/macOS, Segoe UI on Windows, Roboto on Android) — no font CDN required
-- **Dark mode** — warm deep navy palette (`#091524` background, `#132030` cards) rather than pitch-black, preserving the teal accent depth
+- **DM Sans font** — loaded via Google Fonts CDN (`fonts.googleapis.com`), with a system font fallback (SF Pro, Segoe UI, Roboto) if the CDN is unavailable
+- **Dark mode** — warm deep navy palette (`#14233a` background, `#213348` cards) rather than pitch-black, preserving the teal accent depth
 - Dark mode persists across sessions including PWA mode
 
 ---
