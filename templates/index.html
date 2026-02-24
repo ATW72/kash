@@ -1558,7 +1558,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
         </div>
       </div>
     </div>
-    <button class="header-icon-btn desk-only" id="widget-toggle-btn" onclick="openWidgetToggle()" title="Customize dashboard widgets"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg></button>
+    <button class="header-icon-btn" id="widget-toggle-btn" onclick="openWidgetToggle()" title="Customize dashboard widgets" style="display:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg></button>
     <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" class="desk-only"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></button>
 
   </div>
@@ -1665,7 +1665,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
         </div>
       </div>
     </div>
-    <div class="hero-grid">
+    <div class="hero-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div class="hero-stat">
         <div class="label">Spent</div>
         <div class="value danger" id="stat-monthly-expenses">$0.00</div>
@@ -1702,11 +1702,11 @@ html, body { max-width: 100%; overflow-x: hidden; }
   </div>
 
   <!-- Secondary stats -->
-  <div class="stats-grid" style="margin-bottom:1.25rem;">
-    <div class="stat-card" id="stat-card-unpaid"><h3>Unpaid Bills</h3><p id="stat-unpaid-bills" class="danger">$0.00</p><canvas id="sparkline-bills" height="24" style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas></div>
-    <div class="stat-card" id="stat-card-left"><h3>Left After Bills</h3><p id="stat-left-after-bills">$0.00</p><canvas id="sparkline-left" height="24" style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas></div>
-    <div class="stat-card" id="stat-card-cc"><h3>CC Balance</h3><p id="stat-cc-balance" class="danger">$0.00</p><canvas id="sparkline-cc" height="24" style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas></div>
-    <div class="stat-card" id="stat-card-income"><h3>All-Time Income</h3><p id="stat-total-income" class="success">$0.00</p><canvas id="sparkline-income" height="24" style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas></div>
+  <div class="stats-grid" style="display:flex;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:8px;margin-bottom:1rem;-webkit-overflow-scrolling:touch;">
+    <div class="stat-card" id="stat-card-unpaid" style="flex:0 0 auto;min-width:110px;width:auto;"><h3>Unpaid Bills</h3><p id="stat-unpaid-bills" class="danger">$0.00</p><canvas id="sparkline-bills" height="24" style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas></div>
+    <div class="stat-card" id="stat-card-left" style="flex:0 0 auto;min-width:110px;width:auto;"><h3>Left After Bills</h3><p id="stat-left-after-bills">$0.00</p><canvas id="sparkline-left" height="24" style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas></div>
+    <div class="stat-card" id="stat-card-cc" style="flex:0 0 auto;min-width:110px;width:auto;"><h3>CC Balance</h3><p id="stat-cc-balance" class="danger">$0.00</p><canvas id="sparkline-cc" height="24" style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas></div>
+    <div class="stat-card" id="stat-card-income" style="flex:0 0 auto;min-width:110px;width:auto;"><h3>All-Time Income</h3><p id="stat-total-income" class="success">$0.00</p><canvas id="sparkline-income" height="24" style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas></div>
   </div>
 
   <!-- Charts row -->
