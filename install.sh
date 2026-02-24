@@ -301,14 +301,11 @@ build_container() {
   sleep 6
   msg_ok "Container started"
 
-  # Set DNS if static IP was chosen
+  # Set DNS if static IP was chosen — set at Proxmox level, no container exec needed
   if [ -n "$DNS_SERVER" ]; then
     msg_info "Configuring DNS"
-    pct exec "$CTID" -- bash -c "
-      echo 'nameserver ${DNS_SERVER}' > /etc/resolv.conf
-      chattr +i /etc/resolv.conf
-    " &>/dev/null
-    msg_ok "DNS set to ${DNS_SERVER} (locked)"
+    pct set "$CTID" --nameserver "$DNS_SERVER" &>/dev/null
+    msg_ok "DNS set to ${DNS_SERVER}"
   fi
 
   # Install system deps
