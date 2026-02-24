@@ -1,7 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
+<html lang="en"><head><meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kash</title>
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
@@ -19,7 +18,7 @@
 /* Fallback if Google Fonts CDN unavailable (self-hosted LXC) */
 body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 // ── Profile ──────────────────────────────────────────────────────────────────
 
@@ -117,10 +116,13 @@ async function deleteReceiptFromModal() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function loadNotificationPrefs() {
-  // Check if mail is configured (show banner if not)
-  const statusRes = await apiCall('/api/admin/mail-status');
-  if (statusRes && !statusRes.configured) {
-    document.getElementById('mail-status-banner').style.display = 'block';
+  // Only check mail status if current user is admin — otherwise skip silently
+  const me = await apiCall('/api/auth/me');
+  if (me && me.user.is_admin) {
+    const statusRes = await apiCall('/api/admin/mail-status');
+    if (statusRes && !statusRes.configured) {
+      document.getElementById('mail-status-banner').style.display = 'block';
+    }
   }
   const res = await apiCall('/api/users/notifications');
   if (!res) return;
@@ -560,10 +562,10 @@ async function loadAuditLog() {
   --teal: #00d4aa;
 }
 body.dark-mode {
-  --bg-primary: #0e1a2b; --bg-secondary: #091524;
-  --text-primary: #deeef5; --text-secondary: #7aaab8; --text-tertiary: #4a7080;
-  --card-bg: #132030; --input-bg: #0e1a2b; --input-border: rgba(0,212,170,0.18);
-  --shadow: rgba(0,0,0,0.35); --border: rgba(0,212,170,0.12);
+  --bg-primary: #1a2d42; --bg-secondary: #14233a;
+  --text-primary: #e8f4fa; --text-secondary: #90bfcf; --text-tertiary: #5d8fa0;
+  --card-bg: #213348; --input-bg: #1a2d42; --input-border: rgba(0,212,170,0.28);
+  --shadow: rgba(0,0,0,0.28); --border: rgba(0,212,170,0.18);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -755,18 +757,15 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .search-result-item:hover { background: var(--bg-secondary); }
 .search-result-item:last-child { border-bottom: none; }
 .search-result-label { font-size: 0.82rem; color: var(--text-secondary); }
-/* Search bar inside header — override generic input styles to fit the dark gradient navbar */
+/* Search input inside the header — blends into the dark gradient navbar */
 .header .search-wrapper input {
-  background: rgba(255,255,255,0.15);
-  border: 1.5px solid rgba(255,255,255,0.25);
-  color: #fff;
+  background: rgba(255,255,255,0.14); border: 1.5px solid rgba(255,255,255,0.25);
+  color: #fff; height: 38px; font-size: 0.9rem;
   padding: 0.5rem 0.9rem 0.5rem 2.5rem;
-  font-size: 0.9rem;
-  height: 38px;
 }
-.header .search-wrapper input::placeholder { color: rgba(255,255,255,0.6); }
-.header .search-wrapper input:focus { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.5); }
-.header .search-icon { color: rgba(255,255,255,0.7); }
+.header .search-wrapper input::placeholder { color: rgba(255,255,255,0.55); }
+.header .search-wrapper input:focus { background: rgba(255,255,255,0.21); border-color: rgba(255,255,255,0.5); outline: none; }
+.header .search-icon { color: rgba(255,255,255,0.65); }
 /* ── Hero month card ── */
 .hero-card { background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end)); border-radius: 20px; padding: 1.75rem; color: white; margin-bottom: 1.25rem; box-shadow: 0 8px 32px rgba(10,37,64,0.4); }
 .hero-card h2 { font-size: 1rem; opacity: 0.85; margin-bottom: 1rem; font-weight: 600; letter-spacing: 0.03em; }
@@ -1288,57 +1287,57 @@ input:focus, select:focus, textarea:focus {
 ::-webkit-scrollbar-thumb { background: rgba(0,212,170,0.3); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0,212,170,0.5); }
 </style>
-</head>
-<body>
+<style>@keyframes confettiFall { to { transform: translateY(100vh) rotate(720deg); opacity:0; } }</style></head>
+<body class="dark-mode">
 <!-- Header -->
 <div class="header">
   <h1><svg viewBox="0 0 88 26" height="22" style="vertical-align:middle;display:inline-block"><text y="21" font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="none" stroke="#00d4aa" stroke-width="1.3">K</text><text x="16" y="21" font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="#ffffff">ash</text></svg></h1>
   <!-- Desktop search -->
   <div class="search-wrapper desktop-search" style="flex:1; max-width:360px; margin: 0 auto;">
-    <span class="search-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+    <span class="search-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg></span>
     <input type="text" id="global-search" placeholder="Search expenses, income, bills..." oninput="globalSearch(this.value)" autocomplete="off">
     <div class="search-results" id="search-results" style="display:none;"></div>
   </div>
   <!-- Mobile search icon -->
-  <button class="mobile-search-btn" id="mobile-search-btn" onclick="openMobileSearch()" title="Search"><svg style="display:inline-block;vertical-align:middle" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></button>
+  <button class="mobile-search-btn" id="mobile-search-btn" onclick="openMobileSearch()" title="Search"><svg style="display:inline-block;vertical-align:middle" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg></button>
   <div class="header-right">
-    <span id="user-greeting">Hello!</span>
-    <button class="header-icon-btn" onclick="openWidgetToggle()" title="Customize dashboard widgets"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg></button>
-    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg></button>
-    <button class="btn-logout" onclick="doLogout()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>Logout</button>
+    <span id="user-greeting">Hi, admin 👋</span>
+    <button class="header-icon-btn" onclick="openWidgetToggle()" title="Customize dashboard widgets"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg></button>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></button>
+    <button class="btn-logout" onclick="doLogout()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>Logout</button>
   </div>
 </div>
 
 <!-- Tabs -->
 <div class="tabs">
-  <button class="tab-button active" data-tab="dashboard"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></span><span class="tab-label">Dashboard</span></button>
-  <button class="tab-button" data-tab="spending"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg></span><span class="tab-label">Spending</span></button>
-  <button class="tab-button" data-tab="income"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span><span class="tab-label">Income</span></button>
-  <button class="tab-button" data-tab="credit-cards"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span><span class="tab-label">Cards</span></button>
-  <button class="tab-button" data-tab="budgets"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span><span class="tab-label">Budgets</span></button>
-  <button class="tab-button" data-tab="reports"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg></span><span class="tab-label">Reports</span></button>
-  <button class="tab-button" data-tab="currencies"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span><span class="tab-label">Currencies</span></button>
-  <button class="tab-button" data-tab="import"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg></span><span class="tab-label">Import</span></button>
-  <button class="tab-button" data-tab="account"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="tab-label">Account</span></button>
+  <button class="tab-button active" data-tab="dashboard"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg></span><span class="tab-label">Dashboard</span></button>
+  <button class="tab-button" data-tab="spending"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg></span><span class="tab-label">Spending</span></button>
+  <button class="tab-button" data-tab="income"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg></span><span class="tab-label">Income</span></button>
+  <button class="tab-button" data-tab="credit-cards"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg></span><span class="tab-label">Cards</span></button>
+  <button class="tab-button" data-tab="budgets"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg></span><span class="tab-label">Budgets</span></button>
+  <button class="tab-button" data-tab="reports"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg></span><span class="tab-label">Reports</span></button>
+  <button class="tab-button" data-tab="currencies"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" x2="22" y1="12" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg></span><span class="tab-label">Currencies</span></button>
+  <button class="tab-button" data-tab="import"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg></span><span class="tab-label">Import</span></button>
+  <button class="tab-button" data-tab="account"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg></span><span class="tab-label">Account</span></button>
 </div>
 
 
 <!-- ══ Mobile Bottom Nav ══ -->
 <div class="mobile-nav" style="display:none;">
-  <button class="mobile-nav-btn active" data-tab="dashboard" onclick="switchTabMobile('dashboard',this)">
-    <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></span><span class="mn-label">Dashboard</span>
+  <button class="mobile-nav-btn active" data-tab="dashboard" onclick="switchTabMobile(&#39;dashboard&#39;,this)">
+    <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg></span><span class="mn-label">Dashboard</span>
   </button>
-  <button class="mobile-nav-btn" data-tab="spending" onclick="switchTabMobile('spending',this)">
-    <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg></span><span class="mn-label">Spending</span>
+  <button class="mobile-nav-btn" data-tab="spending" onclick="switchTabMobile(&#39;spending&#39;,this)">
+    <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg></span><span class="mn-label">Spending</span>
   </button>
-  <button class="mobile-nav-btn" data-tab="bills" onclick="switchTabMobile('bills',this)">
-    <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg></span><span class="mn-label">Bills</span>
+  <button class="mobile-nav-btn" data-tab="bills" onclick="switchTabMobile(&#39;bills&#39;,this)">
+    <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line><path d="m9 16 2 2 4-4"></path></svg></span><span class="mn-label">Bills</span>
   </button>
-  <button class="mobile-nav-btn" data-tab="income" onclick="switchTabMobile('income',this)">
-    <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span><span class="mn-label">Income</span>
+  <button class="mobile-nav-btn" data-tab="income" onclick="switchTabMobile(&#39;income&#39;,this)">
+    <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg></span><span class="mn-label">Income</span>
   </button>
   <button class="mobile-nav-btn" id="more-btn" onclick="openMoreDrawer()">
-    <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg></span><span class="mn-label">More</span>
+    <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg></span><span class="mn-label">More</span>
   </button>
 </div>
 
@@ -1347,26 +1346,26 @@ input:focus, select:focus, textarea:focus {
 <div class="more-drawer" id="more-drawer" style="display:none;">
   <div class="more-drawer-handle"></div>
   <div class="more-drawer-grid">
-    <button class="more-drawer-item" data-tab="budgets" onclick="switchTabMobile('budgets');closeMoreDrawer()">
-      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span><span>Budgets</span>
+    <button class="more-drawer-item" data-tab="budgets" onclick="switchTabMobile(&#39;budgets&#39;);closeMoreDrawer()">
+      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg></span><span>Budgets</span>
     </button>
-    <button class="more-drawer-item" data-tab="credit-cards" onclick="switchTabMobile('credit-cards');closeMoreDrawer()">
-      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span><span>Cards</span>
+    <button class="more-drawer-item" data-tab="credit-cards" onclick="switchTabMobile(&#39;credit-cards&#39;);closeMoreDrawer()">
+      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg></span><span>Cards</span>
     </button>
-    <button class="more-drawer-item" data-tab="reports" onclick="switchTabMobile('reports');closeMoreDrawer()">
-      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg></span><span>Reports</span>
+    <button class="more-drawer-item" data-tab="reports" onclick="switchTabMobile(&#39;reports&#39;);closeMoreDrawer()">
+      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg></span><span>Reports</span>
     </button>
-    <button class="more-drawer-item" data-tab="currencies" onclick="switchTabMobile('currencies');closeMoreDrawer()">
-      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span><span>Currencies</span>
+    <button class="more-drawer-item" data-tab="currencies" onclick="switchTabMobile(&#39;currencies&#39;);closeMoreDrawer()">
+      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" x2="22" y1="12" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg></span><span>Currencies</span>
     </button>
-    <button class="more-drawer-item" data-tab="import" onclick="switchTabMobile('import');closeMoreDrawer()">
-      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg></span><span>Import</span>
+    <button class="more-drawer-item" data-tab="import" onclick="switchTabMobile(&#39;import&#39;);closeMoreDrawer()">
+      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg></span><span>Import</span>
     </button>
     <button class="more-drawer-item" onclick="closeMoreDrawer();openWidgetToggle()">
-      <span class="mdi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></span><span>Widgets</span>
+      <span class="mdi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg></span><span>Widgets</span>
     </button>
-    <button class="more-drawer-item" data-tab="account" onclick="switchTabMobile('account');closeMoreDrawer()">
-      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span><span>Account</span>
+    <button class="more-drawer-item" data-tab="account" onclick="switchTabMobile(&#39;account&#39;);closeMoreDrawer()">
+      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg></span><span>Account</span>
     </button>
   </div>
 </div>
@@ -1376,8 +1375,7 @@ input:focus, select:focus, textarea:focus {
 <div class="mobile-search-overlay" id="mobile-search-overlay">
   <div class="mobile-search-bar">
     <span class="search-icon" style="left:1rem;">🔍</span>
-    <input type="text" id="mobile-search-input" placeholder="Search expenses, income, bills..."
-      oninput="globalSearch(this.value)" autocomplete="off" autocapitalize="off">
+    <input type="text" id="mobile-search-input" placeholder="Search expenses, income, bills..." oninput="globalSearch(this.value)" autocomplete="off" autocapitalize="off">
     <button class="mobile-search-cancel" onclick="closeMobileSearch()">Cancel</button>
   </div>
   <div class="search-results" id="mobile-search-results"></div>
@@ -1406,11 +1404,11 @@ input:focus, select:focus, textarea:focus {
   <!-- Hero: How am I doing this month? -->
   <div class="hero-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-      <h2 id="dashboard-month-label" style="margin:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg> This Month</h2>
+      <h2 id="dashboard-month-label" style="margin:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg> This Month</h2>
       <div style="display:flex;gap:0.5rem;align-items:center;">
         <div class="month-nav">
         <button onclick="shiftDashboardMonth(-1)">◀</button>
-        <span id="dashboard-month-display">—</span>
+        <span id="dashboard-month-display">February 2026</span>
         <button onclick="shiftDashboardMonth(1)">▶</button>
         </div>
       </div>
@@ -1418,15 +1416,15 @@ input:focus, select:focus, textarea:focus {
     <div class="hero-grid">
       <div class="hero-stat">
         <div class="label">Spent</div>
-        <div class="value danger" id="stat-monthly-expenses">$0</div>
+        <div class="value danger" id="stat-monthly-expenses">$0.00</div>
       </div>
       <div class="hero-stat">
         <div class="label">Earned</div>
-        <div class="value success" id="stat-monthly-income">$0</div>
+        <div class="value success" id="stat-monthly-income">$0.00</div>
       </div>
       <div class="hero-stat">
         <div class="label">Net Saved</div>
-        <div class="value" id="stat-net-saved">$0</div>
+        <div class="value success" id="stat-net-saved">$0.00</div>
       </div>
       <div class="hero-stat">
         <div class="label">Budget Used</div>
@@ -1438,10 +1436,17 @@ input:focus, select:focus, textarea:focus {
   <!-- Insights banner -->
   <div class="glass-card" id="widget-insights" style="padding:1rem 1.25rem;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-      <div class="card-title" style="margin:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Insights</div>
-      <span class="forecast-badge" id="forecast-badge" style="display:none;"><svg style="vertical-align:middle;margin-right:0.4rem;flex-shrink:0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> <span id="forecast-value"></span> forecast</span>
+      <div class="card-title" style="margin:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> Insights</div>
+      <span class="forecast-badge" id="forecast-badge" style="display:none;"><svg style="vertical-align:middle;margin-right:0.4rem;flex-shrink:0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg> <span id="forecast-value"></span> forecast</span>
     </div>
-    <div id="insights-list"><div style="color:var(--text-secondary);font-size:0.88rem;padding:0.5rem 0;">Analysing your spending…</div></div>
+    <div id="insights-list">
+    <div class="insight-card insight-info">
+      <div class="insight-icon">📈</div>
+      <div>
+        <div class="insight-title">Month-End Forecast</div>
+        <div class="insight-msg">At your current pace you'll spend $0.00 this month.</div>
+      </div>
+    </div></div>
   </div>
 
   <!-- Secondary stats -->
@@ -1455,39 +1460,35 @@ input:focus, select:focus, textarea:focus {
   <!-- Charts row -->
   <div class="dashboard-grid-2">
     <div class="glass-card" id="card-trend">
-      <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg> 12-Month Trend</div>
-      <canvas id="trend-chart" height="200"></canvas>
+      <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg> 12-Month Trend</div>
+      <canvas id="trend-chart" height="460" style="box-sizing: border-box; display: block; height: 345px; width: 518px;" width="691"></canvas>
     </div>
     <div class="glass-card" id="card-category">
-      <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg> Spending by Category <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">(click to filter)</span></div>
-      <canvas id="category-chart" height="200"></canvas>
-    </div>
+      <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg> Spending by Category <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">(click to filter)</span></div>
+      <canvas id="category-chart" height="200" style="display: none;"></canvas>
+    <div class="empty-state cat-empty" style="padding: 2rem 1rem;">No spending data for this month yet.</div></div>
   </div>
 
   <!-- NEW: Income vs Spending Area Chart — full width -->
   <div class="glass-card" id="card-income-vs-spending" style="margin-bottom:1.25rem;">
-    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> Income vs Spending <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">last 12 months</span></div>
+    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg> Income vs Spending <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">last 12 months</span></div>
     <canvas id="income-vs-spending-chart" height="120"></canvas>
   </div>
 
   <!-- Bills alerts + Budget mini -->
   <div class="dashboard-grid-2">
     <div class="glass-card" id="card-bills">
-      <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg> Upcoming Bills <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">next 7 days</span></div>
-      <div class="bill-alerts" id="dashboard-bill-alerts">
-        <div class="empty-state" style="padding:1rem;">No upcoming bills 🎉</div>
-      </div>
+      <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg> Upcoming Bills <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">next 7 days</span></div>
+      <div class="bill-alerts" id="dashboard-bill-alerts"><div class="empty-state" style="padding:1rem;">No upcoming bills 🎉</div></div>
     </div>
     <div class="glass-card" id="card-budgets">
-      <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Budget Status</div>
-      <div class="budget-mini" id="dashboard-budget-mini">
-        <div class="empty-state" style="padding:1rem;">No budgets set</div>
-      </div>
+      <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg> Budget Status</div>
+      <div class="budget-mini" id="dashboard-budget-mini"><div class="empty-state" style="padding:1rem;">No budgets set</div></div>
     </div>
   </div>
 
   <!-- Splits summary -->
-  <div class="glass-card" id="widget-splits" style="display:none;">
+  <div class="glass-card" id="widget-splits" style="">
     <div class="card-title">🤝 Who Owes What</div>
     <div id="dashboard-splits-list"><div class="empty-state" style="padding:1rem;">No outstanding splits</div></div>
   </div>
@@ -1495,14 +1496,12 @@ input:focus, select:focus, textarea:focus {
   <!-- Person spending + Savings trend -->
   <div class="dashboard-grid-2">
     <div class="glass-card" id="card-person">
-      <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Spending by Person <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">this month</span></div>
-      <div class="person-spending-grid" id="dashboard-person-spending">
-        <div class="empty-state" style="padding:1rem;">No data yet</div>
-      </div>
+      <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> Spending by Person <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">this month</span></div>
+      <div class="person-spending-grid" id="dashboard-person-spending"><div class="empty-state" style="padding:1rem;">No spending this month</div></div>
     </div>
     <div class="glass-card" id="card-savings">
-      <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> Cumulative Savings</div>
-      <canvas id="savings-chart" height="160"></canvas>
+      <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg> Cumulative Savings</div>
+      <canvas id="savings-chart" height="368" style="box-sizing: border-box; display: block; height: 276px; width: 518px;" width="691"></canvas>
     </div>
   </div>
 
@@ -1511,17 +1510,15 @@ input:focus, select:focus, textarea:focus {
 <!-- ═══════════════ SPENDING ═══════════════ -->
 <div class="tab-content" id="spending-tab">
   <div class="glass-card">
-    <div class="card-title"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Add Expense</div>
+    <div class="card-title"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Add Expense</div>
     <form id="expense-form" onsubmit="submitExpenseForm(event)">
       <div class="form-grid">
-        <div class="form-group"><label>Date *</label><input type="date" id="expense-date" required></div>
-        <div class="form-group"><label>Category *</label><select id="expense-category" required><option value="">-- Category --</option></select></div>
-        <div class="form-group"><label>Description *</label><input type="text" id="expense-description" placeholder="What was purchased?" required></div>
-        <div class="form-group"><label>Amount *</label><input type="number" id="expense-amount" step="0.01" min="0.01" placeholder="0.00" required></div>
+        <div class="form-group"><label>Date *</label><input type="date" id="expense-date" required=""></div>
+        <div class="form-group"><label>Category *</label><select id="expense-category" required=""><option value="">-- Category --</option><option value="Child Support">Child Support</option><option value="Dining Out">Dining Out</option><option value="Education">Education</option><option value="Entertainment">Entertainment</option><option value="Groceries">Groceries</option><option value="Healthcare">Healthcare</option><option value="Mortgage">Mortgage</option><option value="Other">Other</option><option value="Shopping">Shopping</option><option value="Transportation">Transportation</option><option value="Utilities">Utilities</option></select></div>
+        <div class="form-group"><label>Description *</label><input type="text" id="expense-description" placeholder="What was purchased?" required=""></div>
+        <div class="form-group"><label>Amount *</label><input type="number" id="expense-amount" step="0.01" min="0.01" placeholder="0.00" required=""></div>
         <div class="form-group"><label>Paid By *</label>
-          <select id="expense-paid-by" required>
-            <option value="">-- Person --</option>
-          </select>
+          <select id="expense-paid-by" required=""><option value="">-- Person --</option><option value="admin">admin</option></select>
         </div>
         <div class="form-group"><label>Payment Method</label>
           <select id="expense-payment-method">
@@ -1535,7 +1532,7 @@ input:focus, select:focus, textarea:focus {
         <div class="form-group"><label>Notes</label><textarea id="expense-notes" rows="2" placeholder="Optional notes..."></textarea></div>
       </div>
       <div style="margin-top:1rem; display:flex; gap:0.75rem;">
-        <button type="submit" id="expense-submit-btn"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg> Add Expense</button>
+        <button type="submit" id="expense-submit-btn"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg> Add Expense</button>
         <button type="button" class="btn-secondary" onclick="cancelExpenseEdit()">Cancel</button>
       </div>
       <input type="hidden" id="expense-edit-id">
@@ -1545,18 +1542,18 @@ input:focus, select:focus, textarea:focus {
     <div class="section-header">
       <span class="section-title">Expense History</span>
       <div class="flex-gap">
-        <button class="btn-sm btn-success" onclick="exportExpensesCSV()"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> CSV</button>
-        <button class="btn-sm" style="background:linear-gradient(90deg,#217346,#1a5c37)" onclick="exportExpensesExcel()"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> Excel</button>
+        <button class="btn-sm btn-success" onclick="exportExpensesCSV()"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg> CSV</button>
+        <button class="btn-sm" style="background:linear-gradient(90deg,#217346,#1a5c37)" onclick="exportExpensesExcel()"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg> Excel</button>
       </div>
     </div>
     <div class="filter-row">
       <input type="date" id="expense-filter-start" placeholder="From">
       <input type="date" id="expense-filter-end" placeholder="To">
-      <select id="expense-filter-category"><option value="">All Categories</option></select>
+      <select id="expense-filter-category"><option value="">All Categories</option><option value="Child Support">Child Support</option><option value="Dining Out">Dining Out</option><option value="Education">Education</option><option value="Entertainment">Entertainment</option><option value="Groceries">Groceries</option><option value="Healthcare">Healthcare</option><option value="Mortgage">Mortgage</option><option value="Other">Other</option><option value="Shopping">Shopping</option><option value="Transportation">Transportation</option><option value="Utilities">Utilities</option></select>
       <button class="btn-sm" onclick="loadExpenses()">🔍 Filter</button>
       <button class="btn-sm btn-secondary" onclick="clearExpenseFilter()">✕ Clear</button>
-      <button class="btn-sm btn-secondary" onclick="toggleAdvSearch()" id="adv-search-toggle"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="6" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="4" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="8" y2="3"/><line x1="1" x2="7" y1="14" y2="14"/><line x1="9" x2="15" y1="12" y2="12"/><line x1="17" x2="23" y1="16" y2="16"/></svg> Advanced</button>
-      <button class="mine-toggle" id="expense-mine-toggle" onclick="toggleMineFilter('expenses',this)"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Mine Only</button>
+      <button class="btn-sm btn-secondary" onclick="toggleAdvSearch()" id="adv-search-toggle"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="4" y1="21" y2="14"></line><line x1="4" x2="4" y1="6" y2="3"></line><line x1="12" x2="12" y1="21" y2="12"></line><line x1="12" x2="12" y1="4" y2="3"></line><line x1="20" x2="20" y1="21" y2="16"></line><line x1="20" x2="20" y1="8" y2="3"></line><line x1="1" x2="7" y1="14" y2="14"></line><line x1="9" x2="15" y1="12" y2="12"></line><line x1="17" x2="23" y1="16" y2="16"></line></svg> Advanced</button>
+      <button class="mine-toggle" id="expense-mine-toggle" onclick="toggleMineFilter(&#39;expenses&#39;,this)"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Mine Only</button>
     </div>
     <div class="adv-search-panel" id="adv-search-panel">
       <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.75rem;">
@@ -1581,23 +1578,23 @@ input:focus, select:focus, textarea:focus {
     </div>
     <div class="overflow-table"><div class="table-scroll-wrapper"><table class="expense-table">
       <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Paid By</th><th>Method</th><th>Actions</th></tr></thead>
-      <tbody id="expense-list"><tr><td colspan="7" class="empty-state"><div class="icon"><svg style="vertical-align:middle;flex-shrink:0" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg></div>No expenses yet</td></tr></tbody>
+      <tbody id="expense-list"><tr><td colspan="7" class="empty-state"><div class="icon"><svg style="vertical-align:middle;flex-shrink:0" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg></div>No expenses yet</td></tr></tbody>
     </table></div></div>
   </div>
 
   <!-- ── Bills Sub-Section ── -->
   <div class="glass-card collapsible-card">
-    <div class="collapsible-header" onclick="toggleSection('bills-section')">
-      <span class="card-title" style="margin-bottom:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg> Bills</span>
+    <div class="collapsible-header" onclick="toggleSection(&#39;bills-section&#39;)">
+      <span class="card-title" style="margin-bottom:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line><path d="m9 16 2 2 4-4"></path></svg> Bills</span>
       <span class="collapse-arrow" id="bills-section-arrow">▼</span>
     </div>
     <div id="bills-section" class="collapsible-body">
       <form id="bill-form" onsubmit="submitBillForm(event)" style="margin-bottom:1.25rem;">
         <div class="form-grid">
-          <div class="form-group"><label>Bill Name *</label><input type="text" id="bill-name" placeholder="e.g. Electric Bill" required></div>
-          <div class="form-group"><label>Amount *</label><input type="number" id="bill-amount" step="0.01" min="0.01" placeholder="0.00" required></div>
-          <div class="form-group"><label>Due Date *</label><input type="date" id="bill-due-date" required></div>
-          <div class="form-group"><label>Category</label><select id="bill-category"><option value="">-- Category --</option></select></div>
+          <div class="form-group"><label>Bill Name *</label><input type="text" id="bill-name" placeholder="e.g. Electric Bill" required=""></div>
+          <div class="form-group"><label>Amount *</label><input type="number" id="bill-amount" step="0.01" min="0.01" placeholder="0.00" required=""></div>
+          <div class="form-group"><label>Due Date *</label><input type="date" id="bill-due-date" required=""></div>
+          <div class="form-group"><label>Category</label><select id="bill-category"><option value="">-- Category --</option><option value="Child Support">Child Support</option><option value="Dining Out">Dining Out</option><option value="Education">Education</option><option value="Entertainment">Entertainment</option><option value="Groceries">Groceries</option><option value="Healthcare">Healthcare</option><option value="Mortgage">Mortgage</option><option value="Other">Other</option><option value="Shopping">Shopping</option><option value="Transportation">Transportation</option><option value="Utilities">Utilities</option></select></div>
           <div class="form-group"><label>Notes</label><textarea id="bill-notes" rows="2"></textarea></div>
           <div class="form-group" style="justify-content:flex-end;padding-top:0.5rem;">
             <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;font-weight:500;color:var(--text-primary);">
@@ -1615,15 +1612,15 @@ input:focus, select:focus, textarea:focus {
             </select>
           </div>
         </div>
-        <button type="submit" style="margin-top:0.75rem;"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg> Add Bill</button>
+        <button type="submit" style="margin-top:0.75rem;"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg> Add Bill</button>
       </form>
-      <div id="bills-list"></div>
+      <div id="bills-list"><div class="empty-state"><div class="icon">📅</div>No bills added</div></div>
     </div>
   </div>
 
   <!-- ── Recurring Sub-Section ── -->
   <div class="glass-card collapsible-card">
-    <div class="collapsible-header" onclick="toggleSection('recurring-section')">
+    <div class="collapsible-header" onclick="toggleSection(&#39;recurring-section&#39;)">
       <span class="card-title" style="margin-bottom:0;">🔄 Recurring Transactions</span>
       <span class="collapse-arrow" id="recurring-section-arrow">▼</span>
     </div>
@@ -1631,32 +1628,30 @@ input:focus, select:focus, textarea:focus {
       <form id="recurring-form" onsubmit="submitRecurringForm(event)" style="margin-bottom:1.25rem;">
         <div class="form-grid">
           <div class="form-group"><label>Type *</label>
-            <select id="rec-type" required>
+            <select id="rec-type" required="">
               <option value="expense">Expense</option>
               <option value="income">Income</option>
             </select>
           </div>
           <div class="form-group"><label>Frequency *</label>
-            <select id="rec-frequency" required>
+            <select id="rec-frequency" required="">
               <option value="weekly">Weekly</option>
               <option value="biweekly">Bi-Weekly</option>
               <option value="monthly">Monthly</option>
               <option value="yearly">Yearly</option>
             </select>
           </div>
-          <div class="form-group"><label>Next Date *</label><input type="date" id="rec-next-date" required></div>
-          <div class="form-group"><label>Description *</label><input type="text" id="rec-description" required></div>
-          <div class="form-group"><label>Amount *</label><input type="number" id="rec-amount" step="0.01" min="0.01" required></div>
-          <div class="form-group"><label>Category</label><select id="rec-category"><option value="">-- Category --</option></select></div>
+          <div class="form-group"><label>Next Date *</label><input type="date" id="rec-next-date" required=""></div>
+          <div class="form-group"><label>Description *</label><input type="text" id="rec-description" required=""></div>
+          <div class="form-group"><label>Amount *</label><input type="number" id="rec-amount" step="0.01" min="0.01" required=""></div>
+          <div class="form-group"><label>Category</label><select id="rec-category"><option value="">-- Category --</option><option value="Child Support">Child Support</option><option value="Dining Out">Dining Out</option><option value="Education">Education</option><option value="Entertainment">Entertainment</option><option value="Groceries">Groceries</option><option value="Healthcare">Healthcare</option><option value="Mortgage">Mortgage</option><option value="Other">Other</option><option value="Shopping">Shopping</option><option value="Transportation">Transportation</option><option value="Utilities">Utilities</option></select></div>
           <div class="form-group"><label>Person *</label>
-            <select id="rec-person" required>
-              <option value="">-- Person --</option>
-            </select>
+            <select id="rec-person" required=""><option value="">-- Person --</option><option value="admin">admin</option></select>
           </div>
         </div>
-        <button type="submit" style="margin-top:0.75rem;"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg> Add Recurring</button>
+        <button type="submit" style="margin-top:0.75rem;"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg> Add Recurring</button>
       </form>
-      <div id="recurring-list"></div>
+      <div id="recurring-list"><div class="empty-state"><div class="icon">🔄</div>No recurring transactions</div></div>
     </div>
   </div>
 </div>
@@ -1664,12 +1659,12 @@ input:focus, select:focus, textarea:focus {
 <!-- ═══════════════ INCOME ═══════════════ -->
 <div class="tab-content" id="income-tab">
   <div class="glass-card">
-    <div class="card-title"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Add Income</div>
+    <div class="card-title"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Add Income</div>
     <form id="income-form" onsubmit="submitIncomeForm(event)">
       <div class="form-grid">
-        <div class="form-group"><label>Date *</label><input type="date" id="income-date" required></div>
+        <div class="form-group"><label>Date *</label><input type="date" id="income-date" required=""></div>
         <div class="form-group"><label>Source *</label>
-          <select id="income-source" required>
+          <select id="income-source" required="">
             <option value="">-- Source --</option>
             <option value="Salary">Salary</option>
             <option value="Bonus">Bonus</option>
@@ -1678,17 +1673,15 @@ input:focus, select:focus, textarea:focus {
             <option value="Other">Other</option>
           </select>
         </div>
-        <div class="form-group"><label>Description *</label><input type="text" id="income-description" placeholder="Description" required></div>
-        <div class="form-group"><label>Amount *</label><input type="number" id="income-amount" step="0.01" min="0.01" placeholder="0.00" required></div>
+        <div class="form-group"><label>Description *</label><input type="text" id="income-description" placeholder="Description" required=""></div>
+        <div class="form-group"><label>Amount *</label><input type="number" id="income-amount" step="0.01" min="0.01" placeholder="0.00" required=""></div>
         <div class="form-group"><label>Received By *</label>
-          <select id="income-received-by" required>
-            <option value="">-- Person --</option>
-          </select>
+          <select id="income-received-by" required=""><option value="">-- Person --</option><option value="admin">admin</option></select>
         </div>
         <div class="form-group"><label>Notes</label><textarea id="income-notes" rows="2"></textarea></div>
       </div>
       <div style="margin-top:1rem; display:flex; gap:0.75rem;">
-        <button type="submit" id="income-submit-btn"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg> Add Income</button>
+        <button type="submit" id="income-submit-btn"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg> Add Income</button>
         <button type="button" class="btn-secondary" onclick="cancelIncomeEdit()">Cancel</button>
       </div>
       <input type="hidden" id="income-edit-id">
@@ -1697,11 +1690,11 @@ input:focus, select:focus, textarea:focus {
   <div class="glass-card">
     <div class="section-header">
       <span class="section-title">Income History</span>
-      <button class="btn-sm btn-success" onclick="exportIncomeCSV()"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> CSV</button>
+      <button class="btn-sm btn-success" onclick="exportIncomeCSV()"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg> CSV</button>
     </div>
     <div class="overflow-table"><div class="table-scroll-wrapper"><table class="expense-table">
       <thead><tr><th>Date</th><th>Source</th><th>Description</th><th>Amount</th><th>Received By</th><th>Actions</th></tr></thead>
-      <tbody id="income-list"><tr><td colspan="6" class="empty-state"><div class="icon"><svg style="vertical-align:middle;flex-shrink:0" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div>No income yet</td></tr></tbody>
+      <tbody id="income-list"><tr><td colspan="6" class="empty-state"><div class="icon"><svg style="vertical-align:middle;flex-shrink:0" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg></div>No income yet</td></tr></tbody>
     </table></div></div>
   </div>
 </div>
@@ -1709,24 +1702,22 @@ input:focus, select:focus, textarea:focus {
 <!-- ═══════════════ CREDIT CARDS ═══════════════ -->
 <div class="tab-content" id="credit-cards-tab">
   <div class="glass-card">
-    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg> Add Credit Card</div>
+    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg> Add Credit Card</div>
     <form id="credit-card-form" onsubmit="submitCreditCardForm(event)">
       <div class="form-grid">
         <div class="form-group"><label>Owner *</label>
-          <select id="credit-card-owner" required>
-            <option value="">-- Owner --</option>
-          </select>
+          <select id="credit-card-owner" required=""><option value="">-- Owner --</option><option value="admin">admin</option></select>
         </div>
-        <div class="form-group"><label>Card Name *</label><input type="text" id="credit-card-name" placeholder="e.g. Visa Gold" required></div>
+        <div class="form-group"><label>Card Name *</label><input type="text" id="credit-card-name" placeholder="e.g. Visa Gold" required=""></div>
         <div class="form-group"><label>Credit Limit</label><input type="number" id="credit-card-limit" step="0.01" placeholder="Optional"></div>
         <div class="form-group"><label>Manual Balance Override</label><input type="number" id="credit-card-manual-balance" step="0.01" placeholder="Leave blank to auto-calculate"></div>
       </div>
-      <button type="submit" style="margin-top:1rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Card</button>
+      <button type="submit" style="margin-top:1rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Card</button>
       <input type="hidden" id="cc-edit-id">
     </form>
   </div>
   <div class="credit-card-grid" id="credit-card-list">
-    <div class="empty-state"><div class="icon"><svg style="vertical-align:middle;flex-shrink:0" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></div>No credit cards added</div>
+    <div class="empty-state"><div class="icon"><svg style="vertical-align:middle;flex-shrink:0" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg></div>No credit cards added</div>
   </div>
 </div>
 
@@ -1734,27 +1725,27 @@ input:focus, select:focus, textarea:focus {
 <div class="tab-content" id="budgets-tab">
   <div class="glass-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-      <div class="card-title" style="margin-bottom:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Set Budget</div>
+      <div class="card-title" style="margin-bottom:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg> Set Budget</div>
       <div class="flex-gap">
-        <button class="btn-sm btn-secondary" onclick="copyLastMonthBudgets()"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg> Copy Last Month</button>
+        <button class="btn-sm btn-secondary" onclick="copyLastMonthBudgets()"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg> Copy Last Month</button>
         <button class="btn-sm btn-secondary" onclick="applyRollover()">🔄 Apply Rollover</button>
       </div>
     </div>
     <form id="budget-form" onsubmit="submitBudgetForm(event)">
       <div class="form-grid">
-        <div class="form-group"><label>Category *</label><select id="budget-category" required><option value="">-- Category --</option></select></div>
-        <div class="form-group"><label>Amount *</label><input type="number" id="budget-amount" step="0.01" min="0.01" placeholder="Budget amount" required></div>
+        <div class="form-group"><label>Category *</label><select id="budget-category" required=""><option value="">-- Category --</option><option value="Child Support">Child Support</option><option value="Dining Out">Dining Out</option><option value="Education">Education</option><option value="Entertainment">Entertainment</option><option value="Groceries">Groceries</option><option value="Healthcare">Healthcare</option><option value="Mortgage">Mortgage</option><option value="Other">Other</option><option value="Shopping">Shopping</option><option value="Transportation">Transportation</option><option value="Utilities">Utilities</option></select></div>
+        <div class="form-group"><label>Amount *</label><input type="number" id="budget-amount" step="0.01" min="0.01" placeholder="Budget amount" required=""></div>
         <div class="form-group"><label>Month *</label>
-          <select id="budget-month" required>
+          <select id="budget-month" required="">
             <option value="1">January</option><option value="2">February</option><option value="3">March</option>
             <option value="4">April</option><option value="5">May</option><option value="6">June</option>
             <option value="7">July</option><option value="8">August</option><option value="9">September</option>
             <option value="10">October</option><option value="11">November</option><option value="12">December</option>
           </select>
         </div>
-        <div class="form-group"><label>Year *</label><input type="number" id="budget-year" min="2020" max="2099" required></div>
+        <div class="form-group"><label>Year *</label><input type="number" id="budget-year" min="2020" max="2099" required=""></div>
       </div>
-      <button type="submit" style="margin-top:1rem;"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Set Budget</button>
+      <button type="submit" style="margin-top:1rem;"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Set Budget</button>
     </form>
   </div>
   <div id="budget-list"></div>
@@ -1762,15 +1753,15 @@ input:focus, select:focus, textarea:focus {
   <!-- Savings Goals -->
   <div class="glass-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-      <div class="card-title" style="margin-bottom:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> Savings Goals</div>
+      <div class="card-title" style="margin-bottom:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg> Savings Goals</div>
     </div>
     <form id="savings-goal-form" onsubmit="submitSavingsGoal(event)" style="margin-bottom:1.25rem;">
       <div class="form-grid">
-        <div class="form-group"><label>Goal Name *</label><input type="text" id="goal-name" placeholder="e.g. Emergency Fund" required></div>
-        <div class="form-group"><label>Target Amount *</label><input type="number" id="goal-amount" step="0.01" min="1" placeholder="0.00" required></div>
-        <div class="form-group"><label>Target Date *</label><input type="date" id="goal-date" required></div>
+        <div class="form-group"><label>Goal Name *</label><input type="text" id="goal-name" placeholder="e.g. Emergency Fund" required=""></div>
+        <div class="form-group"><label>Target Amount *</label><input type="number" id="goal-amount" step="0.01" min="1" placeholder="0.00" required=""></div>
+        <div class="form-group"><label>Target Date *</label><input type="date" id="goal-date" required=""></div>
       </div>
-      <button type="submit" style="margin-top:0.75rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Add Goal</button>
+      <button type="submit" style="margin-top:0.75rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Add Goal</button>
     </form>
     <div id="savings-goals-list"></div>
   </div>
@@ -1780,19 +1771,19 @@ input:focus, select:focus, textarea:focus {
 <!-- ═══════════════ REPORTS ═══════════════ -->
 <div class="tab-content" id="reports-tab">
   <div class="glass-card">
-    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg> Generate Report</div>
+    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg> Generate Report</div>
     <div class="form-grid">
       <div class="form-group"><label>Start Date</label><input type="date" id="report-start"></div>
       <div class="form-group"><label>End Date</label><input type="date" id="report-end"></div>
     </div>
     <div class="flex-gap" style="margin-top:1rem;">
-      <button onclick="exportExpensesCSV(true)"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> Expense CSV</button>
-      <button onclick="exportExpensesExcel()"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> Expense Excel</button>
-      <button class="btn-success" onclick="exportIncomeCSV()"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> Income CSV</button>
+      <button onclick="exportExpensesCSV(true)"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg> Expense CSV</button>
+      <button onclick="exportExpensesExcel()"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg> Expense Excel</button>
+      <button class="btn-success" onclick="exportIncomeCSV()"><svg style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg> Income CSV</button>
     </div>
   </div>
   <div class="glass-card" id="monthly-report-card">
-    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg> Monthly Summary</div>
+    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg> Monthly Summary</div>
     <div id="monthly-report-body"><div class="empty-state">Click to generate...</div></div>
     <button onclick="generateMonthlyReport()" style="margin-top:1rem;">Generate Report</button>
   </div>
@@ -1802,31 +1793,43 @@ input:focus, select:focus, textarea:focus {
 <!-- ═══════════════ CURRENCIES ═══════════════ -->
 <div class="tab-content" id="currencies-tab">
   <div class="glass-card" style="max-width:700px;">
-    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Currencies</div>
+    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" x2="22" y1="12" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> Currencies</div>
     <p style="color:var(--text-secondary);font-size:0.88rem;margin-bottom:1.25rem;">
       Set your home currency and add any currencies you spend in. All amounts are stored and displayed in your home currency. The exchange rate is how many units of the foreign currency equal 1 unit of your home currency.
     </p>
     <form id="currency-form" onsubmit="submitCurrency(event)" style="margin-bottom:1.5rem;">
       <div class="form-grid">
-        <div class="form-group"><label>Code *</label><input type="text" id="currency-code" placeholder="e.g. EUR" maxlength="3" style="text-transform:uppercase;" required></div>
-        <div class="form-group"><label>Name *</label><input type="text" id="currency-name" placeholder="e.g. Euro" required></div>
-        <div class="form-group"><label>Symbol *</label><input type="text" id="currency-symbol" placeholder="e.g. €" maxlength="3" required></div>
-        <div class="form-group"><label>Rate to Home *</label><input type="number" id="currency-rate" step="0.000001" min="0.000001" placeholder="e.g. 1.08" required></div>
+        <div class="form-group"><label>Code *</label><input type="text" id="currency-code" placeholder="e.g. EUR" maxlength="3" style="text-transform:uppercase;" required=""></div>
+        <div class="form-group"><label>Name *</label><input type="text" id="currency-name" placeholder="e.g. Euro" required=""></div>
+        <div class="form-group"><label>Symbol *</label><input type="text" id="currency-symbol" placeholder="e.g. €" maxlength="3" required=""></div>
+        <div class="form-group"><label>Rate to Home *</label><input type="number" id="currency-rate" step="0.000001" min="0.000001" placeholder="e.g. 1.08" required=""></div>
         <div class="form-group" style="justify-content:flex-end;padding-top:0.5rem;">
           <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;font-weight:500;">
             <input type="checkbox" id="currency-is-home" style="width:auto;accent-color:var(--primary);"> Set as home currency
           </label>
         </div>
       </div>
-      <button type="submit" style="margin-top:0.75rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Add Currency</button>
+      <button type="submit" style="margin-top:0.75rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Add Currency</button>
     </form>
-    <div id="currencies-list"></div>
+    <div id="currencies-list"><div class="table-scroll-wrapper"><table class="expense-table">
+    <thead><tr><th>Code</th><th>Name</th><th>Symbol</th><th>Rate to Home</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>USD</strong></td>
+        <td>US Dollar</td>
+        <td>$</td>
+        <td>1.0 (home)</td>
+        <td><span class="badge badge-success"><svg style="vertical-align:middle;margin-right:0.25rem;flex-shrink:0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> Home</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table></div></div>
   </div>
 
   <!-- Audit Log — Admin Only -->
   <div class="glass-card" id="audit-log-card" style="max-width:900px;display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-      <div class="card-title" style="margin-bottom:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg> Audit Log <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary);">(Admin Only)</span></div>
+      <div class="card-title" style="margin-bottom:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"></line><line x1="8" x2="21" y1="12" y2="12"></line><line x1="8" x2="21" y1="18" y2="18"></line><line x1="3" x2="3.01" y1="6" y2="6"></line><line x1="3" x2="3.01" y1="12" y2="12"></line><line x1="3" x2="3.01" y1="18" y2="18"></line></svg> Audit Log <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary);">(Admin Only)</span></div>
       <div class="flex-gap">
         <select id="audit-filter-table" onchange="loadAuditLog()" style="font-size:0.85rem;padding:0.4rem 0.7rem;">
           <option value="">All tables</option>
@@ -1848,18 +1851,18 @@ input:focus, select:focus, textarea:focus {
   <div class="glass-card" style="max-width:900px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
       <div>
-        <div class="card-title" style="margin-bottom:0.25rem;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg> Import Bank Statement</div>
+        <div class="card-title" style="margin-bottom:0.25rem;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg> Import Bank Statement</div>
         <div style="font-size:0.85rem;color:var(--text-secondary);">Upload a CSV or Excel export from your bank. Supports any bank format.</div>
       </div>
       <div id="ollama-status-badge" class="ollama-status">
-        <span class="ollama-dot grey" id="ollama-dot"></span>
-        <span id="ollama-status-text">Checking Ollama...</span>
+        <span class="ollama-dot green" id="ollama-dot"></span>
+        <span id="ollama-status-text">Ollama connected (http://ollama.k1ckr0cks.us)</span>
       </div>
     </div>
 
     <!-- Step 1: Upload -->
     <div id="import-step-1">
-      <div class="import-dropzone" id="import-dropzone" onclick="document.getElementById('import-file-input').click()">
+      <div class="import-dropzone" id="import-dropzone" onclick="document.getElementById(&#39;import-file-input&#39;).click()">
         <div class="dz-icon">📂</div>
         <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem;">Drop your bank CSV or Excel file here</div>
         <div style="color:var(--text-secondary);font-size:0.85rem;">or click to browse — supports .csv and .xlsx</div>
@@ -1875,16 +1878,16 @@ input:focus, select:focus, textarea:focus {
           <span style="color:var(--text-secondary);font-size:0.85rem;margin-left:0.75rem;">Review and adjust before importing</span>
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-          <button class="btn-sm btn-secondary" onclick="resetImport()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Start Over</button>
-          <button class="btn-sm btn-secondary" id="ollama-btn" onclick="runOllamaCategories()" style="display:none;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></svg> AI Categorize</button>
-          <button class="btn-sm" onclick="confirmImport()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Import Selected</button>
+          <button class="btn-sm btn-secondary" onclick="resetImport()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg> Start Over</button>
+          <button class="btn-sm btn-secondary" id="ollama-btn" onclick="runOllamaCategories()" style=""><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"></rect><rect width="6" height="6" x="9" y="9" rx="1"></rect><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"></path></svg> AI Categorize</button>
+          <button class="btn-sm" onclick="confirmImport()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Import Selected</button>
         </div>
       </div>
       <div style="overflow-x:auto;">
         <table class="import-preview-table">
           <thead>
             <tr>
-              <th style="width:40px;"><input type="checkbox" id="import-select-all" onchange="toggleSelectAll(this)" checked></th>
+              <th style="width:40px;"><input type="checkbox" id="import-select-all" onchange="toggleSelectAll(this)" checked=""></th>
               <th>Date</th>
               <th>Description</th>
               <th>Amount</th>
@@ -1899,16 +1902,16 @@ input:focus, select:focus, textarea:focus {
 
     <!-- Step 3: Result -->
     <div id="import-step-3" style="display:none;text-align:center;padding:2rem 0;">
-      <div style="margin-bottom:1rem;color:var(--teal)"><svg style="vertical-align:middle;flex-shrink:0" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+      <div style="margin-bottom:1rem;color:var(--teal)"><svg style="vertical-align:middle;flex-shrink:0" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
       <div id="import-result-text" style="font-size:1.2rem;font-weight:600;margin-bottom:0.5rem;"></div>
       <div id="import-skip-text" style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:1.5rem;"></div>
-      <button class="btn-sm" onclick="resetImport()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg> Import Another File</button>
+      <button class="btn-sm" onclick="resetImport()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg> Import Another File</button>
     </div>
   </div>
 
   <!-- Ollama Settings -->
   <div class="glass-card" style="max-width:900px;margin-top:1.5rem;">
-    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></svg> AI Categorization (Ollama)</div>
+    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"></rect><rect width="6" height="6" x="9" y="9" rx="1"></rect><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"></path></svg> AI Categorization (Ollama)</div>
     <p style="font-size:0.875rem;color:var(--text-secondary);margin:0 0 1rem;">Connect to a local Ollama instance for smarter transaction categorization. Your data never leaves your network.</p>
     <div class="form-grid">
       <div class="form-group">
@@ -1920,31 +1923,31 @@ input:focus, select:focus, textarea:focus {
         <input type="text" id="ollama-model-input" class="form-control" placeholder="llama3.1:8b">
       </div>
     </div>
-    <button class="btn-sm" onclick="saveOllamaSettings()" style="margin-top:0.5rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save & Test Connection</button>
+    <button class="btn-sm" onclick="saveOllamaSettings()" style="margin-top:0.5rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save &amp; Test Connection</button>
   </div>
 </div>
 
 <div class="tab-content" id="account-tab">
   <div class="glass-card" style="max-width:500px;">
-    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Your Profile</div>
+    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Your Profile</div>
     <form id="profile-form" onsubmit="updateProfile(event)">
       <div class="form-group"><label>Display Name</label>
         <input type="text" id="profile-display-name" placeholder="e.g. Anthony" maxlength="50">
         <span style="font-size:0.78rem;color:var(--text-secondary);">This is shown in the greeting instead of your username.</span>
       </div>
       <div class="form-group" style="margin-top:0.75rem;"><label>Username</label>
-        <input type="text" id="profile-username" disabled style="opacity:0.6;">
+        <input type="text" id="profile-username" disabled="" style="opacity:0.6;">
       </div>
-      <button type="submit" style="margin-top:1rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Profile</button>
+      <button type="submit" style="margin-top:1rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Profile</button>
     </form>
   </div>
 
   <div class="glass-card" style="max-width:500px;">
-    <div class="card-title"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Change Password</div>
+    <div class="card-title"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> Change Password</div>
     <form id="password-form" onsubmit="changePassword(event)">
-      <div class="form-group"><label>Current Password</label><input type="password" id="current-password" required></div>
-      <div class="form-group" style="margin-top:0.75rem;"><label>New Password</label><input type="password" id="new-password" required></div>
-      <div class="form-group" style="margin-top:0.75rem;"><label>Confirm New Password</label><input type="password" id="confirm-password" required></div>
+      <div class="form-group"><label>Current Password</label><input type="password" id="current-password" required=""></div>
+      <div class="form-group" style="margin-top:0.75rem;"><label>New Password</label><input type="password" id="new-password" required=""></div>
+      <div class="form-group" style="margin-top:0.75rem;"><label>Confirm New Password</label><input type="password" id="confirm-password" required=""></div>
       <button type="submit" style="margin-top:1rem;">Update Password</button>
     </form>
   </div>
@@ -1952,9 +1955,9 @@ input:focus, select:focus, textarea:focus {
     <div class="card-title">👥 User Management <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary)">(Admin Only)</span></div>
     <form id="new-user-form" onsubmit="createUser(event)" style="margin-bottom:1.5rem;">
       <div class="form-grid">
-        <div class="form-group"><label>Username</label><input type="text" id="new-username" required></div>
+        <div class="form-group"><label>Username</label><input type="text" id="new-username" required=""></div>
         <div class="form-group"><label>Display Name</label><input type="text" id="new-user-display-name" placeholder="e.g. Anthony"></div>
-        <div class="form-group"><label>Email Address</label><input type="email" id="new-user-email" placeholder="their@email.com" required></div>
+        <div class="form-group"><label>Email Address</label><input type="email" id="new-user-email" placeholder="their@email.com" required=""></div>
         <div class="form-group" style="justify-content:flex-end; padding-top:1.4rem;">
           <label style="display:flex;align-items:center;gap:0.5rem;">
             <input type="checkbox" id="new-user-admin" style="width:auto;"> Admin
@@ -1962,7 +1965,7 @@ input:focus, select:focus, textarea:focus {
         </div>
       </div>
       <p style="font-size:0.82rem;color:var(--text-secondary);margin:0.5rem 0 0.75rem;">A temporary password will be auto-generated and emailed to the user. They will be required to set their own password on first login.</p>
-      <button type="submit" style="margin-top:0.75rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg> Create User & Send Welcome Email</button>
+      <button type="submit" style="margin-top:0.75rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line><line x1="22" x2="16" y1="11" y2="11"></line></svg> Create User &amp; Send Welcome Email</button>
     </form>
     <div id="users-list"></div>
   </div>
@@ -1970,7 +1973,7 @@ input:focus, select:focus, textarea:focus {
 
   <!-- Notification Settings -->
   <div class="glass-card" style="max-width:600px;">
-    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg> Notification Settings</div>
+    <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg> Notification Settings</div>
     <div id="mail-status-banner" style="display:none;background:rgba(245,158,11,0.1);border:1px solid var(--warning);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.85rem;color:var(--warning);">
       ⚠️ Email is not configured on the server. Ask your admin to add MAIL_USERNAME and MAIL_PASSWORD to the .env file.
     </div>
@@ -1995,7 +1998,7 @@ input:focus, select:focus, textarea:focus {
         </label>
       </div>
       <div class="flex-gap">
-        <button type="submit"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Preferences</button>
+        <button type="submit"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Preferences</button>
         <button type="button" class="btn-secondary" onclick="sendTestNotification()">📧 Send Test Email</button>
       </div>
     </form>
@@ -2003,7 +2006,7 @@ input:focus, select:focus, textarea:focus {
 
   <!-- Backup / Restore — Admin Only -->
   <div class="glass-card" id="backup-card" style="max-width:700px; display:none;">
-    <div class="card-title">🗄️ Backup & Restore <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary)">(Admin Only)</span></div>
+    <div class="card-title">🗄️ Backup &amp; Restore <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary)">(Admin Only)</span></div>
 
     <div style="margin-bottom:1.5rem;">
       <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1rem;">
@@ -2037,15 +2040,15 @@ input:focus, select:focus, textarea:focus {
     <h3>🤝 Split Expense</h3>
     <div id="split-expense-info" style="background:var(--bg-secondary);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.9rem;"></div>
     <div class="split-mode-tabs">
-      <button class="split-mode-tab active" onclick="setSplitMode('even',this)">÷ Even</button>
-      <button class="split-mode-tab" onclick="setSplitMode('pct',this)">% Percentage</button>
-      <button class="split-mode-tab" onclick="setSplitMode('amount',this)">$ Amount</button>
+      <button class="split-mode-tab active" onclick="setSplitMode(&#39;even&#39;,this)">÷ Even</button>
+      <button class="split-mode-tab" onclick="setSplitMode(&#39;pct&#39;,this)">% Percentage</button>
+      <button class="split-mode-tab" onclick="setSplitMode(&#39;amount&#39;,this)">$ Amount</button>
     </div>
     <div id="split-rows-container"></div>
     <div id="split-validation" style="font-size:0.83rem;color:var(--danger);margin-top:0.5rem;min-height:1.2em;"></div>
     <div class="modal-btns" style="margin-top:1rem;">
       <button class="btn-secondary btn-sm" onclick="closeSplitModal()">Cancel</button>
-      <button class="btn-sm" onclick="saveSplits()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Splits</button>
+      <button class="btn-sm" onclick="saveSplits()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Splits</button>
     </div>
   </div>
 </div>
@@ -2058,7 +2061,7 @@ input:focus, select:focus, textarea:focus {
     <div class="widget-toggle-grid" id="widget-toggle-list"></div>
     <div class="modal-btns">
       <button class="btn-secondary btn-sm" onclick="closeWidgetToggle()">Cancel</button>
-      <button class="btn-sm" onclick="saveWidgetPrefs()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</button>
+      <button class="btn-sm" onclick="saveWidgetPrefs()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save</button>
     </div>
   </div>
 </div>
@@ -2066,9 +2069,9 @@ input:focus, select:focus, textarea:focus {
 <!-- ── Onboarding Overlay ── -->
 <div class="onboarding-backdrop" id="onboarding-backdrop">
   <div class="onboarding-modal">
-    <div class="onboarding-steps" id="onboarding-dots"></div>
-    <div class="onboarding-title" id="onboarding-title"></div>
-    <div class="onboarding-sub" id="onboarding-sub"></div>
+    <div class="onboarding-steps" id="onboarding-dots"><div class="onboarding-step-dot active"></div><div class="onboarding-step-dot "></div><div class="onboarding-step-dot "></div><div class="onboarding-step-dot "></div><div class="onboarding-step-dot "></div><div class="onboarding-step-dot "></div></div>
+    <div class="onboarding-title" id="onboarding-title">👋 Welcome to Kash!</div>
+    <div class="onboarding-sub" id="onboarding-sub">Let's get you set up in about 2 minutes. We'll walk through the essentials so you can start tracking your finances right away.</div>
     <div id="onboarding-step-content"></div>
     <div class="onboarding-nav">
       <button class="btn-secondary btn-sm" onclick="skipOnboarding()">Skip setup</button>
@@ -2118,7 +2121,7 @@ input:focus, select:focus, textarea:focus {
       <input type="password" id="force-pw-confirm" placeholder="Repeat new password" class="form-control">
     </div>
     <div id="force-pw-error" style="color:var(--danger);font-size:0.85rem;margin-top:0.5rem;display:none;"></div>
-    <button class="btn-primary" style="width:100%;margin-top:1.5rem;" onclick="submitForcePassword()">Set Password & Continue →</button>
+    <button class="btn-primary" style="width:100%;margin-top:1.5rem;" onclick="submitForcePassword()">Set Password &amp; Continue →</button>
   </div>
 </div>
 
@@ -2126,7 +2129,7 @@ input:focus, select:focus, textarea:focus {
 <!-- ── Edit User Modal ── -->
 <div class="modal-backdrop" id="edit-user-modal-backdrop">
   <div class="modal" style="max-width:480px;">
-    <h3><svg style="display:inline-block;vertical-align:middle;margin-right:0.2rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg> Edit User</h3>
+    <h3><svg style="display:inline-block;vertical-align:middle;margin-right:0.2rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg> Edit User</h3>
     <input type="hidden" id="edit-user-id">
     <div class="form-group" style="margin-bottom:0.75rem;">
       <label>Username</label>
@@ -2147,12 +2150,12 @@ input:focus, select:focus, textarea:focus {
     </div>
     <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;">
       <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.875rem;cursor:pointer;">
-        <input type="checkbox" id="edit-user-reset-pw"> <svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg> Reset password — generate new temp password and email to user
+        <input type="checkbox" id="edit-user-reset-pw"> <svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="m21 2-9.6 9.6"></path><path d="m15.5 7.5 3 3L22 7l-3-3"></path></svg> Reset password — generate new temp password and email to user
       </label>
     </div>
     <div class="modal-btns">
       <button class="btn-secondary btn-sm" onclick="closeEditUserModal()">Cancel</button>
-      <button class="btn-sm" onclick="saveEditUser()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Changes</button>
+      <button class="btn-sm" onclick="saveEditUser()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Changes</button>
     </div>
   </div>
 </div>
@@ -2170,7 +2173,7 @@ input:focus, select:focus, textarea:focus {
     </div>
     <div class="modal-btns">
       <button class="btn-secondary btn-sm" onclick="closeReceiptModal()">Cancel</button>
-      <button class="btn-danger btn-sm" id="receipt-delete-btn" style="display:none;" onclick="deleteReceiptFromModal()"><svg style="display:inline-block;vertical-align:middle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg> Remove</button>
+      <button class="btn-danger btn-sm" id="receipt-delete-btn" style="display:none;" onclick="deleteReceiptFromModal()"><svg style="display:inline-block;vertical-align:middle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg> Remove</button>
       <button class="btn-sm" onclick="saveReceipt()">📎 Save Receipt</button>
     </div>
   </div>
@@ -2189,13 +2192,13 @@ input:focus, select:focus, textarea:focus {
     </div>
     <form onsubmit="submitQuickAdd(event)">
       <div class="form-grid" style="grid-template-columns:1fr 1fr;">
-        <div class="form-group"><label>Date *</label><input type="date" id="qa-date" required></div>
-        <div class="form-group"><label>Amount *</label><input type="number" id="qa-amount" step="0.01" min="0.01" placeholder="0.00" required></div>
-        <div class="form-group"><label>Category *</label><select id="qa-category" required><option value="">-- Category --</option></select></div>
-        <div class="form-group"><label>Paid By *</label><select id="qa-paid-by" required><option value="">-- Person --</option></select></div>
+        <div class="form-group"><label>Date *</label><input type="date" id="qa-date" required=""></div>
+        <div class="form-group"><label>Amount *</label><input type="number" id="qa-amount" step="0.01" min="0.01" placeholder="0.00" required=""></div>
+        <div class="form-group"><label>Category *</label><select id="qa-category" required=""><option value="">-- Category --</option></select></div>
+        <div class="form-group"><label>Paid By *</label><select id="qa-paid-by" required=""><option value="">-- Person --</option></select></div>
       </div>
-      <div class="form-group" style="margin-top:0.75rem;"><label>Description *</label><input type="text" id="qa-description" placeholder="What was purchased?" required></div>
-      <button type="submit" style="width:100%;margin-top:1rem;"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg> Add Expense</button>
+      <div class="form-group" style="margin-top:0.75rem;"><label>Description *</label><input type="text" id="qa-description" placeholder="What was purchased?" required=""></div>
+      <button type="submit" style="width:100%;margin-top:1rem;"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg> Add Expense</button>
     </form>
   </div>
 </div>
@@ -4658,5 +4661,5 @@ document.addEventListener('click', e => {
   }
 });
 </script>
-</body>
-</html>
+
+</body></html>
