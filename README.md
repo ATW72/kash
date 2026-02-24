@@ -19,14 +19,13 @@ multi-user support, bank statement import, AI categorization, and a native-quali
 - **Who Owes What** — outstanding split balances across the household at a glance
 - **Spending by person** — household member breakdown for the current month
 - **Cumulative savings chart** — track whether savings are trending up or down
-- **Widget toggle** — show or hide any dashboard card, saved per user
+- **Widget toggle** — show or hide any dashboard card, saved per user — accessible from the header (⚙️) on desktop or the More drawer on mobile
 
 ### 💸 Spending
 - Add, edit, and delete expenses with category, payment method, and notes
 - **Receipt photo attachment** — photograph or upload receipts tied to any expense
 - **Expandable rows** — click any row to see full notes, original currency, and receipt link
 - **Duplicate detection** — warns before saving if a similar expense already exists
-- **Quick-add floating button** — add an expense from any tab in seconds
 
 ### 💵 Income
 - Track income by source (salary, bonus, investment, etc.)
@@ -110,7 +109,8 @@ multi-user support, bank statement import, AI categorization, and a native-quali
 - **Largest expense** highlight each month
 
 ### 🔍 Advanced Search & Filter
-- Real-time global search across expenses, income, and bills from the header bar
+- **Desktop** — real-time search bar in the header across expenses, income, and bills
+- **Mobile** — tap the 🔍 icon for a full-screen search overlay
 - Filter expenses by keyword, person, payment method, amount range, and date simultaneously
 
 ### 🤝 Bill Splitting
@@ -131,11 +131,16 @@ multi-user support, bank statement import, AI categorization, and a native-quali
 - Each step can be skipped individually
 
 ### 📱 Mobile / PWA — Native Quality
-- **5-tab bottom navigation** — Dashboard, Spending, Income, Budgets, + More
-- **"More" drawer** — remaining tabs slide up from the bottom, swipe down to dismiss
-- **iPhone safe area support** — proper padding for notch and home indicator on all fixed elements (nav, FAB, modals, toasts)
+- **Priority bottom navigation** — Dashboard, Spending, Bills, Income, + More (ordered by daily use)
+- **"More" drawer** — Budgets, Cards, Reports, Currencies, Import, Widgets, Account — slides up from the bottom, swipe down to dismiss
+- **Full-screen search overlay** — tap the 🔍 icon in the header to open a full-width search, no cramped text box
+- **iPhone safe area support** — proper padding for notch and home indicator on all fixed elements
 - **Swipeable tables** — horizontal scroll on all data tables
-- **Slide-up modals** — modals animate from the bottom on mobile
+- **Slide-up modals** — modals animate from the bottom on mobile, feel native
+- **Clean header** — no floating buttons or clutter, widget toggle moved to header icon and More drawer
+- **Midnight Teal color palette** — deep navy with electric teal accents, distinctive and premium
+- **Lucide icon library** — consistent, clean SVG icons throughout (no emoji icons in UI)
+- **DM Sans typography** — modern, highly readable font
 - Dark mode persists across sessions including PWA mode
 - Install as a home screen app on iPhone and Android
 
@@ -301,7 +306,7 @@ python main.py
 | Backend | Python / Flask |
 | WSGI Server | Gunicorn (3 workers) |
 | Database | SQLite |
-| Frontend | Vanilla JS, Chart.js |
+| Frontend | Vanilla JS, Chart.js, Lucide Icons |
 | Email | Flask-Mail (Gmail SMTP) |
 | Scheduler | APScheduler |
 | AI | Ollama (local LLM, optional) |

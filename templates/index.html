@@ -13,6 +13,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Kash">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
 
 // ── Profile ──────────────────────────────────────────────────────────────────
@@ -301,7 +304,7 @@ async function loadSavingsGoals() {
         <div style="text-align:right;">
           <span class="amount-positive">${formatCurrency(g.current_savings)}</span>
           <span style="color:var(--text-secondary);"> / ${formatCurrency(g.target_amount)}</span>
-          <button class="btn-sm btn-danger" style="margin-left:0.5rem;" onclick="deleteSavingsGoal(${g.id},'${g.name.replace(/'/g,"\'")}')">🗑️</button>
+          <button class="btn-sm btn-danger" style="margin-left:0.5rem;" onclick="deleteSavingsGoal(${g.id},'${g.name.replace(/'/g,"\'")}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>
         </div>
       </div>
       <div class="goal-progress-bar">
@@ -472,7 +475,7 @@ async function loadCurrencies() {
         <td>${c.symbol}</td>
         <td>${c.is_home ? '1.0 (home)' : c.rate_to_home}</td>
         <td>${c.is_home ? '<span class="badge badge-success">🏠 Home</span>' : '<span class="badge badge-primary">Foreign</span>'}</td>
-        <td>${!c.is_home ? `<button class="btn-sm btn-danger" onclick="deleteCurrency(${c.id},'${c.code}')">🗑️</button>` : ''}</td>
+        <td>${!c.is_home ? `<button class="btn-sm btn-danger" onclick="deleteCurrency(${c.id},'${c.code}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>` : ''}</td>
       </tr>`).join('')}
     </tbody>
   </table></div>`;
@@ -541,34 +544,39 @@ async function loadAuditLog() {
 </script>
 <style>
 :root {
-  --primary: #667eea; --primary-dark: #5568d3; --secondary: #764ba2;
-  --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
-  --bg-primary: #ffffff; --bg-secondary: #f9fafb;
-  --text-primary: #1f2937; --text-secondary: #6b7280; --text-tertiary: #9ca3af;
-  --card-bg: #ffffff; --input-bg: #ffffff; --input-border: #e5e7eb;
-  --shadow: rgba(0,0,0,0.1);
-  --gradient-start: #667eea; --gradient-end: #764ba2;
-  --border: #e5e7eb;
+  --primary: #00d4aa; --primary-dark: #00b894; --secondary: #0d3d52;
+  --success: #00d4aa; --danger: #ff6b8a; --warning: #fbbf24;
+  --bg-primary: #f0f7f9; --bg-secondary: #e4f0f4;
+  --text-primary: #0a2540; --text-secondary: #4a6d7c; --text-tertiary: #8aaab6;
+  --card-bg: #ffffff; --input-bg: #ffffff; --input-border: #c8dfe7;
+  --shadow: rgba(10,37,64,0.1);
+  --gradient-start: #0a2540; --gradient-end: #0d3d52;
+  --border: #c8dfe7;
+  --teal: #00d4aa;
 }
 body.dark-mode {
-  --bg-primary: #1a1a2e; --bg-secondary: #16213e;
-  --text-primary: #e4e4e7; --text-secondary: #a1a1aa; --text-tertiary: #71717a;
-  --card-bg: #0f3460; --input-bg: #16213e; --input-border: rgba(255,255,255,0.1);
-  --shadow: rgba(0,0,0,0.3); --border: rgba(255,255,255,0.1);
+  --bg-primary: #0d1117; --bg-secondary: #0a0e14;
+  --text-primary: #e2f0f5; --text-secondary: #7aaab8; --text-tertiary: #4a7080;
+  --card-bg: #131920; --input-bg: #0d1117; --input-border: rgba(0,212,170,0.15);
+  --shadow: rgba(0,0,0,0.4); --border: rgba(0,212,170,0.1);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg-secondary); color: var(--text-primary); transition: all 0.3s; }
 /* ── Header ── */
 .header {
   background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
   padding: 1rem 1.5rem; display: flex; align-items: center;
-  justify-content: space-between; box-shadow: 0 4px 20px rgba(102,126,234,0.4);
+  justify-content: space-between; box-shadow: 0 4px 20px rgba(0,212,170,0.2);
   position: sticky; top: 0; z-index: 100;
 }
 .header h1 { color: white; font-size: 1.4rem; font-weight: 800; }
 .header-right { display: flex; gap: 0.75rem; align-items: center; }
 .header-right span { color: rgba(255,255,255,0.85); font-size: 0.85rem; }
+.header-icon-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+  color: white; border-radius: 50%; width: 36px; height: 36px; cursor: pointer;
+  font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+.header-icon-btn:hover { background: rgba(255,255,255,0.3); }
 #theme-toggle { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
   color: white; border-radius: 50%; width: 36px; height: 36px; cursor: pointer;
   font-size: 1rem; display: flex; align-items: center; justify-content: center; }
@@ -739,7 +747,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .search-result-item:last-child { border-bottom: none; }
 .search-result-label { font-size: 0.82rem; color: var(--text-secondary); }
 /* ── Hero month card ── */
-.hero-card { background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end)); border-radius: 20px; padding: 1.75rem; color: white; margin-bottom: 1.25rem; box-shadow: 0 8px 32px rgba(102,126,234,0.35); }
+.hero-card { background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end)); border-radius: 20px; padding: 1.75rem; color: white; margin-bottom: 1.25rem; box-shadow: 0 8px 32px rgba(10,37,64,0.4); }
 .hero-card h2 { font-size: 1rem; opacity: 0.85; margin-bottom: 1rem; font-weight: 600; letter-spacing: 0.03em; }
 .hero-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
 .hero-stat { text-align: center; }
@@ -1127,57 +1135,65 @@ canvas.sparkline { vertical-align:middle; }
   .mobile-search-btn { display: none !important; }
   .mobile-search-overlay { display: none !important; }
 }
+
+/* ── Lucide Icons ── */
+[data-lucide] { stroke-width: 1.75; flex-shrink: 0; }
+.tab-icon [data-lucide] { vertical-align: middle; }
+.mn-icon [data-lucide] { display: block; margin: 0 auto; }
+.mdi [data-lucide] { display: block; margin: 0 auto; }
+.search-icon [data-lucide] { color: var(--text-secondary); }
 </style>
 </head>
 <body>
 <!-- Header -->
 <div class="header">
-  <h1>💸 Kash</h1>
+  <h1><i data-lucide="banknote" style="width:22px;height:22px;display:inline-block;vertical-align:middle;margin-right:0.4rem;"></i> Kash</h1>
   <!-- Desktop search -->
   <div class="search-wrapper desktop-search" style="flex:1; max-width:320px; margin: 0 1rem;">
-    <span class="search-icon">🔍</span>
+    <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span>
     <input type="text" id="global-search" placeholder="Search expenses, income, bills..." oninput="globalSearch(this.value)" autocomplete="off">
     <div class="search-results" id="search-results" style="display:none;"></div>
   </div>
   <!-- Mobile search icon -->
-  <button class="mobile-search-btn" id="mobile-search-btn" onclick="openMobileSearch()" title="Search">🔍</button>
+  <button class="mobile-search-btn" id="mobile-search-btn" onclick="openMobileSearch()" title="Search"><i data-lucide="search" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i></button>
   <div class="header-right">
     <span id="user-greeting">Hello!</span>
-    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
-    <button class="btn-logout" onclick="doLogout()">Logout</button>
+    <button class="header-icon-btn" onclick="openWidgetToggle()" title="Customize dashboard widgets"><i data-lucide="layout-dashboard" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i></button>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode"><i data-lucide="moon" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i></button>
+    <button class="btn-logout" onclick="doLogout()"><i data-lucide="log-out" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i>Logout</button>
   </div>
 </div>
 
 <!-- Tabs -->
 <div class="tabs">
-  <button class="tab-button active" data-tab="dashboard"><span class="tab-icon">📊</span><span class="tab-label">Dashboard</span></button>
-  <button class="tab-button" data-tab="spending"><span class="tab-icon">💸</span><span class="tab-label">Spending</span></button>
-  <button class="tab-button" data-tab="income"><span class="tab-icon">💵</span><span class="tab-label">Income</span></button>
-  <button class="tab-button" data-tab="credit-cards"><span class="tab-icon">💳</span><span class="tab-label">Cards</span></button>
-  <button class="tab-button" data-tab="budgets"><span class="tab-icon">🎯</span><span class="tab-label">Budgets</span></button>
-  <button class="tab-button" data-tab="reports"><span class="tab-icon">📈</span><span class="tab-label">Reports</span></button>
-  <button class="tab-button" data-tab="currencies"><span class="tab-icon">💱</span><span class="tab-label">Currencies</span></button>
-  <button class="tab-button" data-tab="import"><span class="tab-icon">📥</span><span class="tab-label">Import</span></button>
-  <button class="tab-button" data-tab="account"><span class="tab-icon">⚙️</span><span class="tab-label">Account</span></button>
+  <button class="tab-button active" data-tab="dashboard"><span class="tab-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Dashboard</span></button>
+  <button class="tab-button" data-tab="spending"><span class="tab-icon"><i data-lucide="credit-card" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Spending</span></button>
+  <button class="tab-button" data-tab="income"><span class="tab-icon"><i data-lucide="trending-up" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Income</span></button>
+  <button class="tab-button" data-tab="credit-cards"><span class="tab-icon"><i data-lucide="wallet" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Cards</span></button>
+  <button class="tab-button" data-tab="budgets"><span class="tab-icon"><i data-lucide="target" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Budgets</span></button>
+  <button class="tab-button" data-tab="reports"><span class="tab-icon"><i data-lucide="bar-chart-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Reports</span></button>
+  <button class="tab-button" data-tab="currencies"><span class="tab-icon"><i data-lucide="globe" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Currencies</span></button>
+  <button class="tab-button" data-tab="import"><span class="tab-icon"><i data-lucide="upload" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Import</span></button>
+  <button class="tab-button" data-tab="account"><span class="tab-icon"><i data-lucide="settings" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Account</span></button>
 </div>
 
 
 <!-- ══ Mobile Bottom Nav ══ -->
 <div class="mobile-nav" style="display:none;">
   <button class="mobile-nav-btn active" data-tab="dashboard" onclick="switchTabMobile('dashboard',this)">
-    <span class="mn-icon">📊</span><span class="mn-label">Dashboard</span>
+    <span class="mn-icon"><i data-lucide="layout-dashboard" style="width:22px;height:22px;display:inline-block;vertical-align:middle;"></i></span><span class="mn-label">Dashboard</span>
   </button>
   <button class="mobile-nav-btn" data-tab="spending" onclick="switchTabMobile('spending',this)">
-    <span class="mn-icon">💸</span><span class="mn-label">Spending</span>
+    <span class="mn-icon"><i data-lucide="credit-card" style="width:22px;height:22px;display:inline-block;vertical-align:middle;"></i></span><span class="mn-label">Spending</span>
   </button>
   <button class="mobile-nav-btn" data-tab="bills" onclick="switchTabMobile('bills',this)">
-    <span class="mn-icon">📅</span><span class="mn-label">Bills</span>
+    <span class="mn-icon"><i data-lucide="calendar-check" style="width:22px;height:22px;display:inline-block;vertical-align:middle;"></i></span><span class="mn-label">Bills</span>
   </button>
   <button class="mobile-nav-btn" data-tab="income" onclick="switchTabMobile('income',this)">
-    <span class="mn-icon">💵</span><span class="mn-label">Income</span>
+    <span class="mn-icon"><i data-lucide="trending-up" style="width:22px;height:22px;display:inline-block;vertical-align:middle;"></i></span><span class="mn-label">Income</span>
   </button>
   <button class="mobile-nav-btn" id="more-btn" onclick="openMoreDrawer()">
-    <span class="mn-icon">☰</span><span class="mn-label">More</span>
+    <span class="mn-icon"><i data-lucide="menu" style="width:22px;height:22px;display:inline-block;vertical-align:middle;"></i></span><span class="mn-label">More</span>
   </button>
 </div>
 
@@ -1187,22 +1203,25 @@ canvas.sparkline { vertical-align:middle; }
   <div class="more-drawer-handle"></div>
   <div class="more-drawer-grid">
     <button class="more-drawer-item" data-tab="budgets" onclick="switchTabMobile('budgets');closeMoreDrawer()">
-      <span class="mdi">🎯</span><span>Budgets</span>
+      <span class="mdi"><i data-lucide="target" style="width:24px;height:24px;display:inline-block;vertical-align:middle;"></i></span><span>Budgets</span>
     </button>
     <button class="more-drawer-item" data-tab="credit-cards" onclick="switchTabMobile('credit-cards');closeMoreDrawer()">
-      <span class="mdi">💳</span><span>Cards</span>
+      <span class="mdi"><i data-lucide="wallet" style="width:24px;height:24px;display:inline-block;vertical-align:middle;"></i></span><span>Cards</span>
     </button>
     <button class="more-drawer-item" data-tab="reports" onclick="switchTabMobile('reports');closeMoreDrawer()">
-      <span class="mdi">📈</span><span>Reports</span>
+      <span class="mdi"><i data-lucide="bar-chart-2" style="width:24px;height:24px;display:inline-block;vertical-align:middle;"></i></span><span>Reports</span>
     </button>
     <button class="more-drawer-item" data-tab="currencies" onclick="switchTabMobile('currencies');closeMoreDrawer()">
-      <span class="mdi">💱</span><span>Currencies</span>
+      <span class="mdi"><i data-lucide="globe" style="width:24px;height:24px;display:inline-block;vertical-align:middle;"></i></span><span>Currencies</span>
     </button>
     <button class="more-drawer-item" data-tab="import" onclick="switchTabMobile('import');closeMoreDrawer()">
-      <span class="mdi">📥</span><span>Import</span>
+      <span class="mdi"><i data-lucide="upload" style="width:24px;height:24px;display:inline-block;vertical-align:middle;"></i></span><span>Import</span>
+    </button>
+    <button class="more-drawer-item" onclick="closeMoreDrawer();openWidgetToggle()">
+      <span class="mdi"><i data-lucide="layout-dashboard" style="width:24px;height:24px;display:inline-block;vertical-align:middle;"></i></span><span>Widgets</span>
     </button>
     <button class="more-drawer-item" data-tab="account" onclick="switchTabMobile('account');closeMoreDrawer()">
-      <span class="mdi">⚙️</span><span>Account</span>
+      <span class="mdi"><i data-lucide="settings" style="width:24px;height:24px;display:inline-block;vertical-align:middle;"></i></span><span>Account</span>
     </button>
   </div>
 </div>
@@ -1244,7 +1263,6 @@ canvas.sparkline { vertical-align:middle; }
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
       <h2 id="dashboard-month-label" style="margin:0;">📅 This Month</h2>
       <div style="display:flex;gap:0.5rem;align-items:center;">
-        <button class="btn-sm btn-secondary" style="font-size:0.8rem;" onclick="openWidgetToggle()" title="Customize dashboard">⚙️ Widgets</button>
         <div class="month-nav">
         <button onclick="shiftDashboardMonth(-1)">◀</button>
         <span id="dashboard-month-display">—</span>
@@ -1342,7 +1360,7 @@ canvas.sparkline { vertical-align:middle; }
 <!-- ═══════════════ SPENDING ═══════════════ -->
 <div class="tab-content" id="spending-tab">
   <div class="glass-card">
-    <div class="card-title">➕ Add Expense</div>
+    <div class="card-title"><i data-lucide="plus" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Add Expense</div>
     <form id="expense-form" onsubmit="submitExpenseForm(event)">
       <div class="form-grid">
         <div class="form-group"><label>Date *</label><input type="date" id="expense-date" required></div>
@@ -1495,7 +1513,7 @@ canvas.sparkline { vertical-align:middle; }
 <!-- ═══════════════ INCOME ═══════════════ -->
 <div class="tab-content" id="income-tab">
   <div class="glass-card">
-    <div class="card-title">➕ Add Income</div>
+    <div class="card-title"><i data-lucide="plus" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Add Income</div>
     <form id="income-form" onsubmit="submitIncomeForm(event)">
       <div class="form-grid">
         <div class="form-group"><label>Date *</label><input type="date" id="income-date" required></div>
@@ -1552,7 +1570,7 @@ canvas.sparkline { vertical-align:middle; }
         <div class="form-group"><label>Credit Limit</label><input type="number" id="credit-card-limit" step="0.01" placeholder="Optional"></div>
         <div class="form-group"><label>Manual Balance Override</label><input type="number" id="credit-card-manual-balance" step="0.01" placeholder="Leave blank to auto-calculate"></div>
       </div>
-      <button type="submit" style="margin-top:1rem;">💾 Save Card</button>
+      <button type="submit" style="margin-top:1rem;"><i data-lucide="save" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Save Card</button>
       <input type="hidden" id="cc-edit-id">
     </form>
   </div>
@@ -1601,7 +1619,7 @@ canvas.sparkline { vertical-align:middle; }
         <div class="form-group"><label>Target Amount *</label><input type="number" id="goal-amount" step="0.01" min="1" placeholder="0.00" required></div>
         <div class="form-group"><label>Target Date *</label><input type="date" id="goal-date" required></div>
       </div>
-      <button type="submit" style="margin-top:0.75rem;">➕ Add Goal</button>
+      <button type="submit" style="margin-top:0.75rem;"><i data-lucide="plus" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Add Goal</button>
     </form>
     <div id="savings-goals-list"></div>
   </div>
@@ -1649,7 +1667,7 @@ canvas.sparkline { vertical-align:middle; }
           </label>
         </div>
       </div>
-      <button type="submit" style="margin-top:0.75rem;">➕ Add Currency</button>
+      <button type="submit" style="margin-top:0.75rem;"><i data-lucide="plus" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Add Currency</button>
     </form>
     <div id="currencies-list"></div>
   </div>
@@ -1706,9 +1724,9 @@ canvas.sparkline { vertical-align:middle; }
           <span style="color:var(--text-secondary);font-size:0.85rem;margin-left:0.75rem;">Review and adjust before importing</span>
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-          <button class="btn-sm btn-secondary" onclick="resetImport()">↩️ Start Over</button>
-          <button class="btn-sm btn-secondary" id="ollama-btn" onclick="runOllamaCategories()" style="display:none;">🤖 AI Categorize</button>
-          <button class="btn-sm" onclick="confirmImport()">✅ Import Selected</button>
+          <button class="btn-sm btn-secondary" onclick="resetImport()"><i data-lucide="rotate-ccw" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Start Over</button>
+          <button class="btn-sm btn-secondary" id="ollama-btn" onclick="runOllamaCategories()" style="display:none;"><i data-lucide="cpu" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> AI Categorize</button>
+          <button class="btn-sm" onclick="confirmImport()"><i data-lucide="check" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Import Selected</button>
         </div>
       </div>
       <div style="overflow-x:auto;">
@@ -1733,7 +1751,7 @@ canvas.sparkline { vertical-align:middle; }
       <div style="font-size:3rem;margin-bottom:1rem;">✅</div>
       <div id="import-result-text" style="font-size:1.2rem;font-weight:600;margin-bottom:0.5rem;"></div>
       <div id="import-skip-text" style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:1.5rem;"></div>
-      <button class="btn-sm" onclick="resetImport()">📥 Import Another File</button>
+      <button class="btn-sm" onclick="resetImport()"><i data-lucide="upload" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Import Another File</button>
     </div>
   </div>
 
@@ -1751,7 +1769,7 @@ canvas.sparkline { vertical-align:middle; }
         <input type="text" id="ollama-model-input" class="form-control" placeholder="llama3.1:8b">
       </div>
     </div>
-    <button class="btn-sm" onclick="saveOllamaSettings()" style="margin-top:0.5rem;">💾 Save & Test Connection</button>
+    <button class="btn-sm" onclick="saveOllamaSettings()" style="margin-top:0.5rem;"><i data-lucide="save" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Save & Test Connection</button>
   </div>
 </div>
 
@@ -1766,12 +1784,12 @@ canvas.sparkline { vertical-align:middle; }
       <div class="form-group" style="margin-top:0.75rem;"><label>Username</label>
         <input type="text" id="profile-username" disabled style="opacity:0.6;">
       </div>
-      <button type="submit" style="margin-top:1rem;">💾 Save Profile</button>
+      <button type="submit" style="margin-top:1rem;"><i data-lucide="save" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Save Profile</button>
     </form>
   </div>
 
   <div class="glass-card" style="max-width:500px;">
-    <div class="card-title">🔒 Change Password</div>
+    <div class="card-title"><i data-lucide="lock" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Change Password</div>
     <form id="password-form" onsubmit="changePassword(event)">
       <div class="form-group"><label>Current Password</label><input type="password" id="current-password" required></div>
       <div class="form-group" style="margin-top:0.75rem;"><label>New Password</label><input type="password" id="new-password" required></div>
@@ -1793,7 +1811,7 @@ canvas.sparkline { vertical-align:middle; }
         </div>
       </div>
       <p style="font-size:0.82rem;color:var(--text-secondary);margin:0.5rem 0 0.75rem;">A temporary password will be auto-generated and emailed to the user. They will be required to set their own password on first login.</p>
-      <button type="submit" style="margin-top:0.75rem;">➕ Create User & Send Welcome Email</button>
+      <button type="submit" style="margin-top:0.75rem;"><i data-lucide="user-plus" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Create User & Send Welcome Email</button>
     </form>
     <div id="users-list"></div>
   </div>
@@ -1826,7 +1844,7 @@ canvas.sparkline { vertical-align:middle; }
         </label>
       </div>
       <div class="flex-gap">
-        <button type="submit">💾 Save Preferences</button>
+        <button type="submit"><i data-lucide="save" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Save Preferences</button>
         <button type="button" class="btn-secondary" onclick="sendTestNotification()">📧 Send Test Email</button>
       </div>
     </form>
@@ -1876,7 +1894,7 @@ canvas.sparkline { vertical-align:middle; }
     <div id="split-validation" style="font-size:0.83rem;color:var(--danger);margin-top:0.5rem;min-height:1.2em;"></div>
     <div class="modal-btns" style="margin-top:1rem;">
       <button class="btn-secondary btn-sm" onclick="closeSplitModal()">Cancel</button>
-      <button class="btn-sm" onclick="saveSplits()">💾 Save Splits</button>
+      <button class="btn-sm" onclick="saveSplits()"><i data-lucide="save" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Save Splits</button>
     </div>
   </div>
 </div>
@@ -1889,7 +1907,7 @@ canvas.sparkline { vertical-align:middle; }
     <div class="widget-toggle-grid" id="widget-toggle-list"></div>
     <div class="modal-btns">
       <button class="btn-secondary btn-sm" onclick="closeWidgetToggle()">Cancel</button>
-      <button class="btn-sm" onclick="saveWidgetPrefs()">💾 Save</button>
+      <button class="btn-sm" onclick="saveWidgetPrefs()"><i data-lucide="save" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Save</button>
     </div>
   </div>
 </div>
@@ -1957,7 +1975,7 @@ canvas.sparkline { vertical-align:middle; }
 <!-- ── Edit User Modal ── -->
 <div class="modal-backdrop" id="edit-user-modal-backdrop">
   <div class="modal" style="max-width:480px;">
-    <h3>✏️ Edit User</h3>
+    <h3><i data-lucide="pencil" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.2rem;"></i> Edit User</h3>
     <input type="hidden" id="edit-user-id">
     <div class="form-group" style="margin-bottom:0.75rem;">
       <label>Username</label>
@@ -1978,12 +1996,12 @@ canvas.sparkline { vertical-align:middle; }
     </div>
     <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;">
       <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.875rem;cursor:pointer;">
-        <input type="checkbox" id="edit-user-reset-pw"> 🔐 Reset password — generate new temp password and email to user
+        <input type="checkbox" id="edit-user-reset-pw"> <i data-lucide="key" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Reset password — generate new temp password and email to user
       </label>
     </div>
     <div class="modal-btns">
       <button class="btn-secondary btn-sm" onclick="closeEditUserModal()">Cancel</button>
-      <button class="btn-sm" onclick="saveEditUser()">💾 Save Changes</button>
+      <button class="btn-sm" onclick="saveEditUser()"><i data-lucide="save" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Save Changes</button>
     </div>
   </div>
 </div>
@@ -2001,7 +2019,7 @@ canvas.sparkline { vertical-align:middle; }
     </div>
     <div class="modal-btns">
       <button class="btn-secondary btn-sm" onclick="closeReceiptModal()">Cancel</button>
-      <button class="btn-danger btn-sm" id="receipt-delete-btn" style="display:none;" onclick="deleteReceiptFromModal()">🗑️ Remove</button>
+      <button class="btn-danger btn-sm" id="receipt-delete-btn" style="display:none;" onclick="deleteReceiptFromModal()"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Remove</button>
       <button class="btn-sm" onclick="saveReceipt()">📎 Save Receipt</button>
     </div>
   </div>
@@ -2403,7 +2421,7 @@ async function loadExpenses() {
       <td>
         <button class="btn-sm btn-warning" onclick="editExpense(${e.id})">✏️</button>
         <button class="btn-sm ${e.receipt_filename ? 'btn-success' : 'btn-secondary'}" onclick="openReceiptModal(${e.id}, '${e.receipt_filename||''}')" title="${e.receipt_filename ? 'View/change receipt' : 'Attach receipt'}">🧾</button>
-        <button class="btn-sm btn-danger" onclick="deleteExpense(${e.id}, '${e.description.replace(/'/g,"\\'")}')">🗑️</button>
+        <button class="btn-sm btn-danger" onclick="deleteExpense(${e.id}, '${e.description.replace(/'/g,"\\'")}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>
       </td>
     </tr>`).join('');
 }
@@ -2524,7 +2542,7 @@ async function loadIncome() {
       <td>${i.received_by}</td>
       <td>
         <button class="btn-sm btn-warning" onclick="editIncome(${i.id})">✏️</button>
-        <button class="btn-sm btn-danger" onclick="deleteIncome(${i.id},'${i.description.replace(/'/g,"\\'")}')">🗑️</button>
+        <button class="btn-sm btn-danger" onclick="deleteIncome(${i.id},'${i.description.replace(/'/g,"\\'")}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>
       </td>
     </tr>`).join('');
 }
@@ -2613,8 +2631,8 @@ async function loadCreditCards() {
       </div>
       <div style="font-size:0.78rem;opacity:0.85;margin-top:0.25rem;">${util||0}% utilization</div>` : ''}
       <div class="cc-actions">
-        <button onclick="editCreditCard(${c.id})">✏️ Edit</button>
-        <button onclick="deleteCreditCard(${c.id},'${c.card_name}')">🗑️ Delete</button>
+        <button onclick="editCreditCard(${c.id})"><i data-lucide="pencil" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.2rem;"></i> Edit</button>
+        <button onclick="deleteCreditCard(${c.id},'${c.card_name}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -2694,7 +2712,7 @@ async function loadBudgets() {
           <span class="${b.is_over?'amount-negative':'amount-positive'}">${formatCurrency(b.spent)}</span>
           <span style="color:var(--text-secondary);"> / ${formatCurrency(b.effective_amount)}</span>
           <span class="badge ${b.is_over?'badge-danger':b.percentage>=80?'badge-warning':'badge-primary'}" style="margin-left:0.5rem;">${b.percentage}%</span>
-          <button class="btn-sm btn-danger" style="margin-left:0.5rem;" onclick="deleteBudget(${b.id})">🗑️</button>
+          <button class="btn-sm btn-danger" style="margin-left:0.5rem;" onclick="deleteBudget(${b.id})"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>
         </div>
       </div>
       <div class="budget-progress">
@@ -2816,7 +2834,7 @@ async function loadBills() {
       <div class="flex-gap">
         <strong class="${b.is_paid?'':'amount-negative'}">${formatCurrency(b.amount)}</strong>
         <button class="btn-sm ${b.is_paid?'btn-secondary':'btn-success'}" onclick="toggleBillPaid(${b.id},'${b.name.replace(/'/g,"\\'")}',${b.amount},'${b.category||''}','${b.due_date}')">${b.is_paid?'↩️ Unpay':'✅ Pay'}</button>
-        <button class="btn-sm btn-danger" onclick="deleteBill(${b.id},'${b.name.replace(/'/g,"\\'")}')">🗑️</button>
+        <button class="btn-sm btn-danger" onclick="deleteBill(${b.id},'${b.name.replace(/'/g,"\\'")}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>
       </div>
     </div>`;
   }).join('');
@@ -2904,7 +2922,7 @@ async function loadRecurring() {
       <div class="flex-gap">
         <strong class="${r.type==='income'?'amount-positive':'amount-negative'}">${formatCurrency(r.amount)}</strong>
         <button class="btn-sm btn-success" onclick="processRecurring(${r.id},'${r.description.replace(/'/g,"\\'")}')">▶ Process</button>
-        <button class="btn-sm btn-danger" onclick="deleteRecurring(${r.id},'${r.description.replace(/'/g,"\\'")}')">🗑️</button>
+        <button class="btn-sm btn-danger" onclick="deleteRecurring(${r.id},'${r.description.replace(/'/g,"\\'")}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>
       </div>
     </div>`).join('') + '</div>';
 }
@@ -3000,8 +3018,8 @@ async function loadUsers() {
           <td><span class="badge ${u.is_admin?'badge-danger':'badge-primary'}">${u.is_admin?'👑 Admin':'👤 User'}</span></td>
           <td>
             ${u.id !== me.user.id ? `
-              <button class="btn-sm btn-warning" onclick="editUser(${u.id},'${u.username}','${u.display_name||''}','${u.email||''}',${u.is_admin})">✏️ Edit</button>
-              <button class="btn-sm btn-danger" onclick="deleteUser(${u.id},'${u.username}')">🗑️</button>
+              <button class="btn-sm btn-warning" onclick="editUser(${u.id},'${u.username}','${u.display_name||''}','${u.email||''}',${u.is_admin})"><i data-lucide="pencil" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.2rem;"></i> Edit</button>
+              <button class="btn-sm btn-danger" onclick="deleteUser(${u.id},'${u.username}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>
             ` : '<em style="color:var(--text-tertiary)">You</em>'}
           </td>
         </tr>`).join('')}
@@ -3398,7 +3416,7 @@ async function loadSavingsGoals() {
         <div style="text-align:right;">
           <span class="amount-positive">${formatCurrency(g.current_savings)}</span>
           <span style="color:var(--text-secondary);"> / ${formatCurrency(g.target_amount)}</span>
-          <button class="btn-sm btn-danger" style="margin-left:0.5rem;" onclick="deleteSavingsGoal(${g.id},'${g.name.replace(/'/g,"\'")}')">🗑️</button>
+          <button class="btn-sm btn-danger" style="margin-left:0.5rem;" onclick="deleteSavingsGoal(${g.id},'${g.name.replace(/'/g,"\'")}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>
         </div>
       </div>
       <div class="goal-progress-bar">
@@ -3569,7 +3587,7 @@ async function loadCurrencies() {
         <td>${c.symbol}</td>
         <td>${c.is_home ? '1.0 (home)' : c.rate_to_home}</td>
         <td>${c.is_home ? '<span class="badge badge-success">🏠 Home</span>' : '<span class="badge badge-primary">Foreign</span>'}</td>
-        <td>${!c.is_home ? `<button class="btn-sm btn-danger" onclick="deleteCurrency(${c.id},'${c.code}')">🗑️</button>` : ''}</td>
+        <td>${!c.is_home ? `<button class="btn-sm btn-danger" onclick="deleteCurrency(${c.id},'${c.code}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>` : ''}</td>
       </tr>`).join('')}
     </tbody>
   </table></div>`;
@@ -3635,6 +3653,18 @@ async function loadAuditLog() {
   }).join('');
 }
 
+</script>
+
+<script>
+// Init Lucide icons
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+});
+// Re-init after dynamic content loads
+const _origLucideInit = window._lucideInit || (() => {});
+window.refreshIcons = () => {
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+};
 </script>
 </body>
 </html>
@@ -3977,7 +4007,7 @@ async function runAdvSearch() {
       <td onclick="event.stopPropagation()">
         <button class="btn-sm btn-warning" onclick="editExpense(${e.id})">✏️</button>
         <button class="btn-sm ${e.receipt_filename ? 'btn-success' : 'btn-secondary'}" onclick="openReceiptModal(${e.id},'${e.receipt_filename||''}')">🧾</button>
-        <button class="btn-sm btn-danger" onclick="deleteExpense(${e.id},'${e.description.replace(/'/g,"\\'")}')">🗑️</button>
+        <button class="btn-sm btn-danger" onclick="deleteExpense(${e.id},'${e.description.replace(/'/g,"\\'")}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>
       </td>
     </tr>
     <tr class="expense-row-detail" id="expense-detail-${e.id}">
@@ -4285,7 +4315,7 @@ async function loadExpenses() {
         <button class="btn-sm ${e.receipt_filename ? 'btn-success' : 'btn-secondary'}" onclick="openReceiptModal(${e.id},'${e.receipt_filename||''}')">🧾</button>
         <button class="btn-sm btn-secondary" onclick="openSplitModal(${e.id},'${e.description.replace(/'/g,"\\'")}',${e.amount})">🤝</button>
         ${isOwner ? `<button class="btn-sm btn-secondary" onclick="openShareModal('expenses',${e.id},'${e.description.replace(/'/g,"\\'")}')">🔗</button>` : ''}
-        <button class="btn-sm btn-danger" onclick="deleteExpense(${e.id},'${e.description.replace(/'/g,"\\'")}')">🗑️</button>
+        <button class="btn-sm btn-danger" onclick="deleteExpense(${e.id},'${e.description.replace(/'/g,"\\'")}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>
       </td>
     </tr>
     <tr class="expense-row-detail" id="expense-detail-${e.id}">
@@ -4417,7 +4447,7 @@ const _patchedLoadBills = async function() {
         <strong class="${b.is_paid?'':'amount-negative'}">${formatCurrency(b.amount)}</strong>
         <button class="btn-sm ${b.is_paid?'btn-secondary':'btn-success'}" onclick="toggleBillPaid(${b.id},'${b.name.replace(/'/g,"\\'")}',${b.amount},'${b.category||''}','${b.due_date}')">${b.is_paid?'↩️ Unpay':'✅ Pay'}</button>
         ${isOwner?`<button class="btn-sm btn-secondary" onclick="openShareModal('bills',${b.id},'${b.name.replace(/'/g,"\\'")}')">🔗</button>`:''}
-        <button class="btn-sm btn-danger" onclick="deleteBill(${b.id},'${b.name.replace(/'/g,"\\'")}')">🗑️</button>
+        <button class="btn-sm btn-danger" onclick="deleteBill(${b.id},'${b.name.replace(/'/g,"\\'")}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>
       </div>
     </div>`;
   }).join('');
@@ -4526,7 +4556,7 @@ async function saveEditUser() {
       showToast(res.reset_sent ? 'success' : 'warning',
         res.reset_sent ? '✅ Changes saved — password reset email sent' : '⚠️ Changes saved but email failed');
     } else {
-      showToast('success', '✅ User updated');
+      showToast('success', 'User updated');
     }
     loadUsers();
   }
@@ -4674,7 +4704,7 @@ async function runOllamaCategories() {
   const res = await apiCall('/api/import/ollama-categorize', 'POST', {
     descriptions, categories: _importCategories
   });
-  btn.textContent = '🤖 AI Categorize';
+  btn.textContent = '<i data-lucide="cpu" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> AI Categorize';
   btn.disabled = false;
   if (res && res.categories) {
     res.categories.forEach((cat, i) => {
