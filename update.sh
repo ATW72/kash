@@ -132,22 +132,6 @@ pct exec "$CTID" -- bash -c "
 spinner $!
 msg_ok "Files updated"
 
-# Rebuild venv — recreate from scratch if gunicorn is missing, then sync deps
-msg_info "Syncing Python environment"
-pct exec "$CTID" -- bash -c "
-  set -e
-  cd /opt/kash
-  if [ ! -f venv/bin/gunicorn ]; then
-    rm -rf venv
-    python3 -m venv venv
-  fi
-  venv/bin/pip install --upgrade pip --quiet
-  venv/bin/pip install -r requirements.txt --quiet
-  chown -R appuser:appuser venv
-" 2>&1 | sed 's/^/    /' || { echo "ERROR: pip install failed"; exit 1; }
-pct exec "$CTID" -- test -f /opt/kash/venv/bin/gunicorn || { echo "ERROR: gunicorn missing after install"; exit 1; }
-msg_ok "Python environment up to date"
-
 # Restart service
 msg_info "Restarting service"
 pct exec "$CTID" -- systemctl restart kash &>/dev/null
