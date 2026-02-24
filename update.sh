@@ -124,10 +124,10 @@ pct exec "$CTID" -- bash -c "
   else
     wget -q '${RELEASE_ZIP}' -O kash.zip
   fi &&
-  mkdir -p kash_extract && unzip -o kash.zip -d kash_extract > /dev/null &&
-  cp -r kash_extract/* /opt/kash/ &&
+  unzip -o kash.zip > /dev/null &&
+  cp -r kash/* /opt/kash/ &&
   chown -R appuser:appuser /opt/kash &&
-  rm -rf /tmp/kash_extract /tmp/kash.zip
+  rm -rf /tmp/kash /tmp/kash.zip
 " &>/dev/null &
 spinner $!
 msg_ok "Files updated"
