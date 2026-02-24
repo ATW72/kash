@@ -2100,9 +2100,7 @@ input:focus, select:focus, textarea:focus {
       <button type="submit" style="margin-top:1rem;">Update Password</button>
     </form>
   </div>
-  <div class="glass-card" id="user-management-card" style="max-width:700px; display:none; visibility:hidden; position:absolute; pointer-events:none;">
-    <div class="card-title">👥 User Management <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary)">(Admin Only)</span></div>
-    <form id="new-user-form" onsubmit="createUser(event)" style="margin-bottom:1.5rem;">
+  <div id="user-management-card" style="display:none;visibility:hidden;position:absolute;pointer-events:none;"><form id="_old-user-form-unused">
       <div class="form-grid">
         <div class="form-group"><label>Username</label><input type="text" id="new-username" required=""></div>
         <div class="form-group"><label>Display Name</label><input type="text" id="new-user-display-name" placeholder="e.g. Anthony"></div>
@@ -2114,10 +2112,7 @@ input:focus, select:focus, textarea:focus {
         </div>
       </div>
       <p style="font-size:0.82rem;color:var(--text-secondary);margin:0.5rem 0 0.75rem;">A temporary password will be auto-generated and emailed to the user. They will be required to set their own password on first login.</p>
-      <button type="submit" style="margin-top:0.75rem;"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line><line x1="22" x2="16" y1="11" y2="11"></line></svg> Create User &amp; Send Welcome Email</button>
-    </form>
-    <div id="users-list"></div>
-  </div>
+</form><div id="_old-users-list-unused"></div></div>
 
 
   <!-- Notification Settings -->
@@ -3527,35 +3522,33 @@ async function changePassword(e) {
 
 async function loadUsers() {
   const me = await apiCall('/api/auth/me');
-  if (!me) return;
-  if (me.user.is_admin) {
-    document.getElementById('user-management-card').style.display = 'block';
-    document.getElementById('backup-card').style.display = 'block';
-    document.getElementById('audit-log-card').style.display = 'block';
-    const adminSec = document.getElementById('admin-dropdown-section');
-    const adminDiv = document.getElementById('admin-dropdown-divider');
-    if (adminSec) adminSec.style.display = '';
-    if (adminDiv) adminDiv.style.display = '';
-    const res = await apiCall('/api/users');
-    if (!res) return;
-    const container = document.getElementById('users-list');
-    container.innerHTML = `<div class="table-scroll-wrapper"><table class="expense-table">
-      <thead><tr><th>Username</th><th>Display Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead>
-      <tbody>${res.data.map(u => `
-        <tr>
-          <td>${u.username}${u.must_change_password?'<span class="shared-badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;margin-left:0.4rem;">⏳ Temp</span>':''}</td>
-          <td>${u.display_name || '<em style="color:var(--text-tertiary)">Not set</em>'}</td>
-          <td>${u.email || '<em style="color:var(--text-tertiary)">-</em>'}</td>
-          <td><span class="badge ${u.is_admin?'badge-danger':'badge-primary'}">${u.is_admin?'👑 Admin':'👤 User'}</span></td>
-          <td>
-            ${u.id !== me.user.id ? `
-              <button class="btn-sm btn-warning" onclick="editUser(${u.id},'${u.username}','${u.display_name||''}','${u.email||''}',${u.is_admin})"><svg style="display:inline-block;vertical-align:middle;margin-right:0.2rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg> Edit</button>
-              <button class="btn-sm btn-danger" onclick="deleteUser(${u.id},'${u.username}')"><svg style="display:inline-block;vertical-align:middle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
-            ` : '<em style="color:var(--text-tertiary)">You</em>'}
-          </td>
-        </tr>`).join('')}
-      </tbody></table></div>`;
-  }
+  if (!me || !me.user.is_admin) return;
+  // Show admin UI elements
+  const adminSec = document.getElementById('admin-dropdown-section');
+  const adminDiv = document.getElementById('admin-dropdown-divider');
+  if (adminSec) adminSec.style.display = '';
+  if (adminDiv) adminDiv.style.display = '';
+  // Populate users list in the modal
+  const res = await apiCall('/api/users');
+  if (!res) return;
+  const container = document.getElementById('users-list');
+  if (!container) return;
+  container.innerHTML = `<div class="table-scroll-wrapper"><table class="expense-table">
+    <thead><tr><th>Username</th><th>Display Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead>
+    <tbody>${res.data.map(u => `
+      <tr>
+        <td>${u.username}${u.must_change_password?'<span class="badge badge-warning" style="font-size:0.7rem;margin-left:0.4rem;">⏳ Temp</span>':''}</td>
+        <td>${u.display_name || '<em style="color:var(--text-tertiary)">Not set</em>'}</td>
+        <td>${u.email || '<em style="color:var(--text-tertiary)">-</em>'}</td>
+        <td><span class="badge ${u.is_admin?'badge-danger':'badge-primary'}">${u.is_admin?'👑 Admin':'👤 User'}</span></td>
+        <td>
+          ${u.id !== me.user.id ? `
+            <button class="btn-sm btn-warning" onclick="editUser(${u.id},'${u.username}','${u.display_name||''}','${u.email||''}',${u.is_admin})">✏️ Edit</button>
+            <button class="btn-sm btn-danger" onclick="deleteUser(${u.id},'${u.username}')">🗑️</button>
+          ` : '<em style="color:var(--text-tertiary)">You</em>'}
+        </td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
 }
 
 async function createUser(e) {
@@ -4923,28 +4916,6 @@ function openAdminPanel() {
 function openRestorePanel() {
   closeProfileDropdown();
   document.getElementById('backup-modal-backdrop').classList.add('active');
-}
-
-async function loadUsers() {
-  const res = await apiCall('/api/users');
-  if (!res) return;
-  const container = document.getElementById('users-list');
-  if (!res.data.length) { container.innerHTML = '<div class="empty-state">No users found</div>'; return; }
-  container.innerHTML = `<div class="table-scroll-wrapper"><table class="expense-table">
-    <thead><tr><th>Username</th><th>Display Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead>
-    <tbody>${res.data.map(u => `
-      <tr>
-        <td><strong>${u.username}</strong>${u.must_change_password ? ' <span class="badge badge-warning" style="font-size:0.7rem;">Temp</span>' : ''}</td>
-        <td>${u.display_name || '-'}</td>
-        <td>${u.email || '-'}</td>
-        <td>${u.is_admin ? '<span class="badge badge-primary">Admin</span>' : '<span class="badge">User</span>'}</td>
-        <td>
-          <button class="btn-sm btn-warning" onclick="editUser(${u.id},'${u.username}','${u.display_name||''}','${u.email||''}',${u.is_admin})">✏️</button>
-          <button class="btn-sm btn-danger" onclick="deleteUser(${u.id},'${u.username}')">🗑️</button>
-        </td>
-      </tr>`).join('')}
-    </tbody>
-  </table></div>`;
 }
 
 function openMobileSearch() {
