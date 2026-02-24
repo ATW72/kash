@@ -1284,7 +1284,7 @@ input:focus, select:focus, textarea:focus {
   <button class="mobile-search-btn" id="mobile-search-btn" onclick="openMobileSearch()" title="Search"><i data-lucide="search" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i></button>
   <div class="header-right">
     <span id="user-greeting">Hello!</span>
-    <button class="header-icon-btn" onclick="openWidgetToggle()" title="Customize dashboard widgets"><i data-lucide="layout-dashboard" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i></button>
+    <button class="header-icon-btn" onclick="openWidgetToggle()" title="Customize dashboard widgets"><i data-lucide="grid" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i></button>
     <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode"><i data-lucide="moon" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i></button>
     <button class="btn-logout" onclick="doLogout()"><i data-lucide="log-out" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i>Logout</button>
   </div>
@@ -1292,7 +1292,7 @@ input:focus, select:focus, textarea:focus {
 
 <!-- Tabs -->
 <div class="tabs">
-  <button class="tab-button active" data-tab="dashboard"><span class="tab-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Dashboard</span></button>
+  <button class="tab-button active" data-tab="dashboard"><span class="tab-icon"><i data-lucide="grid" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Dashboard</span></button>
   <button class="tab-button" data-tab="spending"><span class="tab-icon"><i data-lucide="credit-card" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Spending</span></button>
   <button class="tab-button" data-tab="income"><span class="tab-icon"><i data-lucide="trending-up" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Income</span></button>
   <button class="tab-button" data-tab="credit-cards"><span class="tab-icon"><i data-lucide="wallet" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i></span><span class="tab-label">Cards</span></button>
@@ -1307,7 +1307,7 @@ input:focus, select:focus, textarea:focus {
 <!-- ══ Mobile Bottom Nav ══ -->
 <div class="mobile-nav" style="display:none;">
   <button class="mobile-nav-btn active" data-tab="dashboard" onclick="switchTabMobile('dashboard',this)">
-    <span class="mn-icon"><i data-lucide="layout-dashboard" style="width:22px;height:22px;display:inline-block;vertical-align:middle;"></i></span><span class="mn-label">Dashboard</span>
+    <span class="mn-icon"><i data-lucide="grid" style="width:22px;height:22px;display:inline-block;vertical-align:middle;"></i></span><span class="mn-label">Dashboard</span>
   </button>
   <button class="mobile-nav-btn" data-tab="spending" onclick="switchTabMobile('spending',this)">
     <span class="mn-icon"><i data-lucide="credit-card" style="width:22px;height:22px;display:inline-block;vertical-align:middle;"></i></span><span class="mn-label">Spending</span>
@@ -1344,7 +1344,7 @@ input:focus, select:focus, textarea:focus {
       <span class="mdi"><i data-lucide="upload" style="width:24px;height:24px;display:inline-block;vertical-align:middle;"></i></span><span>Import</span>
     </button>
     <button class="more-drawer-item" onclick="closeMoreDrawer();openWidgetToggle()">
-      <span class="mdi"><i data-lucide="layout-dashboard" style="width:24px;height:24px;display:inline-block;vertical-align:middle;"></i></span><span>Widgets</span>
+      <span class="mdi"><i data-lucide="grid" style="width:24px;height:24px;display:inline-block;vertical-align:middle;"></i></span><span>Widgets</span>
     </button>
     <button class="more-drawer-item" data-tab="account" onclick="switchTabMobile('account');closeMoreDrawer()">
       <span class="mdi"><i data-lucide="settings" style="width:24px;height:24px;display:inline-block;vertical-align:middle;"></i></span><span>Account</span>
@@ -2474,10 +2474,27 @@ async function loadCategoryChart() {
   const now = new Date();
   const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const res = await apiCall(`/api/stats/spending-by-category?month=${month}`);
-  if (!res || !res.data.length) return;
+  const canvas = document.getElementById('category-chart');
+  if (!canvas) return;
+  if (!res || !res.data || !res.data.length) {
+    // Show empty state message in place of chart
+    canvas.style.display = 'none';
+    const card = canvas.closest('.glass-card');
+    if (card && !card.querySelector('.cat-empty')) {
+      const msg = document.createElement('div');
+      msg.className = 'empty-state cat-empty';
+      msg.style.padding = '2rem 1rem';
+      msg.textContent = 'No spending data for this month yet.';
+      card.appendChild(msg);
+    }
+    return;
+  }
+  canvas.style.display = '';
+  const emptyMsg = canvas.closest('.glass-card')?.querySelector('.cat-empty');
+  if (emptyMsg) emptyMsg.remove();
   const colors = ['#00d4aa','#0891b2','#6366f1','#f59e0b','#ff6b8a','#10b981','#8b5cf6','#f97316','#06b6d4','#a855f7','#ec4899'];
-  const ctx = document.getElementById('category-chart').getContext('2d');
-  if (catChart) catChart.destroy();
+  const ctx = canvas.getContext('2d');
+  if (catChart) { try { catChart.destroy(); } catch(e) {} }
   catChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
@@ -3797,10 +3814,22 @@ const WIDGETS = [
 let _widgetVisibility = {};
 
 async function loadWidgetPrefs() {
-  const res = await apiCall('/api/widgets');
+  // Always start with defaults — everything visible
   WIDGETS.forEach(w => _widgetVisibility[w.id] = w.default);
-  if (res && res.data.length) {
-    res.data.forEach(r => { _widgetVisibility[r.widget_id] = !!r.is_visible; });
+  try {
+    const res = await apiCall('/api/widgets');
+    // Only apply saved prefs if the API returned actual saved preferences
+    if (res && res.data && res.data.length) {
+      res.data.forEach(r => {
+        // Only override if this widget ID is known
+        if (WIDGETS.find(w => w.id === r.widget_id)) {
+          _widgetVisibility[r.widget_id] = !!r.is_visible;
+        }
+      });
+    }
+  } catch(e) {
+    // If API fails, keep defaults — don't blank the dashboard
+    console.warn('Widget prefs API failed, using defaults', e);
   }
   applyWidgetVisibility();
 }
@@ -3808,7 +3837,10 @@ async function loadWidgetPrefs() {
 function applyWidgetVisibility() {
   WIDGETS.forEach(w => {
     const el = document.getElementById(w.id);
-    if (el) el.style.display = _widgetVisibility[w.id] ? '' : 'none';
+    if (!el) return;
+    const visible = _widgetVisibility[w.id] !== false; // default to visible if undefined
+    // stat-cards inside a grid need display:'' not display:'block' to respect grid layout
+    el.style.display = visible ? '' : 'none';
   });
 }
 
