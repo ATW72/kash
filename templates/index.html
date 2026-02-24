@@ -380,7 +380,7 @@ function updateDashboardMonthLabel() {
   const now = new Date();
   const isCurrentMonth = _dashboardYear === now.getFullYear() && _dashboardMonth === now.getMonth()+1;
   document.getElementById('dashboard-month-label').textContent =
-    isCurrentMonth ? '📅 This Month' : `📅 ${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
+    isCurrentMonth ? '<i data-lucide="calendar" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> This Month' : `📅 ${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
   document.getElementById('dashboard-month-display').textContent =
     `${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
 }
@@ -474,7 +474,7 @@ async function loadCurrencies() {
         <td>${c.name}</td>
         <td>${c.symbol}</td>
         <td>${c.is_home ? '1.0 (home)' : c.rate_to_home}</td>
-        <td>${c.is_home ? '<span class="badge badge-success">🏠 Home</span>' : '<span class="badge badge-primary">Foreign</span>'}</td>
+        <td>${c.is_home ? '<span class="badge badge-success"><i data-lucide="home" style="width:12px;height:12px;vertical-align:middle;flex-shrink:0;margin-right:0.25rem;"></i> Home</span>' : '<span class="badge badge-primary">Foreign</span>'}</td>
         <td>${!c.is_home ? `<button class="btn-sm btn-danger" onclick="deleteCurrency(${c.id},'${c.code}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>` : ''}</td>
       </tr>`).join('')}
     </tbody>
@@ -1142,6 +1142,130 @@ canvas.sparkline { vertical-align:middle; }
 .mn-icon [data-lucide] { display: block; margin: 0 auto; }
 .mdi [data-lucide] { display: block; margin: 0 auto; }
 .search-icon [data-lucide] { color: var(--text-secondary); }
+
+/* ══ Bold Teal Design Enhancements ══ */
+
+/* Bolder icon stroke */
+[data-lucide] { stroke-width: 2; }
+
+/* Card titles get teal icon color */
+.card-title [data-lucide] { color: var(--primary); }
+
+/* Hero card numbers — make teal pop */
+.hero-stat .value { color: #fff; }
+.hero-stat .value.success { color: #00d4aa; }
+.hero-stat .value.danger  { color: #ff6b8a; }
+
+/* Active tab — bold teal underline, not just a thin line */
+.tab-button.active {
+  color: var(--primary);
+  border-bottom: 3px solid var(--primary);
+  background: rgba(0,212,170,0.05);
+}
+.tab-button:hover { color: var(--primary); background: rgba(0,212,170,0.04); }
+
+/* Cards — subtle teal glow in dark mode */
+body.dark-mode .glass-card {
+  border-color: rgba(0,212,170,0.12);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,212,170,0.05);
+}
+body.dark-mode .glass-card:hover {
+  border-color: rgba(0,212,170,0.25);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,212,170,0.1);
+  transform: translateY(-2px);
+}
+
+/* Stat cards — teal accent border on left */
+.stat-card {
+  border-left: 3px solid var(--primary) !important;
+}
+.stat-card p { color: var(--primary); }
+
+/* Amount colors — bolder */
+.amount-positive { color: #00d4aa !important; }
+.amount-negative { color: #ff6b8a !important; }
+
+/* Buttons — teal primary */
+button[type="submit"], .btn-primary {
+  background: linear-gradient(135deg, #00b894, #00d4aa) !important;
+  color: #0a1a14 !important;
+  font-weight: 700 !important;
+}
+button[type="submit"]:hover, .btn-primary:hover {
+  background: linear-gradient(135deg, #00d4aa, #00e5b8) !important;
+  box-shadow: 0 4px 16px rgba(0,212,170,0.4) !important;
+}
+
+/* Mobile nav active — teal dot indicator */
+.mobile-nav-btn.active .mn-icon [data-lucide] { color: var(--primary); }
+.mobile-nav-btn.active .mn-label { color: var(--primary); font-weight: 700; }
+.mobile-nav-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: calc(0.35rem + env(safe-area-inset-bottom) - 2px);
+  left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--primary);
+}
+.mobile-nav-btn { position: relative; }
+
+/* More drawer items — teal active */
+.more-drawer-item.active { background: rgba(0,212,170,0.12); color: var(--primary); }
+.more-drawer-item [data-lucide] { color: var(--primary); }
+.more-drawer-item { color: var(--text-primary); }
+
+/* Input focus — teal glow */
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(0,212,170,0.15) !important;
+  outline: none;
+}
+
+/* Badge primary — teal */
+.badge-primary { background: rgba(0,212,170,0.15); color: #00d4aa; }
+
+/* Progress bars — teal */
+.budget-fill { background: linear-gradient(90deg, #00b894, #00d4aa) !important; }
+.goal-progress-fill { background: linear-gradient(90deg, #00b894, #00d4aa) !important; }
+
+/* Header — deeper, more presence */
+.header {
+  background: linear-gradient(135deg, #071c2e 0%, #0a2540 60%, #0d3d52 100%);
+  box-shadow: 0 2px 0 rgba(0,212,170,0.3), 0 4px 20px rgba(0,0,0,0.3);
+}
+
+/* Hero card — richer gradient */
+.hero-card {
+  background: linear-gradient(135deg, #071c2e 0%, #0a2540 50%, #0d4d5e 100%);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,212,170,0.2);
+}
+
+/* Section headers */
+.section-header h3, .card-title {
+  display: flex; align-items: center; gap: 0.4rem;
+}
+
+/* CC card gradient */
+.cc-card {
+  background: linear-gradient(135deg, #071c2e 0%, #0d3d52 100%) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(0,212,170,0.15) !important;
+}
+
+/* Forecast badge */
+.forecast-badge {
+  background: rgba(0,212,170,0.15) !important;
+  color: #00d4aa !important;
+  border: 1px solid rgba(0,212,170,0.3) !important;
+}
+
+/* Empty state icons */
+.empty-state .icon [data-lucide] { color: var(--text-tertiary); opacity: 0.5; }
+
+/* Scrollbar — teal */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,212,170,0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,212,170,0.5); }
 </style>
 </head>
 <body>
@@ -1261,7 +1385,7 @@ canvas.sparkline { vertical-align:middle; }
   <!-- Hero: How am I doing this month? -->
   <div class="hero-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-      <h2 id="dashboard-month-label" style="margin:0;">📅 This Month</h2>
+      <h2 id="dashboard-month-label" style="margin:0;"><i data-lucide="calendar" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> This Month</h2>
       <div style="display:flex;gap:0.5rem;align-items:center;">
         <div class="month-nav">
         <button onclick="shiftDashboardMonth(-1)">◀</button>
@@ -1293,8 +1417,8 @@ canvas.sparkline { vertical-align:middle; }
   <!-- Insights banner -->
   <div class="glass-card" id="widget-insights" style="padding:1rem 1.25rem;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-      <div class="card-title" style="margin:0;">💡 Insights</div>
-      <span class="forecast-badge" id="forecast-badge" style="display:none;">📈 <span id="forecast-value"></span> forecast</span>
+      <div class="card-title" style="margin:0;"><i data-lucide="zap" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;color:var(--teal)"></i> Insights</div>
+      <span class="forecast-badge" id="forecast-badge" style="display:none;"><i data-lucide="trending-up" style="width:16px;height:16px;vertical-align:middle;flex-shrink:0;margin-right:0.4rem;"></i> <span id="forecast-value"></span> forecast</span>
     </div>
     <div id="insights-list"><div style="color:var(--text-secondary);font-size:0.88rem;padding:0.5rem 0;">Analysing your spending…</div></div>
   </div>
@@ -1310,7 +1434,7 @@ canvas.sparkline { vertical-align:middle; }
   <!-- Charts row -->
   <div class="dashboard-grid-2">
     <div class="glass-card" id="card-trend">
-      <div class="card-title">📊 12-Month Trend</div>
+      <div class="card-title"><i data-lucide="bar-chart-2" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> 12-Month Trend</div>
       <canvas id="trend-chart" height="200"></canvas>
     </div>
     <div class="glass-card" id="card-category">
@@ -1322,13 +1446,13 @@ canvas.sparkline { vertical-align:middle; }
   <!-- Bills alerts + Budget mini -->
   <div class="dashboard-grid-2">
     <div class="glass-card" id="card-bills">
-      <div class="card-title">⚠️ Upcoming Bills <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">next 7 days</span></div>
+      <div class="card-title"><i data-lucide="alert-circle" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;color:var(--warning)"></i> Upcoming Bills <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">next 7 days</span></div>
       <div class="bill-alerts" id="dashboard-bill-alerts">
         <div class="empty-state" style="padding:1rem;">No upcoming bills 🎉</div>
       </div>
     </div>
     <div class="glass-card" id="card-budgets">
-      <div class="card-title">🎯 Budget Status</div>
+      <div class="card-title"><i data-lucide="target" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Budget Status</div>
       <div class="budget-mini" id="dashboard-budget-mini">
         <div class="empty-state" style="padding:1rem;">No budgets set</div>
       </div>
@@ -1344,13 +1468,13 @@ canvas.sparkline { vertical-align:middle; }
   <!-- Person spending + Savings trend -->
   <div class="dashboard-grid-2">
     <div class="glass-card" id="card-person">
-      <div class="card-title">👤 Spending by Person <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">this month</span></div>
+      <div class="card-title"><i data-lucide="users" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Spending by Person <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">this month</span></div>
       <div class="person-spending-grid" id="dashboard-person-spending">
         <div class="empty-state" style="padding:1rem;">No data yet</div>
       </div>
     </div>
     <div class="glass-card" id="card-savings">
-      <div class="card-title">💰 Cumulative Savings</div>
+      <div class="card-title"><i data-lucide="piggy-bank" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Cumulative Savings</div>
       <canvas id="savings-chart" height="160"></canvas>
     </div>
   </div>
@@ -1384,7 +1508,7 @@ canvas.sparkline { vertical-align:middle; }
         <div class="form-group"><label>Notes</label><textarea id="expense-notes" rows="2" placeholder="Optional notes..."></textarea></div>
       </div>
       <div style="margin-top:1rem; display:flex; gap:0.75rem;">
-        <button type="submit" id="expense-submit-btn">💾 Add Expense</button>
+        <button type="submit" id="expense-submit-btn"><i data-lucide="plus-circle" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.35rem;"></i> Add Expense</button>
         <button type="button" class="btn-secondary" onclick="cancelExpenseEdit()">Cancel</button>
       </div>
       <input type="hidden" id="expense-edit-id">
@@ -1394,8 +1518,8 @@ canvas.sparkline { vertical-align:middle; }
     <div class="section-header">
       <span class="section-title">Expense History</span>
       <div class="flex-gap">
-        <button class="btn-sm btn-success" onclick="exportExpensesCSV()">📄 CSV</button>
-        <button class="btn-sm" style="background:linear-gradient(90deg,#217346,#1a5c37)" onclick="exportExpensesExcel()">📊 Excel</button>
+        <button class="btn-sm btn-success" onclick="exportExpensesCSV()"><i data-lucide="download" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.3rem;"></i> CSV</button>
+        <button class="btn-sm" style="background:linear-gradient(90deg,#217346,#1a5c37)" onclick="exportExpensesExcel()"><i data-lucide="download" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.3rem;"></i> Excel</button>
       </div>
     </div>
     <div class="filter-row">
@@ -1404,8 +1528,8 @@ canvas.sparkline { vertical-align:middle; }
       <select id="expense-filter-category"><option value="">All Categories</option></select>
       <button class="btn-sm" onclick="loadExpenses()">🔍 Filter</button>
       <button class="btn-sm btn-secondary" onclick="clearExpenseFilter()">✕ Clear</button>
-      <button class="btn-sm btn-secondary" onclick="toggleAdvSearch()" id="adv-search-toggle">⚙️ Advanced</button>
-      <button class="mine-toggle" id="expense-mine-toggle" onclick="toggleMineFilter('expenses',this)">👤 Mine Only</button>
+      <button class="btn-sm btn-secondary" onclick="toggleAdvSearch()" id="adv-search-toggle"><i data-lucide="sliders" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.3rem;"></i> Advanced</button>
+      <button class="mine-toggle" id="expense-mine-toggle" onclick="toggleMineFilter('expenses',this)"><i data-lucide="user" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.3rem;"></i> Mine Only</button>
     </div>
     <div class="adv-search-panel" id="adv-search-panel">
       <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.75rem;">
@@ -1430,14 +1554,14 @@ canvas.sparkline { vertical-align:middle; }
     </div>
     <div class="overflow-table"><div class="table-scroll-wrapper"><table class="expense-table">
       <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Paid By</th><th>Method</th><th>Actions</th></tr></thead>
-      <tbody id="expense-list"><tr><td colspan="7" class="empty-state"><div class="icon">💸</div>No expenses yet</td></tr></tbody>
+      <tbody id="expense-list"><tr><td colspan="7" class="empty-state"><div class="icon"><i data-lucide="credit-card" style="width:40px;height:40px;vertical-align:middle;flex-shrink:0;"></i></div>No expenses yet</td></tr></tbody>
     </table></div></div>
   </div>
 
   <!-- ── Bills Sub-Section ── -->
   <div class="glass-card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('bills-section')">
-      <span class="card-title" style="margin-bottom:0;">📅 Bills</span>
+      <span class="card-title" style="margin-bottom:0;"><i data-lucide="calendar-check" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Bills</span>
       <span class="collapse-arrow" id="bills-section-arrow">▼</span>
     </div>
     <div id="bills-section" class="collapsible-body">
@@ -1464,7 +1588,7 @@ canvas.sparkline { vertical-align:middle; }
             </select>
           </div>
         </div>
-        <button type="submit" style="margin-top:0.75rem;">💾 Add Bill</button>
+        <button type="submit" style="margin-top:0.75rem;"><i data-lucide="plus-circle" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.35rem;"></i> Add Bill</button>
       </form>
       <div id="bills-list"></div>
     </div>
@@ -1503,7 +1627,7 @@ canvas.sparkline { vertical-align:middle; }
             </select>
           </div>
         </div>
-        <button type="submit" style="margin-top:0.75rem;">💾 Add Recurring</button>
+        <button type="submit" style="margin-top:0.75rem;"><i data-lucide="plus-circle" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.35rem;"></i> Add Recurring</button>
       </form>
       <div id="recurring-list"></div>
     </div>
@@ -1537,7 +1661,7 @@ canvas.sparkline { vertical-align:middle; }
         <div class="form-group"><label>Notes</label><textarea id="income-notes" rows="2"></textarea></div>
       </div>
       <div style="margin-top:1rem; display:flex; gap:0.75rem;">
-        <button type="submit" id="income-submit-btn">💾 Add Income</button>
+        <button type="submit" id="income-submit-btn"><i data-lucide="plus-circle" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.35rem;"></i> Add Income</button>
         <button type="button" class="btn-secondary" onclick="cancelIncomeEdit()">Cancel</button>
       </div>
       <input type="hidden" id="income-edit-id">
@@ -1546,11 +1670,11 @@ canvas.sparkline { vertical-align:middle; }
   <div class="glass-card">
     <div class="section-header">
       <span class="section-title">Income History</span>
-      <button class="btn-sm btn-success" onclick="exportIncomeCSV()">📄 CSV</button>
+      <button class="btn-sm btn-success" onclick="exportIncomeCSV()"><i data-lucide="download" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.3rem;"></i> CSV</button>
     </div>
     <div class="overflow-table"><div class="table-scroll-wrapper"><table class="expense-table">
       <thead><tr><th>Date</th><th>Source</th><th>Description</th><th>Amount</th><th>Received By</th><th>Actions</th></tr></thead>
-      <tbody id="income-list"><tr><td colspan="6" class="empty-state"><div class="icon">💵</div>No income yet</td></tr></tbody>
+      <tbody id="income-list"><tr><td colspan="6" class="empty-state"><div class="icon"><i data-lucide="trending-up" style="width:40px;height:40px;vertical-align:middle;flex-shrink:0;"></i></div>No income yet</td></tr></tbody>
     </table></div></div>
   </div>
 </div>
@@ -1558,7 +1682,7 @@ canvas.sparkline { vertical-align:middle; }
 <!-- ═══════════════ CREDIT CARDS ═══════════════ -->
 <div class="tab-content" id="credit-cards-tab">
   <div class="glass-card">
-    <div class="card-title">➕ Add Credit Card</div>
+    <div class="card-title"><i data-lucide="credit-card" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Add Credit Card</div>
     <form id="credit-card-form" onsubmit="submitCreditCardForm(event)">
       <div class="form-grid">
         <div class="form-group"><label>Owner *</label>
@@ -1575,7 +1699,7 @@ canvas.sparkline { vertical-align:middle; }
     </form>
   </div>
   <div class="credit-card-grid" id="credit-card-list">
-    <div class="empty-state"><div class="icon">💳</div>No credit cards added</div>
+    <div class="empty-state"><div class="icon"><i data-lucide="wallet" style="width:40px;height:40px;vertical-align:middle;flex-shrink:0;"></i></div>No credit cards added</div>
   </div>
 </div>
 
@@ -1583,9 +1707,9 @@ canvas.sparkline { vertical-align:middle; }
 <div class="tab-content" id="budgets-tab">
   <div class="glass-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-      <div class="card-title" style="margin-bottom:0;">➕ Set Budget</div>
+      <div class="card-title" style="margin-bottom:0;"><i data-lucide="target" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Set Budget</div>
       <div class="flex-gap">
-        <button class="btn-sm btn-secondary" onclick="copyLastMonthBudgets()">📋 Copy Last Month</button>
+        <button class="btn-sm btn-secondary" onclick="copyLastMonthBudgets()"><i data-lucide="copy" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.35rem;"></i> Copy Last Month</button>
         <button class="btn-sm btn-secondary" onclick="applyRollover()">🔄 Apply Rollover</button>
       </div>
     </div>
@@ -1603,7 +1727,7 @@ canvas.sparkline { vertical-align:middle; }
         </div>
         <div class="form-group"><label>Year *</label><input type="number" id="budget-year" min="2020" max="2099" required></div>
       </div>
-      <button type="submit" style="margin-top:1rem;">💾 Set Budget</button>
+      <button type="submit" style="margin-top:1rem;"><i data-lucide="check" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.35rem;"></i> Set Budget</button>
     </form>
   </div>
   <div id="budget-list"></div>
@@ -1611,7 +1735,7 @@ canvas.sparkline { vertical-align:middle; }
   <!-- Savings Goals -->
   <div class="glass-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-      <div class="card-title" style="margin-bottom:0;">💰 Savings Goals</div>
+      <div class="card-title" style="margin-bottom:0;"><i data-lucide="piggy-bank" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Savings Goals</div>
     </div>
     <form id="savings-goal-form" onsubmit="submitSavingsGoal(event)" style="margin-bottom:1.25rem;">
       <div class="form-grid">
@@ -1629,19 +1753,19 @@ canvas.sparkline { vertical-align:middle; }
 <!-- ═══════════════ REPORTS ═══════════════ -->
 <div class="tab-content" id="reports-tab">
   <div class="glass-card">
-    <div class="card-title">📊 Generate Report</div>
+    <div class="card-title"><i data-lucide="bar-chart-2" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Generate Report</div>
     <div class="form-grid">
       <div class="form-group"><label>Start Date</label><input type="date" id="report-start"></div>
       <div class="form-group"><label>End Date</label><input type="date" id="report-end"></div>
     </div>
     <div class="flex-gap" style="margin-top:1rem;">
-      <button onclick="exportExpensesCSV(true)">📄 Expense CSV</button>
-      <button onclick="exportExpensesExcel()">📊 Expense Excel</button>
-      <button class="btn-success" onclick="exportIncomeCSV()">💵 Income CSV</button>
+      <button onclick="exportExpensesCSV(true)"><i data-lucide="download" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.3rem;"></i> Expense CSV</button>
+      <button onclick="exportExpensesExcel()"><i data-lucide="download" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.3rem;"></i> Expense Excel</button>
+      <button class="btn-success" onclick="exportIncomeCSV()"><i data-lucide="download" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.3rem;"></i> Income CSV</button>
     </div>
   </div>
   <div class="glass-card" id="monthly-report-card">
-    <div class="card-title">📅 Monthly Summary</div>
+    <div class="card-title"><i data-lucide="calendar" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Monthly Summary</div>
     <div id="monthly-report-body"><div class="empty-state">Click to generate...</div></div>
     <button onclick="generateMonthlyReport()" style="margin-top:1rem;">Generate Report</button>
   </div>
@@ -1651,7 +1775,7 @@ canvas.sparkline { vertical-align:middle; }
 <!-- ═══════════════ CURRENCIES ═══════════════ -->
 <div class="tab-content" id="currencies-tab">
   <div class="glass-card" style="max-width:700px;">
-    <div class="card-title">💱 Currencies</div>
+    <div class="card-title"><i data-lucide="globe" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Currencies</div>
     <p style="color:var(--text-secondary);font-size:0.88rem;margin-bottom:1.25rem;">
       Set your home currency and add any currencies you spend in. All amounts are stored and displayed in your home currency. The exchange rate is how many units of the foreign currency equal 1 unit of your home currency.
     </p>
@@ -1675,7 +1799,7 @@ canvas.sparkline { vertical-align:middle; }
   <!-- Audit Log — Admin Only -->
   <div class="glass-card" id="audit-log-card" style="max-width:900px;display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-      <div class="card-title" style="margin-bottom:0;">📋 Audit Log <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary);">(Admin Only)</span></div>
+      <div class="card-title" style="margin-bottom:0;"><i data-lucide="clipboard-list" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Audit Log <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary);">(Admin Only)</span></div>
       <div class="flex-gap">
         <select id="audit-filter-table" onchange="loadAuditLog()" style="font-size:0.85rem;padding:0.4rem 0.7rem;">
           <option value="">All tables</option>
@@ -1697,7 +1821,7 @@ canvas.sparkline { vertical-align:middle; }
   <div class="glass-card" style="max-width:900px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
       <div>
-        <div class="card-title" style="margin-bottom:0.25rem;">📥 Import Bank Statement</div>
+        <div class="card-title" style="margin-bottom:0.25rem;"><i data-lucide="upload" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Import Bank Statement</div>
         <div style="font-size:0.85rem;color:var(--text-secondary);">Upload a CSV or Excel export from your bank. Supports any bank format.</div>
       </div>
       <div id="ollama-status-badge" class="ollama-status">
@@ -1748,7 +1872,7 @@ canvas.sparkline { vertical-align:middle; }
 
     <!-- Step 3: Result -->
     <div id="import-step-3" style="display:none;text-align:center;padding:2rem 0;">
-      <div style="font-size:3rem;margin-bottom:1rem;">✅</div>
+      <div style="margin-bottom:1rem;color:var(--teal)"><i data-lucide="check-circle" style="width:56px;height:56px;vertical-align:middle;flex-shrink:0;"></i></div>
       <div id="import-result-text" style="font-size:1.2rem;font-weight:600;margin-bottom:0.5rem;"></div>
       <div id="import-skip-text" style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:1.5rem;"></div>
       <button class="btn-sm" onclick="resetImport()"><i data-lucide="upload" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:0.3rem;"></i> Import Another File</button>
@@ -1757,7 +1881,7 @@ canvas.sparkline { vertical-align:middle; }
 
   <!-- Ollama Settings -->
   <div class="glass-card" style="max-width:900px;margin-top:1.5rem;">
-    <div class="card-title">🤖 AI Categorization (Ollama)</div>
+    <div class="card-title"><i data-lucide="cpu" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> AI Categorization (Ollama)</div>
     <p style="font-size:0.875rem;color:var(--text-secondary);margin:0 0 1rem;">Connect to a local Ollama instance for smarter transaction categorization. Your data never leaves your network.</p>
     <div class="form-grid">
       <div class="form-group">
@@ -1775,7 +1899,7 @@ canvas.sparkline { vertical-align:middle; }
 
 <div class="tab-content" id="account-tab">
   <div class="glass-card" style="max-width:500px;">
-    <div class="card-title">👤 Your Profile</div>
+    <div class="card-title"><i data-lucide="user" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Your Profile</div>
     <form id="profile-form" onsubmit="updateProfile(event)">
       <div class="form-group"><label>Display Name</label>
         <input type="text" id="profile-display-name" placeholder="e.g. Anthony" maxlength="50">
@@ -1819,7 +1943,7 @@ canvas.sparkline { vertical-align:middle; }
 
   <!-- Notification Settings -->
   <div class="glass-card" style="max-width:600px;">
-    <div class="card-title">🔔 Notification Settings</div>
+    <div class="card-title"><i data-lucide="bell" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Notification Settings</div>
     <div id="mail-status-banner" style="display:none;background:rgba(245,158,11,0.1);border:1px solid var(--warning);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.85rem;color:var(--warning);">
       ⚠️ Email is not configured on the server. Ask your admin to add MAIL_USERNAME and MAIL_PASSWORD to the .env file.
     </div>
@@ -2044,7 +2168,7 @@ canvas.sparkline { vertical-align:middle; }
         <div class="form-group"><label>Paid By *</label><select id="qa-paid-by" required><option value="">-- Person --</option></select></div>
       </div>
       <div class="form-group" style="margin-top:0.75rem;"><label>Description *</label><input type="text" id="qa-description" placeholder="What was purchased?" required></div>
-      <button type="submit" style="width:100%;margin-top:1rem;">💾 Add Expense</button>
+      <button type="submit" style="width:100%;margin-top:1rem;"><i data-lucide="plus-circle" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.35rem;"></i> Add Expense</button>
     </form>
   </div>
 </div>
@@ -2407,7 +2531,7 @@ async function loadExpenses() {
   if (!res) return;
   const tbody = document.getElementById('expense-list');
   if (!res.data.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">💸</div>No expenses found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon"><i data-lucide="credit-card" style="width:40px;height:40px;vertical-align:middle;flex-shrink:0;"></i></div>No expenses found</td></tr>';
     return;
   }
   tbody.innerHTML = res.data.map(e => `
@@ -2496,7 +2620,7 @@ async function editExpense(id) {
 function cancelExpenseEdit() {
   document.getElementById('expense-form').reset();
   document.getElementById('expense-edit-id').value = '';
-  document.getElementById('expense-submit-btn').textContent = '💾 Add Expense';
+  document.getElementById('expense-submit-btn').textContent = '<i data-lucide="plus-circle" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.35rem;"></i> Add Expense';
   setDefaultDates();
 }
 
@@ -2530,7 +2654,7 @@ async function loadIncome() {
   if (!res) return;
   const tbody = document.getElementById('income-list');
   if (!res.data.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">💵</div>No income yet</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon"><i data-lucide="trending-up" style="width:40px;height:40px;vertical-align:middle;flex-shrink:0;"></i></div>No income yet</td></tr>';
     return;
   }
   tbody.innerHTML = res.data.map(i => `
@@ -2593,7 +2717,7 @@ async function editIncome(id) {
 function cancelIncomeEdit() {
   document.getElementById('income-form').reset();
   document.getElementById('income-edit-id').value = '';
-  document.getElementById('income-submit-btn').textContent = '💾 Add Income';
+  document.getElementById('income-submit-btn').textContent = '<i data-lucide="plus-circle" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.35rem;"></i> Add Income';
   setDefaultDates();
 }
 
@@ -2613,7 +2737,7 @@ async function loadCreditCards() {
   if (!res) return;
   const grid = document.getElementById('credit-card-list');
   if (!res.data.length) {
-    grid.innerHTML = '<div class="empty-state"><div class="icon">💳</div>No credit cards added</div>';
+    grid.innerHTML = '<div class="empty-state"><div class="icon"><i data-lucide="wallet" style="width:40px;height:40px;vertical-align:middle;flex-shrink:0;"></i></div>No credit cards added</div>';
     return;
   }
   grid.innerHTML = res.data.map(c => {
@@ -2687,7 +2811,7 @@ async function loadBudgets() {
   if (!res) return;
   const container = document.getElementById('budget-list');
   if (!res.data.length) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">🎯</div>No budgets set yet.<br><button class="btn-sm" style="margin-top:0.75rem;" onclick="copyLastMonthBudgets()">📋 Copy Last Month</button></div>';
+    container.innerHTML = '<div class="empty-state"><div class="icon">🎯</div>No budgets set yet.<br><button class="btn-sm" style="margin-top:0.75rem;" onclick="copyLastMonthBudgets()"><i data-lucide="copy" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.35rem;"></i> Copy Last Month</button></div>';
     return;
   }
   const months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -3492,7 +3616,7 @@ function updateDashboardMonthLabel() {
   const now = new Date();
   const isCurrentMonth = _dashboardYear === now.getFullYear() && _dashboardMonth === now.getMonth()+1;
   document.getElementById('dashboard-month-label').textContent =
-    isCurrentMonth ? '📅 This Month' : `📅 ${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
+    isCurrentMonth ? '<i data-lucide="calendar" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> This Month' : `📅 ${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
   document.getElementById('dashboard-month-display').textContent =
     `${_monthNames[_dashboardMonth]} ${_dashboardYear}`;
 }
@@ -3586,7 +3710,7 @@ async function loadCurrencies() {
         <td>${c.name}</td>
         <td>${c.symbol}</td>
         <td>${c.is_home ? '1.0 (home)' : c.rate_to_home}</td>
-        <td>${c.is_home ? '<span class="badge badge-success">🏠 Home</span>' : '<span class="badge badge-primary">Foreign</span>'}</td>
+        <td>${c.is_home ? '<span class="badge badge-success"><i data-lucide="home" style="width:12px;height:12px;vertical-align:middle;flex-shrink:0;margin-right:0.25rem;"></i> Home</span>' : '<span class="badge badge-primary">Foreign</span>'}</td>
         <td>${!c.is_home ? `<button class="btn-sm btn-danger" onclick="deleteCurrency(${c.id},'${c.code}')"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>` : ''}</td>
       </tr>`).join('')}
     </tbody>
@@ -4033,7 +4157,7 @@ function clearAdvSearch() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const WIDGETS = [
-  {id:'widget-insights',    label:'💡 Insights',          default:true},
+  {id:'widget-insights',    label:'<i data-lucide="zap" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;color:var(--teal)"></i> Insights',          default:true},
   {id:'widget-splits',      label:'🤝 Who Owes What',      default:true},
   {id:'stat-card-unpaid',   label:'💰 Unpaid Bills Stat',  default:true},
   {id:'stat-card-left',     label:'💳 Left After Bills',   default:true},
@@ -4041,8 +4165,8 @@ const WIDGETS = [
   {id:'stat-card-income',   label:'📊 All-Time Income',    default:true},
   {id:'card-trend',         label:'📈 12-Month Trend',     default:true},
   {id:'card-category',      label:'🍕 Category Chart',     default:true},
-  {id:'card-bills',         label:'⚠️ Upcoming Bills',     default:true},
-  {id:'card-budgets',       label:'🎯 Budget Status',      default:true},
+  {id:'card-bills',         label:'<i data-lucide="alert-circle" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;color:var(--warning)"></i> Upcoming Bills',     default:true},
+  {id:'card-budgets',       label:'<i data-lucide="target" style="width:18px;height:18px;vertical-align:middle;flex-shrink:0;margin-right:0.5rem;"></i> Budget Status',      default:true},
   {id:'card-person',        label:'👤 By Person',          default:true},
   {id:'card-savings',       label:'💰 Savings Chart',      default:true},
 ];
@@ -4273,7 +4397,7 @@ const _mineOnly = { expenses: false, income: false, bills: false, budgets: false
 function toggleMineFilter(section, btn) {
   _mineOnly[section] = !_mineOnly[section];
   btn.classList.toggle('active', _mineOnly[section]);
-  btn.textContent = _mineOnly[section] ? '👥 Show All' : '👤 Mine Only';
+  btn.textContent = _mineOnly[section] ? '👥 Show All' : '<i data-lucide="user" style="width:14px;height:14px;vertical-align:middle;flex-shrink:0;margin-right:0.3rem;"></i> Mine Only';
   // Reload the relevant section
   if (section === 'expenses') loadExpenses();
   if (section === 'income')   loadIncome();
@@ -4294,7 +4418,7 @@ async function loadExpenses() {
   if (!res) return;
   const tbody = document.getElementById('expense-list');
   if (!res.data.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">💸</div>No expenses found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon"><i data-lucide="credit-card" style="width:40px;height:40px;vertical-align:middle;flex-shrink:0;"></i></div>No expenses found</td></tr>';
     return;
   }
   tbody.innerHTML = res.data.map(e => {
