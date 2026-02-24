@@ -615,7 +615,7 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sa
   display: none; position: absolute; right: 0; top: calc(100% + 10px);
   width: 300px; background: var(--card-bg); border: 1px solid var(--border);
   border-radius: 16px; box-shadow: 0 12px 48px rgba(0,0,0,0.25);
-  z-index: 500; overflow: hidden; animation: dropdownIn 0.18s ease;
+  z-index: 500; overflow-y: auto; max-height: 85vh; animation: dropdownIn 0.18s ease;
 }
 .profile-dropdown.open { display: block; }
 @keyframes dropdownIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
@@ -1025,11 +1025,7 @@ canvas.sparkline { vertical-align:middle; }
 .ollama-dot.grey  { background:#9ca3af; }
 
 /* ── Mobile Search ── */
-.mobile-search-btn {
-  display: none; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
-  color: white; border-radius: 50%; width: 36px; height: 36px; cursor: pointer;
-  font-size: 1rem; align-items: center; justify-content: center; flex-shrink: 0;
-}
+.mobile-search-btn { display: none; }
 .mobile-search-overlay {
   display: none; position: fixed; inset: 0;
   background: var(--bg-primary); z-index: 500;
@@ -1562,7 +1558,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
         </div>
       </div>
     </div>
-    <button class="header-icon-btn" id="widget-toggle-btn" onclick="openWidgetToggle()" title="Customize dashboard widgets" style="display:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg></button>
+    <button class="header-icon-btn desk-only" id="widget-toggle-btn" onclick="openWidgetToggle()" title="Customize dashboard widgets"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg></button>
     <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" class="desk-only"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></button>
 
   </div>
@@ -4817,7 +4813,7 @@ function isMobile() { return window.innerWidth <= 640; }
 
 function switchTabMobile(tabName, btnEl) {
   // Reuse existing showTab function
-  if (typeof showTab === 'function') showTab(tabName);
+  switchTab(tabName);
 
   // Update mobile nav active state
   document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
@@ -4843,9 +4839,8 @@ function openMoreDrawer() {
   const drawer   = document.getElementById('more-drawer');
   const backdrop = document.getElementById('more-drawer-backdrop');
   if (!drawer) return;
-  drawer.style.display   = '';
+  drawer.classList.add('active');
   backdrop.classList.add('active');
-  // Prevent body scroll
   document.body.style.overflow = 'hidden';
 }
 
@@ -4915,13 +4910,11 @@ document.addEventListener('DOMContentLoaded', () => {
 // Header display handled by CSS media queries
 function toggleProfileDropdown() {
   const dropdown = document.getElementById('profile-dropdown');
-  const trigger = document.getElementById('profile-trigger');
-  const isOpen = dropdown.classList.contains('open');
-  if (isOpen) {
+  const trigger  = document.getElementById('profile-trigger');
+  if (dropdown.classList.contains('open')) {
     closeProfileDropdown();
   } else {
     dropdown.classList.add('open');
-    trigger.classList.add('open');
     trigger.setAttribute('aria-expanded', 'true');
     // Show backdrop on mobile
     const backdrop = document.getElementById('profile-sheet-backdrop');
@@ -4931,9 +4924,8 @@ function toggleProfileDropdown() {
 
 function closeProfileDropdown() {
   const dropdown = document.getElementById('profile-dropdown');
-  const trigger = document.getElementById('profile-trigger');
+  const trigger  = document.getElementById('profile-trigger');
   dropdown.classList.remove('open');
-  trigger.classList.remove('open');
   trigger.setAttribute('aria-expanded', 'false');
   const backdrop = document.getElementById('profile-sheet-backdrop');
   if (backdrop) backdrop.style.display = 'none';
