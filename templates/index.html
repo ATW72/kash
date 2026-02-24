@@ -35,7 +35,14 @@ async function updateProfile(e) {
   const res = await apiCall('/api/users/profile', 'PUT', { display_name });
   if (res) {
     showToast('success', 'Profile updated');
-    document.getElementById('user-greeting').textContent = `Hi, ${display_name || document.getElementById('profile-username').value} 👋`;
+    const uname = display_name || document.getElementById('profile-username').value;
+  document.getElementById('user-greeting').textContent = `Hi, ${uname} 👋`;
+  const ddName = document.getElementById('profile-dropdown-name');
+  const ddUser = document.getElementById('profile-dropdown-username');
+  const avatar = document.getElementById('profile-avatar-initials');
+  if (ddName) ddName.textContent = uname;
+  if (ddUser) ddUser.textContent = document.getElementById('profile-username').value;
+  if (avatar) avatar.textContent = uname.charAt(0).toUpperCase();
   }
 }
 
@@ -593,8 +600,50 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sa
   padding: 0; appearance: none; -webkit-appearance: none; }
 #theme-toggle svg { display: block; overflow: visible; flex-shrink: 0; }
 #theme-toggle:hover { background: rgba(255,255,255,0.3); }
-.btn-logout { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
-  color: white; padding: 0.4rem 0.9rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+/* ── Profile Dropdown ── */
+.profile-dropdown-wrapper { position: relative; }
+.profile-trigger {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+  color: white; padding: 0.35rem 0.75rem; border-radius: 20px; cursor: pointer;
+  font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem;
+  transition: background 0.2s; white-space: nowrap;
+}
+.profile-trigger:hover { background: rgba(255,255,255,0.25); }
+.profile-trigger.open { background: rgba(255,255,255,0.25); }
+.profile-trigger.open #profile-chevron { transform: rotate(180deg); }
+.profile-dropdown {
+  display: none; position: absolute; right: 0; top: calc(100% + 10px);
+  width: 300px; background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 16px; box-shadow: 0 12px 48px rgba(0,0,0,0.25);
+  z-index: 500; overflow: hidden; animation: dropdownIn 0.18s ease;
+}
+.profile-dropdown.open { display: block; }
+@keyframes dropdownIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+.profile-dropdown-header {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 1rem 1rem 0.75rem; background: var(--bg-secondary);
+}
+.profile-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 1.1rem; color: white; flex-shrink: 0;
+}
+.profile-name { font-weight: 700; font-size: 0.95rem; color: var(--text-primary); }
+.profile-username-label { font-size: 0.78rem; color: var(--text-secondary); }
+.profile-dropdown-section { padding: 0.75rem 1rem; }
+.profile-section-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--text-secondary); margin-bottom: 0.6rem; }
+.profile-dropdown-divider { height: 1px; background: var(--border); }
+.profile-menu-item {
+  width: 100%; text-align: left; background: none; border: none;
+  color: var(--text-primary); padding: 0.55rem 0.5rem; border-radius: 8px;
+  cursor: pointer; font-size: 0.88rem; display: flex; align-items: center; gap: 0.5rem;
+  transition: background 0.15s; margin-bottom: 0.1rem;
+}
+.profile-menu-item:hover { background: var(--bg-secondary); transform: none; box-shadow: none; }
+.profile-menu-danger { color: var(--danger); }
+.profile-menu-danger:hover { background: rgba(239,68,68,0.08); }
 /* ── Tabs ── */
 .tabs { display: flex; overflow-x: auto; background: var(--bg-primary);
   border-bottom: 2px solid var(--border); padding: 0 1.5rem; gap: 0.1rem;
@@ -1332,10 +1381,82 @@ input:focus, select:focus, textarea:focus {
   <!-- Mobile search icon -->
   <button class="mobile-search-btn" id="mobile-search-btn" onclick="openMobileSearch()" title="Search"><svg style="display:inline-block;vertical-align:middle" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg></button>
   <div class="header-right">
-    <span id="user-greeting">Hi, admin 👋</span>
+    <div class="profile-dropdown-wrapper" id="profile-dropdown-wrapper">
+      <button class="profile-trigger" id="profile-trigger" onclick="toggleProfileDropdown()" aria-haspopup="true" aria-expanded="false">
+        <span id="user-greeting">Hi, admin 👋</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="profile-chevron" style="transition:transform 0.2s;flex-shrink:0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+      <div class="profile-dropdown" id="profile-dropdown">
+        <div class="profile-dropdown-header">
+          <div class="profile-avatar" id="profile-avatar-initials">A</div>
+          <div>
+            <div class="profile-name" id="profile-dropdown-name">Admin</div>
+            <div class="profile-username-label" id="profile-dropdown-username">admin</div>
+          </div>
+        </div>
+        <div class="profile-dropdown-section">
+          <div class="profile-section-label">Profile</div>
+          <form id="profile-form" onsubmit="updateProfile(event)" style="padding:0 0 0.5rem;">
+            <div class="form-group" style="margin-bottom:0.6rem;">
+              <label>Display Name</label>
+              <input type="text" id="profile-display-name" placeholder="e.g. Anthony" maxlength="50">
+            </div>
+            <div class="form-group" style="margin-bottom:0.75rem;">
+              <label>Username</label>
+              <input type="text" id="profile-username" disabled style="opacity:0.6;">
+            </div>
+            <button type="submit" class="btn-sm" style="width:100%;">Save Profile</button>
+          </form>
+        </div>
+        <div class="profile-dropdown-divider"></div>
+        <div class="profile-dropdown-section">
+          <div class="profile-section-label">Change Password</div>
+          <form id="password-form" onsubmit="changePassword(event)" style="padding:0 0 0.5rem;">
+            <div class="form-group" style="margin-bottom:0.6rem;"><label>Current Password</label><input type="password" id="current-password" required></div>
+            <div class="form-group" style="margin-bottom:0.6rem;"><label>New Password</label><input type="password" id="new-password" required></div>
+            <div class="form-group" style="margin-bottom:0.75rem;"><label>Confirm New Password</label><input type="password" id="confirm-password" required></div>
+            <button type="submit" class="btn-sm" style="width:100%;">Update Password</button>
+          </form>
+        </div>
+        <div class="profile-dropdown-divider"></div>
+        <div class="profile-dropdown-section">
+          <div class="profile-section-label">Notifications</div>
+          <div id="mail-status-banner" style="display:none;background:rgba(245,158,11,0.1);border:1px solid var(--warning);border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:0.75rem;font-size:0.8rem;color:var(--warning);">⚠️ Email not configured on server.</div>
+          <form id="notifications-form" onsubmit="saveNotificationPrefs(event)" style="padding:0 0 0.5rem;">
+            <div class="form-group" style="margin-bottom:0.75rem;">
+              <label>Your Email</label>
+              <input type="email" id="notif-email" placeholder="your@email.com">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.75rem;">
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;font-size:0.85rem;font-weight:500;color:var(--text-primary);"><input type="checkbox" id="notif-bills" style="width:auto;accent-color:var(--primary);"> 📅 Bill due alerts</label>
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;font-size:0.85rem;font-weight:500;color:var(--text-primary);"><input type="checkbox" id="notif-budgets" style="width:auto;accent-color:var(--primary);"> 🎯 Budget warnings</label>
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;font-size:0.85rem;font-weight:500;color:var(--text-primary);"><input type="checkbox" id="notif-monthly" style="width:auto;accent-color:var(--primary);"> 📊 Monthly summary</label>
+            </div>
+            <div style="display:flex;gap:0.5rem;">
+              <button type="submit" class="btn-sm" style="flex:1;">Save</button>
+              <button type="button" class="btn-sm btn-secondary" onclick="sendTestNotification()">📧 Test</button>
+            </div>
+          </form>
+        </div>
+        <div class="profile-dropdown-divider" id="admin-dropdown-divider" style="display:none;"></div>
+        <div class="profile-dropdown-section" id="admin-dropdown-section" style="display:none;">
+          <div class="profile-section-label">Admin</div>
+          <button class="profile-menu-item" onclick="openAdminPanel();closeProfileDropdown()">👥 User Management</button>
+          <button class="profile-menu-item" onclick="downloadBackup();closeProfileDropdown()">📥 Download Backup</button>
+          <button class="profile-menu-item" onclick="openRestorePanel();closeProfileDropdown()">📤 Restore from Backup</button>
+        </div>
+        <div class="profile-dropdown-divider"></div>
+        <div class="profile-dropdown-section" style="padding-bottom:0.25rem;">
+          <button class="profile-menu-item profile-menu-danger" onclick="doLogout()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
     <button class="header-icon-btn" onclick="openWidgetToggle()" title="Customize dashboard widgets"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg></button>
     <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></button>
-    <button class="btn-logout" onclick="doLogout()"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>Logout</button>
+
   </div>
 </div>
 
@@ -1349,7 +1470,6 @@ input:focus, select:focus, textarea:focus {
   <button class="tab-button" data-tab="reports"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg></span><span class="tab-label">Reports</span></button>
   <button class="tab-button" data-tab="currencies"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" x2="22" y1="12" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg></span><span class="tab-label">Currencies</span></button>
   <button class="tab-button" data-tab="import"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg></span><span class="tab-label">Import</span></button>
-  <button class="tab-button" data-tab="account"><span class="tab-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg></span><span class="tab-label">Account</span></button>
 </div>
 
 
@@ -1394,9 +1514,6 @@ input:focus, select:focus, textarea:focus {
     </button>
     <button class="more-drawer-item" onclick="closeMoreDrawer();openWidgetToggle()">
       <span class="mdi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg></span><span>Widgets</span>
-    </button>
-    <button class="more-drawer-item" data-tab="account" onclick="switchTabMobile(&#39;account&#39;);closeMoreDrawer()">
-      <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg></span><span>Account</span>
     </button>
   </div>
 </div>
@@ -3368,6 +3485,10 @@ async function loadUsers() {
     document.getElementById('user-management-card').style.display = 'block';
     document.getElementById('backup-card').style.display = 'block';
     document.getElementById('audit-log-card').style.display = 'block';
+    const adminSec = document.getElementById('admin-dropdown-section');
+    const adminDiv = document.getElementById('admin-dropdown-divider');
+    if (adminSec) adminSec.style.display = '';
+    if (adminDiv) adminDiv.style.display = '';
     const res = await apiCall('/api/users');
     if (!res) return;
     const container = document.getElementById('users-list');
@@ -4707,6 +4828,55 @@ document.addEventListener('DOMContentLoaded', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 // MOBILE SEARCH
 // ═══════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROFILE DROPDOWN
+// ═══════════════════════════════════════════════════════════════════════════
+
+function toggleProfileDropdown() {
+  const dropdown = document.getElementById('profile-dropdown');
+  const trigger = document.getElementById('profile-trigger');
+  const isOpen = dropdown.classList.contains('open');
+  if (isOpen) {
+    closeProfileDropdown();
+  } else {
+    dropdown.classList.add('open');
+    trigger.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function closeProfileDropdown() {
+  const dropdown = document.getElementById('profile-dropdown');
+  const trigger = document.getElementById('profile-trigger');
+  dropdown.classList.remove('open');
+  trigger.classList.remove('open');
+  trigger.setAttribute('aria-expanded', 'false');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  const wrapper = document.getElementById('profile-dropdown-wrapper');
+  if (wrapper && !wrapper.contains(e.target)) {
+    closeProfileDropdown();
+  }
+});
+
+// Close on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeProfileDropdown();
+});
+
+function openAdminPanel() {
+  // Show user management card inline in dropdown or as modal
+  const card = document.getElementById('user-management-card');
+  if (card) { card.style.display = ''; card.scrollIntoView({behavior:'smooth'}); }
+}
+
+function openRestorePanel() {
+  const card = document.getElementById('backup-card');
+  if (card) { card.style.display = ''; card.scrollIntoView({behavior:'smooth'}); }
+}
 
 function openMobileSearch() {
   const overlay = document.getElementById('mobile-search-overlay');
