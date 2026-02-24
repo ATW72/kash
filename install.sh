@@ -329,10 +329,10 @@ build_container() {
   msg_info "Downloading Kash from GitHub"
   pct exec "$CTID" -- bash -c "
     wget -q '${RELEASE_ZIP}' -O /tmp/kash.zip
-    cd /tmp && unzip -q kash.zip
-    cp -r kash/* /opt/kash/
+    cd /tmp && mkdir -p kash_extract && unzip -q kash.zip -d kash_extract
+    cp -r kash_extract/* /opt/kash/
     chown -R appuser:appuser /opt/kash
-    rm -rf /tmp/kash /tmp/kash.zip
+    rm -rf /tmp/kash_extract /tmp/kash.zip
   " &>/dev/null &
   spinner $! "Downloading Kash from GitHub"
   msg_ok "Application files deployed"
