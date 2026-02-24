@@ -560,10 +560,10 @@ async function loadAuditLog() {
   --teal: #00d4aa;
 }
 body.dark-mode {
-  --bg-primary: #0d1117; --bg-secondary: #0a0e14;
-  --text-primary: #e2f0f5; --text-secondary: #7aaab8; --text-tertiary: #4a7080;
-  --card-bg: #131920; --input-bg: #0d1117; --input-border: rgba(0,212,170,0.15);
-  --shadow: rgba(0,0,0,0.4); --border: rgba(0,212,170,0.1);
+  --bg-primary: #0e1a2b; --bg-secondary: #091524;
+  --text-primary: #deeef5; --text-secondary: #7aaab8; --text-tertiary: #4a7080;
+  --card-bg: #132030; --input-bg: #0e1a2b; --input-border: rgba(0,212,170,0.18);
+  --shadow: rgba(0,0,0,0.35); --border: rgba(0,212,170,0.12);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -572,11 +572,11 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sa
 .header {
   background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
   padding: 1rem 1.5rem; display: flex; align-items: center;
-  justify-content: space-between; box-shadow: 0 4px 20px rgba(0,212,170,0.2);
+  gap: 1rem; box-shadow: 0 4px 20px rgba(0,212,170,0.2);
   position: sticky; top: 0; z-index: 100;
 }
 .header h1 { color: white; font-size: 1.4rem; font-weight: 800; }
-.header-right { display: flex; gap: 0.75rem; align-items: center; }
+.header-right { display: flex; gap: 0.75rem; align-items: center; flex-shrink: 0; margin-left: auto; }
 .header-right span { color: rgba(255,255,255,0.85); font-size: 0.85rem; }
 .header-icon-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
   color: white; border-radius: 50%; width: 36px; height: 36px; cursor: pointer;
@@ -1282,7 +1282,7 @@ input:focus, select:focus, textarea:focus {
 <div class="header">
   <h1><svg viewBox="0 0 88 26" height="22" style="vertical-align:middle;display:inline-block"><text y="21" font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="none" stroke="#00d4aa" stroke-width="1.3">K</text><text x="16" y="21" font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="#ffffff">ash</text></svg></h1>
   <!-- Desktop search -->
-  <div class="search-wrapper desktop-search" style="flex:1; max-width:320px; margin: 0 1rem;">
+  <div class="search-wrapper desktop-search" style="flex:1; max-width:360px; margin: 0 auto;">
     <span class="search-icon"><svg style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
     <input type="text" id="global-search" placeholder="Search expenses, income, bills..." oninput="globalSearch(this.value)" autocomplete="off">
     <div class="search-results" id="search-results" style="display:none;"></div>

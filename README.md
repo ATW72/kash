@@ -149,8 +149,9 @@ multi-user support, bank statement import, AI categorization, and a native-quali
 ### Design
 - **Midnight Teal palette** — deep navy (#0a2540 → #0d3d52) with electric teal (#00d4aa) accents
 - **Outlined K wordmark** — custom SVG logo where the K is a teal outline, unique to Kash
-- **Lucide icon library** — consistent clean SVG icons throughout, no emoji in UI
-- **DM Sans typography** — modern, highly readable at all sizes
+- **Inline SVG icons** — all icons are self-contained inline SVGs, zero CDN dependency, fully offline-capable
+- **System font stack** — uses the device's native sans-serif (SF Pro on iOS/macOS, Segoe UI on Windows, Roboto on Android) — no font CDN required
+- **Dark mode** — warm deep navy palette (`#091524` background, `#132030` cards) rather than pitch-black, preserving the teal accent depth
 - Dark mode persists across sessions including PWA mode
 
 ---
@@ -167,8 +168,11 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/main/install.
 
 The installer will prompt you for:
 - **Container ID** — e.g. `121`
-- **Storage pool** — e.g. `local-lvm`
 - **Hostname** — defaults to `kash`
+- **Storage pool** — e.g. `local-lvm`
+- **Bridge** — defaults to `vmbr0`
+- **Static IP** — optional; enter in CIDR format e.g. `192.168.1.50/24`, or press Enter for DHCP
+- **CPU, RAM, disk** — defaults to 1 core / 2048MB / 16GB
 - **Admin username & password** — your Kash login
 - **Gmail address & app password** — optional, for email notifications
 - **Ollama URL** — optional, for AI transaction categorization
@@ -182,6 +186,22 @@ It then automatically:
 6. Starts the app and confirms it's healthy
 
 Once complete, Kash is available at `http://<container-ip>:5000`
+
+### Network & CDN Notes
+
+Kash loads Chart.js from `cdn.jsdelivr.net` for dashboard charts. If your network runs **Pi-hole or a strict firewall**, this domain may be blocked, causing charts to fail silently.
+
+**Quick fix — whitelist these domains in Pi-hole:**
+```bash
+pihole --white-list cdn.jsdelivr.net
+pihole --white-list fonts.googleapis.com
+pihole --white-list fonts.gstatic.com
+pihole restartdns
+```
+
+All icons are inline SVGs and require no network access. The app font falls back gracefully to your system font if Google Fonts is unavailable.
+
+---
 
 ### Recommended Container Resources
 
@@ -315,7 +335,7 @@ python main.py
 | Backend | Python / Flask |
 | WSGI Server | Gunicorn (3 workers) |
 | Database | SQLite |
-| Frontend | Vanilla JS, Chart.js, Lucide Icons |
+| Frontend | Vanilla JS, Chart.js, Inline SVG icons |
 | Email | Flask-Mail (Gmail SMTP) |
 | Scheduler | APScheduler |
 | AI | Ollama (local LLM, optional) |
