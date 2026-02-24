@@ -875,13 +875,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   .tabs              { display: none !important; }
   .desktop-search    { display: none !important; }
 
-@media (min-width: 641px) {
-  .desktop-search {
-    display: block !important;
-    position: absolute; left: 50%; transform: translateX(-50%);
-    width: 100%; max-width: 360px;
-  }
-}
   .mobile-search-btn { display: flex !important; }
 
   /* ── Header ── */
@@ -1182,6 +1175,14 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   .more-drawer-item .mdi { font-size: 1.6rem; }
   .more-drawer-item.active { background: rgba(0,212,170,0.12); color: var(--primary); }
 }
+@media (min-width: 641px) {
+  .desktop-search {
+    display: block !important;
+    position: absolute; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 360px;
+  }
+}
+
 
 @media (min-width: 401px) and (max-width: 640px) {
   .more-drawer-grid { grid-template-columns: repeat(4, 1fr); }
@@ -1600,8 +1601,8 @@ input:focus, select:focus, textarea:focus {
         </div>
       </div>
     </div>
-    <button class="header-icon-btn" onclick="openWidgetToggle()" title="Customize dashboard widgets"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg></button>
-    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></button>
+    <button class="header-icon-btn" id="widget-toggle-btn" onclick="openWidgetToggle()" title="Customize dashboard widgets" style="display:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg></button>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" style="display:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></button>
 
   </div>
 </div>
@@ -3692,6 +3693,14 @@ async function init() {
     if (avatar) avatar.textContent = displayName.charAt(0).toUpperCase();
     const initialSpan = document.getElementById('profile-trigger-initial');
     if (initialSpan) initialSpan.textContent = displayName.charAt(0).toUpperCase();
+    // Show/hide header buttons based on screen size
+    const isMobile = window.innerWidth <= 640;
+    const widgetBtn = document.getElementById('widget-toggle-btn');
+    const themeBtn = document.getElementById('theme-toggle');
+    if (!isMobile) {
+      if (widgetBtn) widgetBtn.style.display = '';
+      if (themeBtn) themeBtn.style.display = '';
+    }
     if (me.user.is_admin) {
       const adminSec = document.getElementById('admin-dropdown-section');
       const adminDiv = document.getElementById('admin-dropdown-divider');
