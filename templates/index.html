@@ -2100,7 +2100,7 @@ input:focus, select:focus, textarea:focus {
       <button type="submit" style="margin-top:1rem;">Update Password</button>
     </form>
   </div>
-  <div class="glass-card" id="user-management-card" style="max-width:700px; display:none;">
+  <div class="glass-card" id="user-management-card" style="max-width:700px; display:none; visibility:hidden; position:absolute; pointer-events:none;">
     <div class="card-title">👥 User Management <span style="font-size:0.8rem;font-weight:400;color:var(--text-secondary)">(Admin Only)</span></div>
     <form id="new-user-form" onsubmit="createUser(event)" style="margin-bottom:1.5rem;">
       <div class="form-grid">
@@ -2182,6 +2182,53 @@ input:focus, select:focus, textarea:focus {
 
 </div>
 
+
+<!-- ── User Management Modal ── -->
+<div class="modal-backdrop" id="user-mgmt-modal-backdrop">
+  <div class="modal" style="max-width:680px;width:95vw;max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+      <h3 style="margin:0;">👥 User Management</h3>
+      <button class="btn-secondary btn-sm" onclick="document.getElementById('user-mgmt-modal-backdrop').classList.remove('active')">✕ Close</button>
+    </div>
+    <form id="new-user-form" onsubmit="createUser(event)" style="margin-bottom:1.5rem;">
+      <div class="form-grid">
+        <div class="form-group"><label>Username</label><input type="text" id="new-username" required></div>
+        <div class="form-group"><label>Display Name</label><input type="text" id="new-user-display-name" placeholder="e.g. Anthony"></div>
+        <div class="form-group"><label>Email Address</label><input type="email" id="new-user-email" placeholder="their@email.com" required></div>
+        <div class="form-group" style="justify-content:flex-end;padding-top:1.4rem;">
+          <label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="new-user-admin" style="width:auto;"> Admin</label>
+        </div>
+      </div>
+      <p style="font-size:0.82rem;color:var(--text-secondary);margin:0.5rem 0 0.75rem;">A temporary password will be auto-generated and emailed to the user. They will be required to set their own password on first login.</p>
+      <button type="submit"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line><line x1="22" x2="16" y1="11" y2="11"></line></svg> Create User &amp; Send Welcome Email</button>
+    </form>
+    <div id="users-list"></div>
+  </div>
+</div>
+
+<!-- ── Backup / Restore Modal ── -->
+<div class="modal-backdrop" id="backup-modal-backdrop">
+  <div class="modal" style="max-width:520px;width:95vw;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+      <h3 style="margin:0;">🗄️ Backup &amp; Restore</h3>
+      <button class="btn-secondary btn-sm" onclick="document.getElementById('backup-modal-backdrop').classList.remove('active')">✕ Close</button>
+    </div>
+    <div style="margin-bottom:1.5rem;">
+      <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1rem;">Export all your data to a JSON file. Users and passwords are <strong>not</strong> included — just transactions, bills, budgets, and cards.</p>
+      <button onclick="downloadBackup()" class="btn-success">📥 Download Backup</button>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin-bottom:1.5rem;">
+    <div>
+      <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1rem;">⚠️ Restoring will <strong>replace all existing data</strong>. This cannot be undone.</p>
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label>Select Backup File (.json)</label>
+        <input type="file" id="restore-file" accept=".json" style="padding:0.5rem;">
+      </div>
+      <button onclick="uploadRestore()" class="btn-danger">📤 Restore from Backup</button>
+      <div id="restore-status" style="margin-top:1rem;"></div>
+    </div>
+  </div>
+</div>
 
 <!-- ── Split Expense Modal ── -->
 <div class="modal-backdrop" id="split-modal-backdrop">
@@ -2421,7 +2468,7 @@ function switchTab(tabName) {
   if (tabName === 'income') loadIncome();
   if (tabName === 'credit-cards') loadCreditCards();
   if (tabName === 'budgets') loadBudgets();
-  if (tabName === 'account') { loadUsers(); loadProfile(); loadNotificationPrefs(); }
+  // account tab replaced by profile dropdown
   if (tabName === 'currencies') { loadCurrencies(); loadAuditLog(); }
 }
 
@@ -4868,14 +4915,36 @@ document.addEventListener('keydown', (e) => {
 });
 
 function openAdminPanel() {
-  // Show user management card inline in dropdown or as modal
-  const card = document.getElementById('user-management-card');
-  if (card) { card.style.display = ''; card.scrollIntoView({behavior:'smooth'}); }
+  closeProfileDropdown();
+  document.getElementById('user-mgmt-modal-backdrop').classList.add('active');
+  loadUsers();
 }
 
 function openRestorePanel() {
-  const card = document.getElementById('backup-card');
-  if (card) { card.style.display = ''; card.scrollIntoView({behavior:'smooth'}); }
+  closeProfileDropdown();
+  document.getElementById('backup-modal-backdrop').classList.add('active');
+}
+
+async function loadUsers() {
+  const res = await apiCall('/api/users');
+  if (!res) return;
+  const container = document.getElementById('users-list');
+  if (!res.data.length) { container.innerHTML = '<div class="empty-state">No users found</div>'; return; }
+  container.innerHTML = `<div class="table-scroll-wrapper"><table class="expense-table">
+    <thead><tr><th>Username</th><th>Display Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead>
+    <tbody>${res.data.map(u => `
+      <tr>
+        <td><strong>${u.username}</strong>${u.must_change_password ? ' <span class="badge badge-warning" style="font-size:0.7rem;">Temp</span>' : ''}</td>
+        <td>${u.display_name || '-'}</td>
+        <td>${u.email || '-'}</td>
+        <td>${u.is_admin ? '<span class="badge badge-primary">Admin</span>' : '<span class="badge">User</span>'}</td>
+        <td>
+          <button class="btn-sm btn-warning" onclick="editUser(${u.id},'${u.username}','${u.display_name||''}','${u.email||''}',${u.is_admin})">✏️</button>
+          <button class="btn-sm btn-danger" onclick="deleteUser(${u.id},'${u.username}')">🗑️</button>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
 }
 
 function openMobileSearch() {
