@@ -1,7 +1,7 @@
 // Kash — Service Worker
 // Caches static assets for offline/fast loading
 
-const CACHE_NAME = 'kash-v1';
+const CACHE_NAME = 'kash-v2';
 const STATIC_ASSETS = [
   '/static/favicon.svg',
   '/static/favicon.png',
@@ -13,7 +13,7 @@ const STATIC_ASSETS = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(STATIC_ASSETS).catch(() => {});
+      return cache.addAll(STATIC_ASSETS).catch(() => { });
     })
   );
   self.skipWaiting();
