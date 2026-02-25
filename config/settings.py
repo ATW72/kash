@@ -1,13 +1,14 @@
 import os
+import secrets
 
 class Config:
-    SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-change-in-production')
+    SECRET_KEY = os.environ.get('FLASK_SECRET_KEY') or secrets.token_hex(32)
     DATABASE_PATH = os.environ.get('APP_DATABASE_PATH', '/app/data/expenses.db')
     HOST = os.environ.get('APP_HOST', '0.0.0.0')
     PORT = int(os.environ.get('APP_PORT', 5000))
     DEBUG = os.environ.get('APP_DEBUG', 'false').lower() == 'true'
-    ADMIN_USERNAME = os.environ.get('APP_LOGIN_USERNAME', 'admin')
-    ADMIN_PASSWORD = os.environ.get('APP_LOGIN_PASSWORD', 'admin123')
+    ADMIN_USERNAME = os.environ.get('APP_LOGIN_USERNAME')
+    ADMIN_PASSWORD = os.environ.get('APP_LOGIN_PASSWORD')
     SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'

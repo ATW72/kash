@@ -294,11 +294,17 @@ def init_db():
         c.execute("INSERT OR IGNORE INTO categories (name) VALUES (?)", (cat,))
 
     # Bootstrap admin
-    admin_user = os.environ.get('APP_LOGIN_USERNAME', 'admin')
-    admin_pass = os.environ.get('APP_LOGIN_PASSWORD', 'admin123')
-    phash = generate_password_hash(admin_pass, method='pbkdf2:sha256')
-    c.execute("INSERT OR IGNORE INTO users (username, password_hash, is_admin) VALUES (?,?,1)",
-              (admin_user, phash))
+    admin_user = os.environ.get('APP_LOGIN_USERNAME')
+    admin_pass = os.environ.get('APP_LOGIN_PASSWORD')
+    if admin_user and admin_pass:
+        phash = generate_password_hash(admin_pass, method='pbkdf2:sha256')
+        c.execute("INSERT OR IGNORE INTO users (username, password_hash, is_admin) VALUES (?,?,1)",
+                  (admin_user, phash))
+    else:
+        # Fallback to generate forced admin replacement
+        phash = generate_password_hash(secrets.token_urlsafe(16), method='pbkdf2:sha256')
+        c.execute("INSERT OR IGNORE INTO users (username, password_hash, is_admin, must_change_password) VALUES (?,?,1,1)",
+                  ('admin', phash))
 
     conn.commit()
     conn.close()

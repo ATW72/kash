@@ -274,14 +274,14 @@ build_container() {
   pveam update &>/dev/null &
   spinner $! "Updating template list"
 
-  TEMPLATE="ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
+  TEMPLATE="debian-12-standard_12.2-1_amd64.tar.zst"
   if ! pveam list local 2>/dev/null | grep -q "$TEMPLATE"; then
-    msg_info "Downloading Ubuntu 22.04 template"
+    msg_info "Downloading Debian 12 template"
     pveam download local "$TEMPLATE" &>/dev/null &
-    spinner $! "Downloading Ubuntu 22.04 template"
+    spinner $! "Downloading Debian 12 template"
     msg_ok "Template downloaded"
   else
-    msg_ok "Ubuntu 22.04 template already cached"
+    msg_ok "Debian 12 template already cached"
   fi
 
   # Create container with static IP or DHCP
@@ -302,7 +302,7 @@ build_container() {
   # Start container
   msg_info "Starting container"
   pct start "$CTID" &>/dev/null
-  sleep 6
+  pct exec "$CTID" -- bash -c 'while [[ $(systemctl is-system-running 2>/dev/null) =~ ^(starting|offline)$ ]]; do sleep 1; done'
   msg_ok "Container started"
 
   # Set DNS if static IP was chosen — set at Proxmox level, no container exec needed
@@ -317,7 +317,8 @@ build_container() {
   pct exec "$CTID" -- bash -c "
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq &>/dev/null
-    apt-get install -y -qq python3 python3-pip python3-venv unzip curl wget sqlite3 &>/dev/null
+    apt-get install -y -qq --no-install-recommends python3 python3-pip python3-venv unzip curl wget sqlite3 &>/dev/null
+    apt-get clean && rm -rf /var/lib/apt/lists/*
     useradd -m -s /bin/bash appuser &>/dev/null || true
     mkdir -p /opt/kash/data /opt/kash/exports
     chown -R appuser:appuser /opt/kash
