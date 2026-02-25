@@ -1711,6 +1711,71 @@ def ollama_status():
     except:
         return jsonify({'configured': True, 'url': ollama_url, 'reachable': False}), 200
 
+# ── AI Advisor ────────────────────────────────────────────────────────────────
+@app.route('/api/advisor/plan', methods=['GET'])
+@login_required
+def advisor_plan():
+    """Generates an AI financial plan based on the user's data."""
+    ollama_url = Config.OLLAMA_URL
+    if not ollama_url:
+        return jsonify({'error': 'Ollama is not configured.'}), 400
+
+    conn = get_db_connection()
+    now = datetime.now()
+    month = now.strftime('%Y-%m')
+
+    # Gather data
+    income_rows = conn.execute("SELECT SUM(amount) as total FROM income WHERE strftime('%Y-%m', date) = ?", (month,)).fetchone()
+    income = income_rows['total'] or 0.0
+
+    bills = conn.execute("SELECT name, amount FROM bills").fetchall()
+    debts = conn.execute("SELECT name, balance FROM credit_cards").fetchall()
+    budgets = conn.execute("SELECT category, amount FROM budgets WHERE year = ? AND month = ?", (now.year, now.month)).fetchall()
+    
+    conn.close()
+
+    bill_str = ", ".join([f"{b['name']} (${b['amount']})" for b in bills]) or "None"
+    debt_str = ", ".join([f"{d['name']} (${d['balance']})" for d in debts]) or "None"
+    budget_str = ", ".join([f"{bg['category']} (${bg['amount']})" for bg in budgets]) or "None"
+
+    import urllib.request, json as jsonlib
+    prompt = f"""You are an expert financial advisor. Provide a concise, actionable financial plan in markdown format.
+
+User's Data for {month}:
+- Total Monthly Income: ${income:.2f}
+- Monthly Fixed Bills: {bill_str}
+- Current Debts/Credit Cards: {debt_str}
+- Current Budget Limits: {budget_str}
+
+Please advise on:
+1. Debt Payoff Strategy: Should they use Snowball or Avalanche based on their data?
+2. Budget Adjustments: Are their budget limits realistic given their income and bills? Where can they cut back?
+3. Savings: Assuming they stick to this budget, how much can they save this month?
+
+Your response MUST be exclusively formatted in nice Markdown. Do not include introductory text like "Sure, here is your plan" - start immediately with the markdown headings."""
+
+    try:
+        payload = jsonlib.dumps({
+            'model': Config.OLLAMA_MODEL,
+            'prompt': prompt,
+            'stream': False
+        }).encode('utf-8')
+        req = urllib.request.Request(
+            f"{ollama_url.rstrip('/')}/api/generate",
+            data=payload,
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            result = jsonlib.loads(resp.read())
+        response_text = result.get('response', '').strip()
+        
+        if not response_text:
+            return jsonify({'error': 'Received an empty response from the AI.'}), 500
+        return jsonify({'plan': response_text}), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to generate plan: {str(e)}'}), 500
+
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
 @app.route('/api/stats/summary')
