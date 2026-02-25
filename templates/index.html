@@ -3440,14 +3440,24 @@
           </div>
         </div>
       </div>
-      <button class="header-icon-btn" id="widget-toggle-btn" onclick="openWidgetToggle()"
-        title="Customize dashboard widgets" style="display:none;"><svg width="18" height="18" viewBox="0 0 24 24"
-          fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect width="7" height="9" x="3" y="3" rx="1"></rect>
-          <rect width="7" height="5" x="14" y="3" rx="1"></rect>
-          <rect width="7" height="9" x="14" y="12" rx="1"></rect>
-          <rect width="7" height="5" x="3" y="16" rx="1"></rect>
-        </svg></button>
+      <div class="profile-dropdown-wrapper" id="widget-dropdown-wrapper">
+        <button class="header-icon-btn profile-trigger" id="widget-toggle-btn" onclick="toggleWidgetDropdown(event)"
+          title="Customize dashboard widgets" style="display:none; padding:0; background:transparent;"><svg width="18"
+            height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect width="7" height="9" x="3" y="3" rx="1"></rect>
+            <rect width="7" height="5" x="14" y="3" rx="1"></rect>
+            <rect width="7" height="9" x="14" y="12" rx="1"></rect>
+            <rect width="7" height="5" x="3" y="16" rx="1"></rect>
+          </svg></button>
+        <div class="profile-dropdown" id="widget-dropdown" style="width: 250px; padding: 1rem;">
+          <h4
+            style="margin: 0 0 1rem 0; font-size: 1rem; color: var(--text-primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+            Widgets</h4>
+          <div class="widget-toggle-grid" id="widget-toggle-list"
+            style="margin-top: 0; display:flex; flex-direction:column;"></div>
+        </div>
+      </div>
       <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" class="desk-only"><svg width="18"
           height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
@@ -3624,13 +3634,13 @@
             <line x1="12" x2="12" y1="3" y2="15"></line>
           </svg></span><span>Import</span>
       </button>
-      <button class="more-drawer-item" onclick="closeMoreDrawer();openWidgetToggle()">
+      <button class="more-drawer-item" onclick="closeMoreDrawer();toggleWidgetDropdown(event)">
         <span class="mdi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect width="7" height="7" x="3" y="3" rx="1"></rect>
-            <rect width="7" height="7" x="14" y="3" rx="1"></rect>
-            <rect width="7" height="7" x="14" y="14" rx="1"></rect>
-            <rect width="7" height="7" x="3" y="14" rx="1"></rect>
+            <rect width="7" height="9" x="3" y="3" rx="1"></rect>
+            <rect width="7" height="5" x="14" y="3" rx="1"></rect>
+            <rect width="7" height="9" x="14" y="12" rx="1"></rect>
+            <rect width="7" height="5" x="3" y="16" rx="1"></rect>
           </svg></span><span>Widgets</span>
       </button>
     </div>
@@ -3639,15 +3649,16 @@
 
   <!-- ══ Mobile Search Overlay ══ -->
   <div class="mobile-search-overlay" id="mobile-search-overlay">
-    <div class="mobile-search-bar">
-      <span class="search-icon" style="left: 1.7rem; z-index: 10;"><svg
-          style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <div class="mobile-search-bar" style="position: relative;">
+      <span class="search-icon"
+        style="position: absolute; left: 1.8rem; z-index: 10; pointer-events: none; color: var(--text-secondary); display: flex; align-items: center;"><svg
+          width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
           <circle cx="11" cy="11" r="8"></circle>
           <path d="m21 21-4.35-4.35"></path>
         </svg></span>
       <input type="text" id="mobile-search-input" placeholder="Search expenses, income, bills..."
-        oninput="globalSearch(this.value)" autocomplete="off" autocapitalize="off">
+        oninput="globalSearch(this.value)" autocomplete="off" autocapitalize="off" style="padding-left: 2.75rem;">
       <button class="mobile-search-cancel" onclick="closeMobileSearch()">Cancel</button>
     </div>
     <div class="search-results" id="mobile-search-results"></div>
@@ -4984,27 +4995,6 @@
               <polyline points="17 21 17 13 7 13 7 21"></polyline>
               <polyline points="7 3 7 8 15 8"></polyline>
             </svg> Save Splits</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Widget Toggle Modal ── -->
-    <div class="modal-backdrop" id="widget-modal-backdrop">
-      <div class="modal" style="max-width:480px;">
-        <h3>⚙️ Customize Dashboard</h3>
-        <p style="color:var(--text-secondary);font-size:0.88rem;margin-bottom:1rem;">Toggle which cards appear on your
-          dashboard.</p>
-        <div class="widget-toggle-grid" id="widget-toggle-list"></div>
-        <div class="modal-btns">
-          <button class="btn-secondary btn-sm" onclick="closeWidgetToggle()">Cancel</button>
-          <button class="btn-sm" onclick="saveWidgetPrefs()"><svg
-              style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14"
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-              stroke-linejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-              <polyline points="17 21 17 13 7 13 7 21"></polyline>
-              <polyline points="7 3 7 8 15 8"></polyline>
-            </svg> Save</button>
         </div>
       </div>
     </div>
@@ -6669,7 +6659,7 @@
       const res = await apiCall('/api/stats/category-sparklines');
       if (!res) return;
       for (const [cat, data] of Object.entries(res.data)) {
-        const id = 'sparkline-' + cat.replace(/[^a-z0-9]/gi, '-');
+        const id = 'sparkline-' + cat.replace(/[^a-z0-9]/gi, "-");
         const canvas = document.getElementById(id);
         if (!canvas) continue;
         const ctx = canvas.getContext('2d');
@@ -7018,26 +7008,44 @@
       });
     }
 
-    function openWidgetToggle() {
-      const container = document.getElementById('widget-toggle-list');
-      container.innerHTML = WIDGETS.map(w => `
-    <div class="widget-toggle-item ${_widgetVisibility[w.id] ? 'visible' : 'hidden'}"
-         onclick="toggleWidget('${w.id}',this)" data-id="${w.id}">
-      <span>${_widgetVisibility[w.id] ? '✅' : '⬜'}</span>
-      <span>${w.label}</span>
-    </div>`).join('');
-      document.getElementById('widget-modal-backdrop').classList.add('active');
+    function toggleWidgetDropdown(e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      const dd = document.getElementById('widget-dropdown');
+      const isCurrentlyActive = dd.classList.contains('active');
+
+      // Close profile dropdown if open
+      document.getElementById('profile-dropdown').classList.remove('active');
+
+      if (!isCurrentlyActive) {
+        // Render current widget list safely
+        const container = document.getElementById('widget-toggle-list');
+        container.innerHTML = WIDGETS.map(w => `
+        <div class="widget-toggle-item ${_widgetVisibility[w.id] ? 'visible' : 'hidden'}"
+             onclick="toggleWidget('${w.id}',this); event.stopPropagation();" data-id="${w.id}" style="padding:0.6rem; border:none; border-bottom:1px solid var(--border); border-radius:0;">
+          <span>${_widgetVisibility[w.id] ? '✅' : '⬜'}</span>
+          <span style="font-weight:500;">${w.label}</span>
+        </div>`).join('');
+        dd.classList.add('active');
+      } else {
+        dd.classList.remove('active');
+      }
     }
+
+    // Toggle dropdown globally
+    document.addEventListener('click', function (e) {
+      const widgetDdWrapper = document.getElementById('widget-dropdown-wrapper');
+      if (widgetDdWrapper && !widgetDdWrapper.contains(e.target)) {
+        document.getElementById('widget-dropdown').classList.remove('active');
+      }
+    });
 
     function toggleWidget(id, el) {
       _widgetVisibility[id] = !_widgetVisibility[id];
       el.classList.toggle('visible', _widgetVisibility[id]);
       el.classList.toggle('hidden', !_widgetVisibility[id]);
       el.querySelector('span').textContent = _widgetVisibility[id] ? '✅' : '⬜';
-    }
-
-    function closeWidgetToggle() {
-      document.getElementById('widget-modal-backdrop').classList.remove('active');
+      // Automatically save and apply immediately
+      saveWidgetPrefs();
     }
 
     async function saveWidgetPrefs() {
