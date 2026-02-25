@@ -287,7 +287,7 @@ build_container() {
   # Create container with static IP or DHCP
   msg_info "Creating LXC container (ID: ${CTID})"
   set +e
-  CREATE_OUTPUT=$(pct create "$CTID" "local:vztmpl/${TEMPLATE}" \
+  pct create "$CTID" "local:vztmpl/${TEMPLATE}" \
     --hostname "$HOSTNAME" \
     --cores "$CORES" \
     --memory "$MEMORY" \
@@ -297,12 +297,12 @@ build_container() {
     --unprivileged 1 \
     --features nesting=1 \
     --onboot 1 \
-    --start 0 2>&1)
+    --start 0 >/tmp/kash_create.log 2>&1
   CREATE_STATUS=$?
   set -e
   
   if [ $CREATE_STATUS -ne 0 ]; then
-    msg_error "Failed to create container:\n$CREATE_OUTPUT"
+    msg_error "Failed to create container:\n$(cat /tmp/kash_create.log)"
   fi
   msg_ok "Container created"
 
