@@ -1911,35 +1911,93 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 <!-- ═══════════════ INCOME ═══════════════ -->
 <div class="tab-content" id="income-tab">
-  <div class="glass-card">
-    <div class="card-title"><svg style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Add Income</div>
-    <form id="income-form" onsubmit="submitIncomeForm(event)">
-      <div class="form-grid">
-        <div class="form-group"><label>Date *</label><input type="date" id="income-date" required=""></div>
-        <div class="form-group"><label>Source *</label>
-          <select id="income-source" required="">
-            <option value="">-- Source --</option>
-            <option value="Salary">Salary</option>
-            <option value="Bonus">Bonus</option>
-            <option value="Investment">Investment</option>
-            <option value="Gift">Gift</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Description *</label><input type="text" id="income-description" placeholder="Description" required=""></div>
-        <div class="form-group"><label>Amount *</label><input type="number" id="income-amount" step="0.01" min="0.01" placeholder="0.00" required=""></div>
-        <div class="form-group"><label>Received By *</label>
-          <select id="income-received-by" required=""><option value="">-- Person --</option><option value="admin">admin</option></select>
-        </div>
-        <div class="form-group"><label>Notes</label><textarea id="income-notes" rows="2"></textarea></div>
+
+  <!-- Recurring Income Summary Banner -->
+  <div id="recurring-income-banner" style="display:none;" class="glass-card" style="border-left:4px solid var(--success);background:rgba(0,212,170,0.06);">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+      <div>
+        <div class="card-title" style="margin-bottom:2px;">🔄 Recurring Income Active</div>
+        <div id="recurring-income-summary" style="font-size:0.85rem;color:var(--text-secondary);"></div>
       </div>
-      <div style="margin-top:1rem; display:flex; gap:0.75rem;">
-        <button type="submit" id="income-submit-btn"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg> Add Income</button>
-        <button type="button" class="btn-secondary" onclick="cancelIncomeEdit()">Cancel</button>
-      </div>
-      <input type="hidden" id="income-edit-id">
-    </form>
+      <button class="btn-sm btn-secondary" onclick="switchTab('spending');setTimeout(()=>document.getElementById('recurring-section').scrollIntoView({behavior:'smooth'}),200)">Manage →</button>
+    </div>
+    <div id="recurring-income-list" style="margin-top:0.75rem;display:flex;flex-direction:column;gap:6px;"></div>
   </div>
+
+  <!-- Quick Add Recurring Income -->
+  <div class="glass-card">
+    <div class="collapsible-header" onclick="toggleSection('add-recurring-income-section')">
+      <span class="card-title" style="margin-bottom:0;">🔄 Add Recurring Income <span style="font-size:0.78rem;font-weight:400;color:var(--text-secondary);">(salary, freelance, etc.)</span></span>
+      <span class="collapse-arrow" id="add-recurring-income-section-arrow">▼</span>
+    </div>
+    <div id="add-recurring-income-section" class="collapsible-body">
+      <form id="recurring-income-form" onsubmit="submitRecurringIncomeForm(event)" style="padding-top:0.75rem;">
+        <div class="form-grid">
+          <div class="form-group"><label>Frequency *</label>
+            <select id="ri-frequency" required="">
+              <option value="weekly">Weekly</option>
+              <option value="biweekly" selected="">Bi-Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Next Pay Date *</label><input type="date" id="ri-next-date" required=""></div>
+          <div class="form-group"><label>Description *</label><input type="text" id="ri-description" placeholder="e.g. Work Salary" required=""></div>
+          <div class="form-group"><label>Amount *</label><input type="number" id="ri-amount" step="0.01" min="0.01" placeholder="0.00" required=""></div>
+          <div class="form-group"><label>Received By *</label>
+            <select id="ri-person" required=""><option value="">-- Person --</option><option value="admin">admin</option></select>
+          </div>
+        </div>
+        <button type="submit" style="margin-top:0.75rem;" class="btn-success">
+          <svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+          Add Recurring Income
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- One-time income -->
+  <div class="glass-card">
+    <div class="collapsible-header" onclick="toggleSection('add-income-section')">
+      <span class="card-title" style="margin-bottom:0;">💵 Add One-Time Income <span style="font-size:0.78rem;font-weight:400;color:var(--text-secondary);">(bonus, gift, etc.)</span></span>
+      <span class="collapse-arrow" id="add-income-section-arrow">▼</span>
+    </div>
+    <div id="add-income-section" class="collapsible-body">
+      <form id="income-form" onsubmit="submitIncomeForm(event)" style="padding-top:0.75rem;">
+        <div class="form-grid">
+          <div class="form-group"><label>Date *</label><input type="date" id="income-date" required=""></div>
+          <div class="form-group"><label>Source *</label>
+            <select id="income-source" required="">
+              <option value="">-- Source --</option>
+              <option value="Salary">Salary</option>
+              <option value="Bonus">Bonus</option>
+              <option value="Freelance">Freelance</option>
+              <option value="Side Hustle">Side Hustle</option>
+              <option value="Rental Income">Rental Income</option>
+              <option value="Investment">Investment</option>
+              <option value="Tax Refund">Tax Refund</option>
+              <option value="Gift">Gift</option>
+              <option value="Child Support">Child Support</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Description *</label><input type="text" id="income-description" placeholder="Description" required=""></div>
+          <div class="form-group"><label>Amount *</label><input type="number" id="income-amount" step="0.01" min="0.01" placeholder="0.00" required=""></div>
+          <div class="form-group"><label>Received By *</label>
+            <select id="income-received-by" required=""><option value="">-- Person --</option><option value="admin">admin</option></select>
+          </div>
+          <div class="form-group"><label>Notes</label><textarea id="income-notes" rows="2"></textarea></div>
+        </div>
+        <div style="margin-top:1rem;display:flex;gap:0.75rem;">
+          <button type="submit" id="income-submit-btn"><svg style="vertical-align:middle;margin-right:0.35rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg> Add Income</button>
+          <button type="button" class="btn-secondary" onclick="cancelIncomeEdit()">Cancel</button>
+        </div>
+        <input type="hidden" id="income-edit-id">
+      </form>
+    </div>
+  </div>
+
+  <!-- Income History -->
   <div class="glass-card">
     <div class="section-header">
       <span class="section-title">Income History</span>
@@ -1976,6 +2034,30 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 <!-- ═══════════════ BUDGETS ═══════════════ -->
 <div class="tab-content" id="budgets-tab">
+
+  <!-- Income vs Budget context bar -->
+  <div id="budget-income-context" class="glass-card" style="display:none;border-left:4px solid var(--primary);">
+    <div class="card-title" style="margin-bottom:0.6rem;">📊 This Month's Budget Overview</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;text-align:center;margin-bottom:0.75rem;">
+      <div>
+        <div style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px;">Monthly Income</div>
+        <div id="bic-income" style="font-size:1.1rem;font-weight:800;color:var(--success);">—</div>
+      </div>
+      <div>
+        <div style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px;">Total Budgeted</div>
+        <div id="bic-budgeted" style="font-size:1.1rem;font-weight:800;color:var(--primary);">—</div>
+      </div>
+      <div>
+        <div style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px;">Unbudgeted</div>
+        <div id="bic-unbudgeted" style="font-size:1.1rem;font-weight:800;">—</div>
+      </div>
+    </div>
+    <div style="height:8px;background:var(--bg-secondary);border-radius:4px;overflow:hidden;">
+      <div id="bic-bar" style="height:100%;border-radius:4px;background:linear-gradient(90deg,var(--primary),var(--secondary));transition:width 0.5s;width:0%;"></div>
+    </div>
+    <div id="bic-msg" style="font-size:0.78rem;color:var(--text-secondary);margin-top:6px;text-align:center;"></div>
+  </div>
+
   <div class="glass-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
       <div class="card-title" style="margin-bottom:0;"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg> Set Budget</div>
@@ -2464,7 +2546,7 @@ function switchTab(tabName) {
   // Lazy-load data
   if (tabName === 'dashboard') loadDashboard();
   if (tabName === 'spending') { loadExpenses(); loadBills(); loadRecurring(); }
-  if (tabName === 'income') loadIncome();
+  if (tabName === 'income') { loadIncome(); loadRecurringIncomeBanner(); populateRecurringIncomePersons(); }
   if (tabName === 'credit-cards') loadCreditCards();
   if (tabName === 'budgets') loadBudgets();
   // account tab replaced by profile dropdown
@@ -3207,11 +3289,128 @@ function deleteCreditCard(id, name) {
   });
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RECURRING INCOME (Income Tab)
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function populateRecurringIncomePersons() {
+  const res = await apiCall('/api/users');
+  if (!res) return;
+  const opts = '<option value="">-- Person --</option>' + res.users.map(u => `<option value="${u.username}">${u.display_name||u.username}</option>`).join('');
+  const el = document.getElementById('ri-person');
+  if (el) el.innerHTML = opts;
+}
+
+async function loadRecurringIncomeBanner() {
+  const res = await apiCall('/api/recurring');
+  if (!res) return;
+  const incomeItems = (res.data || []).filter(r => r.type === 'income');
+  const banner = document.getElementById('recurring-income-banner');
+  const listEl = document.getElementById('recurring-income-list');
+  const summaryEl = document.getElementById('recurring-income-summary');
+  if (!banner) return;
+
+  if (!incomeItems.length) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  banner.style.display = 'block';
+  const totalMonthly = incomeItems.reduce((sum, r) => {
+    let m = parseFloat(r.amount);
+    if (r.frequency === 'weekly') m *= 4.33;
+    else if (r.frequency === 'biweekly') m *= 2.165;
+    else if (r.frequency === 'yearly') m /= 12;
+    return sum + m;
+  }, 0);
+
+  summaryEl.textContent = `${incomeItems.length} recurring stream${incomeItems.length>1?'s':''} · ~${formatCurrency(totalMonthly)}/month`;
+
+  const freqLabel = {weekly:'Weekly', biweekly:'Bi-Weekly', monthly:'Monthly', yearly:'Yearly'};
+  listEl.innerHTML = incomeItems.map(r => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg-secondary);border-radius:10px;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+        <span style="font-size:1rem;">💵</span>
+        <div style="min-width:0;">
+          <div style="font-weight:600;font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.description}</div>
+          <div style="font-size:0.72rem;color:var(--text-secondary);">${freqLabel[r.frequency]||r.frequency} · ${r.person}</div>
+        </div>
+      </div>
+      <div style="font-weight:800;font-size:0.95rem;color:var(--success);white-space:nowrap;">${formatCurrency(r.amount)}</div>
+    </div>`).join('');
+
+  // Update budget income context with this data
+  updateBudgetIncomeContext(totalMonthly);
+}
+
+async function submitRecurringIncomeForm(e) {
+  e.preventDefault();
+  const data = {
+    type: 'income',
+    frequency: document.getElementById('ri-frequency').value,
+    next_date: document.getElementById('ri-next-date').value,
+    description: document.getElementById('ri-description').value,
+    amount: document.getElementById('ri-amount').value,
+    person: document.getElementById('ri-person').value,
+    category: ''
+  };
+  const res = await apiCall('/api/recurring', 'POST', data);
+  if (res) {
+    showToast('success', '✅ Recurring income added!');
+    document.getElementById('recurring-income-form').reset();
+    setDefaultDates();
+    loadRecurringIncomeBanner();
+    loadRecurring();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BUDGET INCOME CONTEXT
+// ═══════════════════════════════════════════════════════════════════════════
+
+function updateBudgetIncomeContext(monthlyIncome) {
+  const ctx = document.getElementById('budget-income-context');
+  if (!ctx || !monthlyIncome) return;
+  ctx.style.display = 'block';
+
+  // Sum up all budgets for current month
+  const budgetItems = document.querySelectorAll('.budget-item');
+  let totalBudgeted = 0;
+  document.querySelectorAll('[id^="bamt-"]').forEach(el => {
+    totalBudgeted += parseFloat(el.dataset.amount || 0);
+  });
+
+  document.getElementById('bic-income').textContent = formatCurrency(monthlyIncome);
+  document.getElementById('bic-budgeted').textContent = formatCurrency(totalBudgeted);
+  const unbudgeted = monthlyIncome - totalBudgeted;
+  const unbuEl = document.getElementById('bic-unbudgeted');
+  unbuEl.textContent = formatCurrency(Math.abs(unbudgeted));
+  unbuEl.style.color = unbudgeted >= 0 ? 'var(--success)' : 'var(--danger)';
+
+  const pct = monthlyIncome > 0 ? Math.min((totalBudgeted/monthlyIncome)*100, 100) : 0;
+  document.getElementById('bic-bar').style.width = pct + '%';
+  document.getElementById('bic-bar').style.background = pct > 100 ? 'var(--danger)' : pct > 85 ? 'var(--warning)' : 'linear-gradient(90deg,var(--primary),var(--secondary))';
+
+  const msg = unbudgeted > 0
+    ? `✅ ${formatCurrency(unbudgeted)} of your income is unallocated — consider saving or budgeting it.`
+    : unbudgeted < 0
+    ? `⚠️ You've budgeted ${formatCurrency(Math.abs(unbudgeted))} more than your monthly income!`
+    : `🎯 100% of income is budgeted.`;
+  document.getElementById('bic-msg').textContent = msg;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // BUDGETS
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function loadBudgets() {
+  // Auto-fill current month/year if empty
+  const monthEl = document.getElementById('budget-month');
+  const yearEl = document.getElementById('budget-year');
+  const now = new Date();
+  if (monthEl && !monthEl.value) monthEl.value = now.getMonth() + 1;
+  if (yearEl && !yearEl.value) yearEl.value = now.getFullYear();
   const res = await apiCall('/api/budgets');
   if (!res) return;
   const container = document.getElementById('budget-list');
@@ -3618,6 +3817,8 @@ function setDefaultDates() {
   const by = document.getElementById('budget-year');
   if (bm && !bm.value) bm.value = now.getMonth() + 1;
   if (by && !by.value) by.value = now.getFullYear();
+  const riDate = document.getElementById('ri-next-date');
+  if (riDate && !riDate.value) riDate.value = today;
 }
 
 let currentUser = '';
