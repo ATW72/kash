@@ -286,7 +286,7 @@ build_container() {
 
   # Create container with static IP or DHCP
   msg_info "Creating LXC container (ID: ${CTID})"
-  pct create "$CTID" "local:vztmpl/${TEMPLATE}" \
+  if ! CREATE_OUTPUT=\$(pct create "$CTID" "local:vztmpl/${TEMPLATE}" \
     --hostname "$HOSTNAME" \
     --cores "$CORES" \
     --memory "$MEMORY" \
@@ -296,7 +296,9 @@ build_container() {
     --unprivileged 1 \
     --features nesting=1 \
     --onboot 1 \
-    --start 0 &>/dev/null
+    --start 0 2>&1); then
+    msg_error "Failed to create container:\n\$CREATE_OUTPUT"
+  fi
   msg_ok "Container created"
 
   # Start container
