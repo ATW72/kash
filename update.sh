@@ -19,7 +19,7 @@ CROSS="${RD}✗${CL}"
 INFO="${YW}●${CL}"
 TAB="  "
 
-RELEASE_ZIP="https://github.com/ATW72/kash/releases/latest/download/kash.zip"
+RELEASE_ZIP="https://github.com/ATW72/kash/archive/refs/heads/atw-kash.zip"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"  # Set via env var or prompted below
 
 msg_info()  { echo -e "${TAB}${INFO} ${1}..."; }
@@ -116,18 +116,23 @@ pct exec "$CTID" -- bash -c "
 msg_ok "Database backed up"
 
 # Download and deploy
-msg_info "Downloading latest release from GitHub"
+msg_info "Downloading latest from GitHub branch"
 pct exec "$CTID" -- bash -c "
   cd /tmp &&
+  rm -rf /tmp/kash-update /tmp/kash.zip &&
   if [ -n \"${GITHUB_TOKEN}\" ]; then
     curl -fsSL -H \"Authorization: token ${GITHUB_TOKEN}\" '${RELEASE_ZIP}' -o kash.zip
   else
     wget -q '${RELEASE_ZIP}' -O kash.zip
   fi &&
   unzip -o kash.zip > /dev/null &&
-  cp -r kash/* /opt/kash/ &&
+  EXTRACTED_DIR=\$(ls -d /tmp/kash-* 2>/dev/null | head -1) &&
+  if [ -z \"\$EXTRACTED_DIR\" ]; then
+    echo 'ERROR: Could not find extracted directory' && exit 1
+  fi &&
+  cp -r \$EXTRACTED_DIR/* /opt/kash/ &&
   chown -R appuser:appuser /opt/kash &&
-  rm -rf /tmp/kash /tmp/kash.zip
+  rm -rf /tmp/kash-* /tmp/kash.zip
 " &>/dev/null &
 spinner $!
 msg_ok "Files updated"
