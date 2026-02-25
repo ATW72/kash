@@ -16,8 +16,8 @@ set -euo pipefail
 # ── GitHub source ─────────────────────────────────────────────────────────────
 GITHUB_USER="ATW72"
 GITHUB_REPO="kash"
-GITHUB_BRANCH="main"
-RELEASE_ZIP="https://github.com/${GITHUB_USER}/${GITHUB_REPO}/releases/latest/download/kash.zip"
+GITHUB_BRANCH="atw-kash"
+RELEASE_ZIP="https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/refs/heads/${GITHUB_BRANCH}.zip"
 RAW_BASE="https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}"
 
 # ── Colour & formatting ───────────────────────────────────────────────────────
@@ -329,11 +329,15 @@ build_container() {
   # Pull app files from GitHub
   msg_info "Downloading Kash from GitHub"
   pct exec "$CTID" -- bash -c "
+    rm -rf /tmp/kash-* /tmp/kash.zip
     wget -q '${RELEASE_ZIP}' -O /tmp/kash.zip
     cd /tmp && unzip -q kash.zip
-    cp -r kash/* /opt/kash/
+    EXTRACTED_DIR=\$(ls -d /tmp/kash-* 2>/dev/null | head -1)
+    if [ -n \"\$EXTRACTED_DIR\" ]; then
+      cp -r \$EXTRACTED_DIR/* /opt/kash/
+    fi
     chown -R appuser:appuser /opt/kash
-    rm -rf /tmp/kash /tmp/kash.zip
+    rm -rf /tmp/kash-* /tmp/kash.zip
   " &>/dev/null &
   spinner $! "Downloading Kash from GitHub"
   msg_ok "Application files deployed"
