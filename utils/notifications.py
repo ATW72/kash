@@ -56,6 +56,7 @@ def build_welcome_email(username, display_name, temp_password, app_url=''):
           </div>
         </div>
         {f'<a href="{app_url}" style="display:block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;text-align:center;padding:0.875rem;border-radius:10px;text-decoration:none;font-weight:600;margin-bottom:1rem;">Open Kash →</a>' if app_url else ''}
+        {f'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:1rem;margin-bottom:1rem;"><span style="font-size:0.8rem;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">Login URL</span><div style="margin-top:0.3rem;"><a href="{app_url}" style="color:#667eea;font-weight:600;word-break:break-all;">{app_url}</a></div></div>' if app_url else ''}
         <p style="color:#9ca3af;font-size:0.82rem;margin:0;">This is a temporary password. You will be required to set a new password on your first login. Keep this email safe until then.</p>
       </div>
       <p style="text-align:center;color:#9ca3af;font-size:0.78rem;margin:0;">Sent by Kash • Private. Simple. Yours.</p>

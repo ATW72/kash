@@ -2174,7 +2174,13 @@ def create_user():
         return jsonify({'error': 'Username already exists'}), 400
 
     # Send welcome email with temp password
-    app_url = request.host_url.rstrip('/')
+    # Use X-Forwarded headers if behind reverse proxy (Caddy), else fall back to host_url
+    forwarded_host = request.headers.get('X-Forwarded-Host') or request.headers.get('Host', '')
+    forwarded_proto = request.headers.get('X-Forwarded-Proto', 'https')
+    if forwarded_host:
+        app_url = f"{forwarded_proto}://{forwarded_host}"
+    else:
+        app_url = request.host_url.rstrip('/')
     html = build_welcome_email(username, display_name, temp_password, app_url)
     email_sent = send_email(email, '🎉 Welcome to Kash — Your Account is Ready', html)
 
@@ -2218,7 +2224,10 @@ def update_user(uid):
         conn.execute("UPDATE users SET password_hash=?,must_change_password=1 WHERE id=?", (phash, uid))
         conn.commit()
         conn.close()
-        html = build_welcome_email(username, display_name, temp_password, request.host_url.rstrip('/'))
+        forwarded_host = request.headers.get('X-Forwarded-Host') or request.headers.get('Host', '')
+        forwarded_proto = request.headers.get('X-Forwarded-Proto', 'https')
+        app_url2 = f"{forwarded_proto}://{forwarded_host}" if forwarded_host else request.host_url.rstrip('/')
+        html = build_welcome_email(username, display_name, temp_password, app_url2)
         reset_sent = send_email(email, '🔐 Kash — Your Password Has Been Reset', html)
         return jsonify({'success': True, 'reset_sent': reset_sent}), 200
 
