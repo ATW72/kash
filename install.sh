@@ -274,14 +274,19 @@ build_container() {
   pveam update &>/dev/null &
   spinner $! "Updating template list"
 
-  TEMPLATE="debian-12-standard_12.2-1_amd64.tar.zst"
+  # Find the latest Debian 12 template
+  TEMPLATE=$(pveam available -section system 2>/dev/null | grep "debian-12-standard" | awk '{print $2}' | head -n 1 || true)
+  if [ -z "$TEMPLATE" ]; then
+    msg_error "Could not find Debian 12 template inside Proxmox's repository."
+  fi
+
   if ! pveam list local 2>/dev/null | grep -q "$TEMPLATE"; then
-    msg_info "Downloading Debian 12 template"
+    msg_info "Downloading $TEMPLATE"
     pveam download local "$TEMPLATE" &>/dev/null &
-    spinner $! "Downloading Debian 12 template"
+    spinner $! "Downloading $TEMPLATE"
     msg_ok "Template downloaded"
   else
-    msg_ok "Debian 12 template already cached"
+    msg_ok "Template $TEMPLATE already cached"
   fi
 
   # Create container with static IP or DHCP
