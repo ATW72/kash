@@ -4,7 +4,7 @@
 # Run this from your Proxmox HOST shell to update an existing deployment
 #
 # Usage:
-#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/main/update.sh)"
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/atw-kash/update.sh)"
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
