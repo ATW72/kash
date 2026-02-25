@@ -19,6 +19,8 @@
 body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ── Profile ──────────────────────────────────────────────────────────────────
 
@@ -4851,22 +4853,148 @@ async function handleImportFile(file) {
     showToast('error', 'Only CSV and Excel files are supported');
     return;
   }
-  const formData = new FormData();
-  formData.append('file', file);
-  showToast('info', '⏳ Parsing file...');
+  showToast('info', '⏳ Parsing file locally...');
+  
+  // Get categories for mapping
+  const catRes = await apiCall('/api/categories');
+  if (catRes && catRes.data) _importCategories = catRes.data;
+  else _importCategories = ['Other'];
+
   try {
-    const resp = await fetch('/api/import/preview', { method:'POST', body: formData });
-    const data = await resp.json();
-    if (!resp.ok || data.error) { showToast('error', data.error || 'Parse failed'); return; }
-    _importRows       = data.data;
-    _importCategories = data.categories;
-    renderImportPreview();
-    document.getElementById('import-step-1').style.display = 'none';
-    document.getElementById('import-step-2').style.display = '';
-    if (_ollamaAvailable) document.getElementById('ollama-btn').style.display = '';
+    let headers = [];
+    let rows = [];
+
+    if (ext === 'csv') {
+      const text = await file.text();
+      Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          headers = results.meta.fields || [];
+          rows = results.data;
+          processParsedData(headers, rows);
+        }
+      });
+    } else {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      if (data.length > 0) {
+        headers = data[0].map(h => h ? String(h) : '');
+        rows = data.slice(1).map(row => {
+          let obj = {};
+          headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? String(row[i]) : ''; });
+          return obj;
+        });
+      }
+      processParsedData(headers, rows);
+    }
   } catch(e) {
     showToast('error', 'Upload failed: ' + e.message);
   }
+}
+
+function processParsedData(headers, rows) {
+  if (!rows || rows.length === 0) { showToast('error', 'File contains no data rows'); return; }
+
+  // Auto-detect columns
+  const findCol = (candidates) => {
+    for (let c of candidates) {
+      for (let h of headers) {
+        if (h && (c.toLowerCase() === h.toLowerCase() || h.toLowerCase().includes(c.toLowerCase()))) return h;
+      }
+    }
+    return null;
+  };
+
+  const dateCol   = findCol(['date','posted','transaction date','trans date']);
+  const descCol   = findCol(['description','memo','narrative','details','payee','merchant']);
+  const amountCol = findCol(['amount','debit','credit','sum','total']);
+  const debitCol  = findCol(['debit','withdrawal','charge']);
+  const creditCol = findCol(['credit','deposit','payment']);
+
+  const categoryRules = {
+    'Groceries':      ['walmart','kroger','safeway','aldi','trader joe','whole foods','publix','costco','sams club','food','grocery','supermarket'],
+    'Dining Out':     ['restaurant','mcdonald','burger','pizza','starbucks','coffee','cafe','taco','chipotle','panera','doordash','ubereats','grubhub','dining'],
+    'Transportation': ['shell','exxon','bp','chevron','gas','fuel','uber','lyft','parking','transit','toll','auto','car wash'],
+    'Utilities':      ['electric','water','gas','utility','utilities','comcast','verizon','at&t','internet','phone','cable','spectrum'],
+    'Entertainment':  ['netflix','hulu','disney','spotify','amazon prime','apple','google play','steam','cinema','movie','theater','ticketmaster'],
+    'Healthcare':     ['pharmacy','cvs','walgreens','hospital','doctor','dental','vision','medical','health','clinic'],
+    'Shopping':       ['amazon','target','best buy','home depot','lowes','macy','nordstrom','gap','zara','online','shop'],
+    'Education':      ['school','tuition','university','college','udemy','coursera','book','education'],
+    'Mortgage':       ['mortgage','loan','wells fargo','chase','bank of america','payment']
+  };
+
+  const suggestCategory = (desc) => {
+    if (!desc) return 'Other';
+    const dLower = String(desc).toLowerCase();
+    for (const [cat, keywords] of Object.entries(categoryRules)) {
+      if (keywords.some(k => dLower.includes(k))) return cat;
+    }
+    return 'Other';
+  };
+
+  const parseAmt = (val) => {
+    if (!val) return null;
+    const clean = String(val).replace(/[\$, ]/g, '');
+    const num = parseFloat(clean);
+    return isNaN(num) ? null : num;
+  };
+
+  const parseDateStr = (val) => {
+    if (!val) return '';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val).trim();
+    // Use local time instead of UTC to avoid timezone shifting
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  };
+
+  _importRows = [];
+  
+  for (let i = 0; i < Math.min(rows.length, 500); i++) {
+    const row = rows[i];
+    let date = dateCol ? parseDateStr(row[dateCol]) : '';
+    let desc = descCol ? String(row[descCol]).trim() : '';
+    let amount = null;
+    let tx_type = 'expense';
+
+    if (debitCol && creditCol) {
+      let debit = parseAmt(row[debitCol]);
+      let credit = parseAmt(row[creditCol]);
+      if (debit && debit > 0) { amount = debit; tx_type = 'expense'; }
+      else if (credit && credit > 0) { amount = credit; tx_type = 'income'; }
+    } else if (amountCol) {
+      let raw = parseAmt(row[amountCol]);
+      if (raw !== null) {
+        if (raw < 0) { amount = Math.abs(raw); tx_type = 'expense'; }
+        else { amount = raw; tx_type = 'income'; }
+      }
+    }
+
+    if (!date || !desc || amount === null) continue;
+
+    _importRows.push({
+      row_id: _importRows.length,
+      date: date,
+      description: desc,
+      amount: Math.round(amount * 100) / 100,
+      type: tx_type,
+      category: suggestCategory(desc),
+      import: true
+    });
+  }
+
+  if (_importRows.length === 0) {
+    showToast('error', 'Could not detect valid transactions. Check formatting.');
+    return;
+  }
+
+  renderImportPreview();
+  document.getElementById('import-step-1').style.display = 'none';
+  document.getElementById('import-step-2').style.display = '';
+  if (_ollamaAvailable) document.getElementById('ollama-btn').style.display = '';
 }
 
 // ── Render preview table ──────────────────────────────────────────────────
