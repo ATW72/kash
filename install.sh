@@ -347,6 +347,8 @@ build_container() {
     EXTRACTED_DIR=\$(ls -d /tmp/kash-* 2>/dev/null | head -1)
     if [ -n \"\$EXTRACTED_DIR\" ]; then
       cp -r \$EXTRACTED_DIR/* /opt/kash/
+      # Make absolutely sure a fresh instance starts with a fresh database
+      rm -f /opt/kash/data/*.db
     fi
     chown -R appuser:appuser /opt/kash
     rm -rf /tmp/kash-* /tmp/kash.zip
