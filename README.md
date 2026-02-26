@@ -238,12 +238,12 @@ Or manually:
 ```bash
 pct exec 121 -- bash -c "
   cd /tmp &&
-  wget -q https://github.com/ATW72/kash/releases/latest/download/kash.zip &&
+  wget -q https://github.com/ATW72/kash/archive/refs/heads/main.zip -O kash.zip &&
   unzip -o kash.zip &&
-  cp -r kash/* /opt/kash/ &&
+  cp -r kash-main/* /opt/kash/ &&
   chown -R appuser:appuser /opt/kash &&
   systemctl restart kash &&
-  rm -rf /tmp/kash /tmp/kash.zip &&
+  rm -rf /tmp/kash-main /tmp/kash.zip &&
   echo Done
 "
 ```
