@@ -1720,26 +1720,28 @@ def advisor_plan():
     if not ollama_url:
         return jsonify({'error': 'Ollama is not configured.'}), 400
 
-    conn = get_db_connection()
-    now = datetime.now()
-    month = now.strftime('%Y-%m')
-
-    # Gather data
-    income_rows = conn.execute("SELECT SUM(amount) as total FROM income WHERE strftime('%Y-%m', date) = ?", (month,)).fetchone()
-    income = income_rows['total'] or 0.0
-
-    bills = conn.execute("SELECT name, amount FROM bills").fetchall()
-    debts = conn.execute("SELECT name, balance FROM credit_cards").fetchall()
-    budgets = conn.execute("SELECT category, amount FROM budgets WHERE year = ? AND month = ?", (now.year, now.month)).fetchall()
+    try:
+        conn = get_db_connection()
+        now = datetime.now()
+        month = now.strftime('%Y-%m')
     
-    conn.close()
+        # Gather data
+        income_rows = conn.execute("SELECT SUM(amount) as total FROM income WHERE strftime('%Y-%m', date) = ?", (month,)).fetchone()
+        income = income_rows['total'] or 0.0
+    
+        bills = conn.execute("SELECT name, amount FROM bills").fetchall()
+        debts = conn.execute("SELECT card_name as name, manual_balance as balance FROM credit_cards").fetchall()
+        budgets = conn.execute("SELECT category, amount FROM budgets WHERE year = ? AND month = ?", (now.year, now.month)).fetchall()
+        
+        conn.close()
+    
+        bill_str = ", ".join([f"{b['name']} (${b['amount']})" for b in bills]) or "None"
+        # some manual_balance could be null depending on DB state, so default to 0.0
+        debt_str = ", ".join([f"{d['name']} (${d['balance'] or 0.0})" for d in debts]) or "None"
+        budget_str = ", ".join([f"{bg['category']} (${bg['amount']})" for bg in budgets]) or "None"
 
-    bill_str = ", ".join([f"{b['name']} (${b['amount']})" for b in bills]) or "None"
-    debt_str = ", ".join([f"{d['name']} (${d['balance']})" for d in debts]) or "None"
-    budget_str = ", ".join([f"{bg['category']} (${bg['amount']})" for bg in budgets]) or "None"
-
-    import urllib.request, json as jsonlib
-    prompt = f"""You are an expert financial advisor. Provide a concise, actionable financial plan in markdown format.
+        import urllib.request, json as jsonlib
+        prompt = f"""You are an expert financial advisor. Provide a concise, actionable financial plan in markdown format.
 
 User's Data for {month}:
 - Total Monthly Income: ${income:.2f}
@@ -1754,7 +1756,6 @@ Please advise on:
 
 Your response MUST be exclusively formatted in nice Markdown. Do not include introductory text like "Sure, here is your plan" - start immediately with the markdown headings."""
 
-    try:
         payload = jsonlib.dumps({
             'model': Config.OLLAMA_MODEL,
             'prompt': prompt,
