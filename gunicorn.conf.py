@@ -10,7 +10,7 @@ bind = "0.0.0.0:5000"
 workers = 3
 worker_class = "sync"
 worker_connections = 1000
-timeout = 120
+timeout = 300
 keepalive = 5
 
 # Restart workers after this many requests (prevents memory leaks)
