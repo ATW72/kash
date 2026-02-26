@@ -38,8 +38,8 @@ def build_welcome_email(username, display_name, temp_password, app_url=''):
     name = display_name or username
     return f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;background:#f9fafb;padding:2rem;">
-      <div style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:16px;padding:2rem;text-align:center;margin-bottom:1.5rem;">
-        <h1 style="color:white;margin:0;font-size:2rem;">💸 Kash</h1>
+      <div style="background:linear-gradient(135deg,#0a2540,#0d3d52);border-radius:16px;padding:2rem;text-align:center;margin-bottom:1.5rem;">
+        <h1 style="margin:0;"><svg viewBox="0 0 88 26" height="32" style="vertical-align:middle;display:inline-block"><text y="21" font-family="Arial,sans-serif" font-weight="800" font-size="23" fill="none" stroke="#00d4aa" stroke-width="1.3">K</text><text x="16" y="21" font-family="Arial,sans-serif" font-weight="800" font-size="23" fill="#ffffff">ash</text></svg></h1>
         <p style="color:rgba(255,255,255,0.85);margin:0.5rem 0 0;">Private. Simple. Yours.</p>
       </div>
       <div style="background:white;border-radius:16px;padding:2rem;margin-bottom:1rem;">
@@ -55,7 +55,7 @@ def build_welcome_email(username, display_name, temp_password, app_url=''):
             <div style="font-size:1.1rem;font-weight:700;color:#667eea;margin-top:0.2rem;font-family:monospace;letter-spacing:0.1em;">{temp_password}</div>
           </div>
         </div>
-        {f'<a href="{app_url}" style="display:block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;text-align:center;padding:0.875rem;border-radius:10px;text-decoration:none;font-weight:600;margin-bottom:1rem;">Open Kash →</a>' if app_url else ''}
+        {f'<a href="{app_url}" style="display:block;background:linear-gradient(135deg,#00d4aa,#00bfa5);color:white;text-align:center;padding:0.875rem;border-radius:10px;text-decoration:none;font-weight:600;margin-bottom:1rem;">Open Kash →</a>' if app_url else ''}
         {f'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:1rem;margin-bottom:1rem;"><span style="font-size:0.8rem;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">Login URL</span><div style="margin-top:0.3rem;"><a href="{app_url}" style="color:#667eea;font-weight:600;word-break:break-all;">{app_url}</a></div></div>' if app_url else ''}
         <p style="color:#9ca3af;font-size:0.82rem;margin:0;">This is a temporary password. You will be required to set a new password on your first login. Keep this email safe until then.</p>
       </div>
@@ -84,8 +84,8 @@ def build_bill_alert_email(username, display_name, bills):
 
     return f'''
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;">
-      <div style="background:linear-gradient(135deg,#667eea,#764ba2);padding:24px 32px;border-radius:16px 16px 0 0;">
-        <h1 style="color:white;margin:0;font-size:1.4rem;">💸 Kash</h1>
+      <div style="background:linear-gradient(135deg,#0a2540,#0d3d52);padding:24px 32px;border-radius:16px 16px 0 0;">
+        <h1 style="margin:0;"><svg viewBox="0 0 88 26" height="26" style="vertical-align:middle;display:inline-block"><text y="21" font-family="Arial,sans-serif" font-weight="800" font-size="23" fill="none" stroke="#00d4aa" stroke-width="1.3">K</text><text x="16" y="21" font-family="Arial,sans-serif" font-weight="800" font-size="23" fill="#ffffff">ash</text></svg></h1>
         <p style="color:rgba(255,255,255,0.85);margin:4px 0 0;font-size:0.9rem;">Bill Alert</p>
       </div>
       <div style="background:#ffffff;padding:28px 32px;border:1px solid #e5e7eb;border-top:none;">
@@ -133,8 +133,8 @@ def build_budget_alert_email(username, display_name, budgets):
 
     return f'''
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;">
-      <div style="background:linear-gradient(135deg,#667eea,#764ba2);padding:24px 32px;border-radius:16px 16px 0 0;">
-        <h1 style="color:white;margin:0;font-size:1.4rem;">💸 Kash</h1>
+      <div style="background:linear-gradient(135deg,#0a2540,#0d3d52);padding:24px 32px;border-radius:16px 16px 0 0;">
+        <h1 style="margin:0;"><svg viewBox="0 0 88 26" height="26" style="vertical-align:middle;display:inline-block"><text y="21" font-family="Arial,sans-serif" font-weight="800" font-size="23" fill="none" stroke="#00d4aa" stroke-width="1.3">K</text><text x="16" y="21" font-family="Arial,sans-serif" font-weight="800" font-size="23" fill="#ffffff">ash</text></svg></h1>
         <p style="color:rgba(255,255,255,0.85);margin:4px 0 0;font-size:0.9rem;">Budget Alert</p>
       </div>
       <div style="background:#ffffff;padding:28px 32px;border:1px solid #e5e7eb;border-top:none;">
