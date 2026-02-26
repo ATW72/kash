@@ -308,7 +308,7 @@
       backdrop.classList.add('active');
       body.innerHTML = '<div style="text-align: center; padding: 2.5rem; color: var(--text-secondary);"><div style="display:inline-block;border:3px solid var(--border);border-top:3px solid var(--primary);border-radius:50%;width:24px;height:24px;animation:spin 1s linear infinite;margin:0 auto 1rem;"></div><br>Consulting with AI Advisor...</div>';
 
-      const res = await apiCall('/api/advisor/plan');
+      const res = await apiCall('/api/advisor/plan', 'GET', null, true);
       if (res && res.plan) {
         body.innerHTML = marked.parse(res.plan);
       } else if (res && res.error) {
@@ -5181,7 +5181,7 @@
       setTimeout(() => { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 300); }, 4000);
     }
 
-    async function apiCall(endpoint, method = 'GET', data = null) {
+    async function apiCall(endpoint, method = 'GET', data = null, returnError = false) {
       try {
         const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' };
         if (data && method !== 'GET') opts.body = JSON.stringify(data);
@@ -5197,12 +5197,12 @@
 
         if (!resp.ok) {
           showToast('error', result.error || 'Operation failed');
-          return { error: result.error || 'Operation failed' };
+          return returnError ? { error: result.error || 'Operation failed' } : null;
         }
         return result;
       } catch (e) {
         showToast('error', `Network error: ${e.message}`);
-        return { error: `Network error: ${e.message}` };
+        return returnError ? { error: `Network error: ${e.message}` } : null;
       }
     }
 
