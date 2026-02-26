@@ -1746,7 +1746,7 @@ def advisor_plan():
         debt_str = ", ".join([f"{d['name']} (${d['balance'] or 0.0})" for d in debts]) or "None"
         budget_str = ", ".join([f"{bg['category']} (${bg['amount']})" for bg in budgets]) or "None"
 
-        import urllib.request, json as jsonlib
+        import urllib.request, urllib.error, json as jsonlib
         prompt = f"""You are an expert financial advisor. Provide a concise, actionable financial plan in markdown format.
 
 User's Data for {month}:
@@ -1783,6 +1783,12 @@ Your response MUST be exclusively formatted in nice Markdown. Do not include int
         if not response_text:
             return jsonify({'error': 'Received an empty response from the AI.'}), 500
         return jsonify({'plan': response_text}), 200
+    except urllib.error.HTTPError as e:
+        try:
+            err_body = e.read().decode('utf-8')
+            return jsonify({'error': f'Ollama HTTP Error {e.code}: {err_body}'}), 500
+        except:
+            return jsonify({'error': f'Ollama HTTP Error {e.code}: {e.reason}'}), 500
     except Exception as e:
         return jsonify({'error': f'Failed to generate plan: {str(e)}'}), 500
 
