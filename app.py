@@ -1677,8 +1677,11 @@ Reply with ONLY a JSON array like: ["Groceries","Dining Out","Transportation"]""
             'prompt': prompt,
             'stream': False
         }).encode('utf-8')
+        url = ollama_url.rstrip('/')
+        if not url.endswith('/api/generate'):
+            url = f"{url}/api/generate"
         req = urllib.request.Request(
-            f"{ollama_url.rstrip('/')}/api/generate",
+            url,
             data=payload,
             headers={'Content-Type': 'application/json'},
             method='POST'
@@ -1706,7 +1709,10 @@ def ollama_status():
         return jsonify({'configured': False, 'url': ''}), 200
     import urllib.request
     try:
-        with urllib.request.urlopen(f"{ollama_url.rstrip('/')}/api/tags", timeout=5) as resp:
+        url = ollama_url.rstrip('/')
+        if url.endswith('/api/generate'):
+            url = url[:-13]
+        with urllib.request.urlopen(f"{url}/api/tags", timeout=5) as resp:
             return jsonify({'configured': True, 'url': ollama_url, 'reachable': True}), 200
     except:
         return jsonify({'configured': True, 'url': ollama_url, 'reachable': False}), 200
@@ -1761,8 +1767,11 @@ Your response MUST be exclusively formatted in nice Markdown. Do not include int
             'prompt': prompt,
             'stream': False
         }).encode('utf-8')
+        url = ollama_url.rstrip('/')
+        if not url.endswith('/api/generate'):
+            url = f"{url}/api/generate"
         req = urllib.request.Request(
-            f"{ollama_url.rstrip('/')}/api/generate",
+            url,
             data=payload,
             headers={'Content-Type': 'application/json'},
             method='POST'
