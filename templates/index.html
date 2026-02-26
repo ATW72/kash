@@ -6545,6 +6545,7 @@
         if (userInput) userInput.value = me.user.username;
       }
       // Load data
+      await loadWidgetPrefs();
       await loadCategories();
       await populateUserDropdowns();
       await populateCreditCardDropdowns();
@@ -6989,12 +6990,12 @@
         dd.classList.add('open');
         if (backdrop && window.innerWidth <= 640) backdrop.style.display = 'block';
       }
-      // Render current widget list safely
       const container = document.getElementById('widget-toggle-list');
       container.innerHTML = WIDGETS.map(w => `
         <div class="widget-toggle-item ${_widgetVisibility[w.id] ? 'visible' : 'hidden'}"
-             onclick="toggleWidget('${w.id}',this); event.stopPropagation();" data-id="${w.id}" style="padding:0.6rem; border:none; border-bottom:1px solid var(--border); border-radius:0;">
+             onclick="toggleWidget('${w.id}',this); event.stopPropagation();" data-id="${w.id}" style="padding:0.6rem; border:none; border-bottom:1px solid var(--border); border-radius:0; cursor:pointer; display:flex; align-items:center; gap:0.5rem; justify-content:flex-start;">
           <span>${_widgetVisibility[w.id] ? '✅' : '⬜'}</span>
+          <span style="font-weight:500;">${w.label}</span>
         </div>`).join('');
     }
 
