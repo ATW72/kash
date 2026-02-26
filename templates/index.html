@@ -5186,12 +5186,23 @@
         const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' };
         if (data && method !== 'GET') opts.body = JSON.stringify(data);
         const resp = await fetch(endpoint, opts);
-        const result = await resp.json();
-        if (!resp.ok) { showToast('error', result.error || 'Operation failed'); return null; }
+
+        let result = {};
+        const text = await resp.text();
+        try {
+          result = JSON.parse(text);
+        } catch (e) {
+          result = { error: text ? text.substring(0, 100) : `HTTP ${resp.status} - Non-JSON response` };
+        }
+
+        if (!resp.ok) {
+          showToast('error', result.error || 'Operation failed');
+          return { error: result.error || 'Operation failed' };
+        }
         return result;
       } catch (e) {
-        showToast('error', 'Network error occurred');
-        return null;
+        showToast('error', `Network error: ${e.message}`);
+        return { error: `Network error: ${e.message}` };
       }
     }
 
@@ -6963,10 +6974,10 @@
     function toggleWidgetDropdown(e) {
       if (e) { e.preventDefault(); e.stopPropagation(); }
       const dd = document.getElementById('widget-dropdown');
-      const isCurrentlyActive = dd.classList.contains('active');
+      const isCurrentlyActive = dd.classList.contains('open');
 
       // Close profile dropdown if open
-      document.getElementById('profile-dropdown').classList.remove('active');
+      document.getElementById('profile-dropdown').classList.remove('open');
 
       if (!isCurrentlyActive) {
         // Render current widget list safely
@@ -6977,9 +6988,9 @@
           <span>${_widgetVisibility[w.id] ? '✅' : '⬜'}</span>
           <span style="font-weight:500;">${w.label}</span>
         </div>`).join('');
-        dd.classList.add('active');
+        dd.classList.add('open');
       } else {
-        dd.classList.remove('active');
+        dd.classList.remove('open');
       }
     }
 
