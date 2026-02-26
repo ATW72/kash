@@ -2787,7 +2787,6 @@
    ===================================================== */
 
     /* desk-only = visible on desktop, hidden on mobile */
-    .desk-only {}
 
     /* mob-only = hidden on desktop, visible on mobile */
     .mob-only {
@@ -3521,7 +3520,7 @@
           <rect width="7" height="7" x="14" y="3" rx="1"></rect>
           <rect width="7" height="7" x="14" y="14" rx="1"></rect>
           <rect width="7" height="7" x="3" y="14" rx="1"></rect>
-        </svg></span><span class="mn-label">Dashboard</span>
+        </svg></span><span class="mn-label">Home</span>
     </button>
     <button class="mobile-nav-btn" data-tab="spending" onclick="switchTabMobile('spending',this)">
       <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22"
@@ -3855,7 +3854,7 @@
       </div>
 
       <!-- Splits summary -->
-      <div class="glass-card" id="widget-splits" style="">
+      <div class="glass-card" id="widget-splits">
         <div class="card-title">🤝 Who Owes What</div>
         <div id="dashboard-splits-list">
           <div class="empty-state" style="padding:1rem;">No outstanding splits</div>
@@ -6561,9 +6560,6 @@
     const style = document.createElement('style');
     style.textContent = '@keyframes confettiFall { to { transform: translateY(100vh) rotate(720deg); opacity:0; } }';
     document.head.appendChild(style);
-
-    init();
-
   </script>
 
   <script>
@@ -8067,6 +8063,11 @@
       if (e.target.closest('.search-result-item')) {
         closeMobileSearch();
       }
+    });
+
+    // Initialize application AFTER all consts define (like WIDGETS)
+    document.addEventListener('DOMContentLoaded', () => {
+      init();
     });
   </script>
 
