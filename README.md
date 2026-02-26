@@ -80,10 +80,11 @@ multi-user support, bank statement import, AI categorization, and a native-quali
 - **Duplicate skipping** — same date + description + amount is silently skipped
 - **AI categorization** — connect a local Ollama instance for smarter categorization
 
-### AI Categorization (Ollama)
-- Connect to a local Ollama instance running on your network
-- Transaction descriptions categorized by a local LLM — **data never leaves your network**
-- Recommended model: `llama3.1:8b` (runs well on CPU-only hardware)
+### AI Integration (Ollama)
+- Connect to a local Ollama instance running on your network. **Data never leaves your network.**
+- **Smart Categorization** — Transaction descriptions from CSV imports auto-categorized by a local LLM.
+- **AI Advisor** — Generates a personalized markdown-formatted financial plan and debt-payoff strategy based on your real monthly income, bills, and budget limits.
+- Recommended model: `llama3.1:8b` (runs well on CPU-only hardware, though GPU is recommended for <5s response times).
 - Configure in the Import tab or set `OLLAMA_URL` in `.env`
 
 ### Email Notifications (per user)
@@ -140,6 +141,7 @@ multi-user support, bank statement import, AI categorization, and a native-quali
 ### Mobile / PWA — Native Quality
 - **Priority bottom navigation** — Dashboard, Spending, Bills, Income, + More (ordered by daily use)
 - **More drawer** — Budgets, Cards, Reports, Currencies, Import, Widgets, Account — slides up from the bottom
+- **Swipe-to-close drawers** — profile, widget, and more menus can be swiped down to close intuitively on touch screens
 - **Full-screen search overlay** — tap the search icon in the header for full-width search
 - **iPhone safe area support** — proper padding for notch and home indicator
 - **Swipeable tables** — horizontal scroll on all data tables
