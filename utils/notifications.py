@@ -39,7 +39,9 @@ def build_welcome_email(username, display_name, temp_password, app_url=''):
     return f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;background:#f9fafb;padding:2rem;">
       <div style="background:linear-gradient(135deg,#0a2540,#0d3d52);border-radius:16px;padding:2rem;text-align:center;margin-bottom:1.5rem;">
-        <h1 style="margin:0;"><svg viewBox="0 0 88 26" height="32" style="vertical-align:middle;display:inline-block"><text y="21" font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="none" stroke="#00d4aa" stroke-width="1.3">K</text><text x="16" y="21" font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="#ffffff">ash</text></svg></h1>
+        <h1 style="margin:0; font-family:'DM Sans', Arial, sans-serif; font-size:32px; font-weight:800; letter-spacing:-0.5px;">
+          <span style="color:#0a2540; -webkit-text-stroke: 1.5px #00d4aa; text-shadow: -1px -1px 0 #00d4aa, 1px -1px 0 #00d4aa, -1px 1px 0 #00d4aa, 1px 1px 0 #00d4aa;">K</span><span style="color:#ffffff;">ash</span>
+        </h1>
         <p style="color:rgba(255,255,255,0.85);margin:0.5rem 0 0;">Private. Simple. Yours.</p>
       </div>
       <div style="background:white;border-radius:16px;padding:2rem;margin-bottom:1rem;">
@@ -85,7 +87,9 @@ def build_bill_alert_email(username, display_name, bills):
     return f'''
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;">
       <div style="background:linear-gradient(135deg,#0a2540,#0d3d52);padding:24px 32px;border-radius:16px 16px 0 0;">
-        <h1 style="margin:0;"><svg viewBox="0 0 88 26" height="26" style="vertical-align:middle;display:inline-block"><text y="21" font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="none" stroke="#00d4aa" stroke-width="1.3">K</text><text x="16" y="21" font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="#ffffff">ash</text></svg></h1>
+        <h1 style="margin:0; font-family:'DM Sans', Arial, sans-serif; font-size:28px; font-weight:800; letter-spacing:-0.5px;">
+          <span style="color:#0a2540; -webkit-text-stroke: 1.5px #00d4aa; text-shadow: -1px -1px 0 #00d4aa, 1px -1px 0 #00d4aa, -1px 1px 0 #00d4aa, 1px 1px 0 #00d4aa;">K</span><span style="color:#ffffff;">ash</span>
+        </h1>
         <p style="color:rgba(255,255,255,0.85);margin:4px 0 0;font-size:0.9rem;">Bill Alert</p>
       </div>
       <div style="background:#ffffff;padding:28px 32px;border:1px solid #e5e7eb;border-top:none;">
@@ -134,7 +138,9 @@ def build_budget_alert_email(username, display_name, budgets):
     return f'''
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;">
       <div style="background:linear-gradient(135deg,#0a2540,#0d3d52);padding:24px 32px;border-radius:16px 16px 0 0;">
-        <h1 style="margin:0;"><svg viewBox="0 0 88 26" height="26" style="vertical-align:middle;display:inline-block"><text y="21" font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="none" stroke="#00d4aa" stroke-width="1.3">K</text><text x="16" y="21" font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="#ffffff">ash</text></svg></h1>
+        <h1 style="margin:0; font-family:'DM Sans', Arial, sans-serif; font-size:28px; font-weight:800; letter-spacing:-0.5px;">
+          <span style="color:#0a2540; -webkit-text-stroke: 1.5px #00d4aa; text-shadow: -1px -1px 0 #00d4aa, 1px -1px 0 #00d4aa, -1px 1px 0 #00d4aa, 1px 1px 0 #00d4aa;">K</span><span style="color:#ffffff;">ash</span>
+        </h1>
         <p style="color:rgba(255,255,255,0.85);margin:4px 0 0;font-size:0.9rem;">Budget Alert</p>
       </div>
       <div style="background:#ffffff;padding:28px 32px;border:1px solid #e5e7eb;border-top:none;">
