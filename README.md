@@ -151,6 +151,7 @@ multi-user support, bank statement import, AI categorization, and a native-quali
 ### Design
 - **Midnight Teal palette** — deep navy (#0a2540 → #0d3d52) with electric teal (#00d4aa) accents
 - **Outlined K wordmark** — custom SVG logo where the K is a teal outline, unique to Kash
+- **Pixel-Perfect Emails** — uses a transparent, raw GitHub-hosted PNG of the logo to bypass aggressive CSS/SVG stripping in enterprise email clients like Gmail and Outlook
 - **Inline SVG icons** — all icons are self-contained inline SVGs, zero CDN dependency, fully offline-capable
 - **DM Sans font** — loaded via Google Fonts CDN (`fonts.googleapis.com`), with a system font fallback (SF Pro, Segoe UI, Roboto) if the CDN is unavailable
 - **Dark mode** — warm deep navy palette (`#14233a` background, `#213348` cards) rather than pitch-black, preserving the teal accent depth
