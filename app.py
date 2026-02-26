@@ -2029,9 +2029,7 @@ def send_test_notification():
     html = f"""
     <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;">
       <div style="background:linear-gradient(135deg,#0a2540,#0d3d52);padding:24px 32px;border-radius:16px 16px 0 0;">
-        <h1 style="margin:0; font-family:'DM Sans', Arial, sans-serif; font-size:28px; font-weight:800; letter-spacing:-0.5px;">
-          <span style="color:#0a2540; -webkit-text-stroke: 1.5px #00d4aa; text-shadow: -1px -1px 0 #00d4aa, 1px -1px 0 #00d4aa, -1px 1px 0 #00d4aa, 1px 1px 0 #00d4aa;">K</span><span style="color:#ffffff;">ash</span>
-        </h1>
+        <h1 style="margin:0;"><img src="https://raw.githubusercontent.com/ATW72/kash/main/static/email_logo.png" alt="Kash" height="24" style="vertical-align:middle;border:none;outline:none;"></h1>
       </div>
       <div style="background:#fff;padding:28px 32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;">
         <p>Hi <strong>{user['display_name'] or session['username']}</strong>,</p>
