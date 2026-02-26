@@ -311,8 +311,10 @@
       const res = await apiCall('/api/advisor/plan');
       if (res && res.plan) {
         body.innerHTML = marked.parse(res.plan);
+      } else if (res && res.error) {
+        body.innerHTML = `<div class="empty-state" style="padding:1rem;color:var(--danger);">${res.error}</div>`;
       } else {
-        body.innerHTML = '<div class="empty-state" style="padding:1rem;">Failed to generate plan. Please ensure Ollama is configured correctly.</div>';
+        body.innerHTML = '<div class="empty-state" style="padding:1rem;">Failed to generate plan. The server encountered an error reaching the AI. Please verify Ollama is accessible from within the Kash container.</div>';
       }
     }
 
@@ -2951,7 +2953,7 @@
       /* ── Any desktop grid → single column ── */
       .dashboard-grid-2,
       .dashboard-grid-3 {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: minmax(0, 1fr) !important;
       }
 
       /* ── Tables: hide, show cards ── */
@@ -3411,7 +3413,7 @@
         </div>
       </div>
       <div class="profile-dropdown-wrapper" id="widget-dropdown-wrapper">
-        <button class="header-icon-btn profile-trigger" id="widget-toggle-btn" onclick="toggleWidgetDropdown(event)"
+        <button class="header-icon-btn" id="widget-toggle-btn" onclick="toggleWidgetDropdown(event)"
           title="Customize dashboard widgets" style="display:none; padding:0; background:transparent;"><svg width="18"
             height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -3502,7 +3504,7 @@
 
   <!-- ══ Mobile Bottom Nav ══ -->
   <div class="mobile-nav">
-    <button class="mobile-nav-btn active" data-tab="dashboard" onclick="switchTabMobile(&#39;dashboard&#39;,this)">
+    <button class="mobile-nav-btn active" data-tab="dashboard" onclick="switchTabMobile('dashboard',this)">
       <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22"
           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
           stroke-linejoin="round">
@@ -3512,7 +3514,7 @@
           <rect width="7" height="7" x="3" y="14" rx="1"></rect>
         </svg></span><span class="mn-label">Dashboard</span>
     </button>
-    <button class="mobile-nav-btn" data-tab="spending" onclick="switchTabMobile(&#39;spending&#39;,this)">
+    <button class="mobile-nav-btn" data-tab="spending" onclick="switchTabMobile('spending',this)">
       <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22"
           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
           stroke-linejoin="round">
@@ -3520,7 +3522,7 @@
           <line x1="2" x2="22" y1="10" y2="10"></line>
         </svg></span><span class="mn-label">Spending</span>
     </button>
-    <button class="mobile-nav-btn" data-tab="bills" onclick="switchTabMobile(&#39;bills&#39;,this)">
+    <button class="mobile-nav-btn" data-tab="bills" onclick="switchTabMobile('bills',this)">
       <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22"
           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
           stroke-linejoin="round">
@@ -3531,7 +3533,7 @@
           <path d="m9 16 2 2 4-4"></path>
         </svg></span><span class="mn-label">Bills</span>
     </button>
-    <button class="mobile-nav-btn" data-tab="income" onclick="switchTabMobile(&#39;income&#39;,this)">
+    <button class="mobile-nav-btn" data-tab="income" onclick="switchTabMobile('income',this)">
       <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22"
           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
           stroke-linejoin="round">
@@ -3555,8 +3557,7 @@
   <div class="more-drawer" id="more-drawer">
     <div class="more-drawer-handle"></div>
     <div class="more-drawer-grid">
-      <button class="more-drawer-item" data-tab="budgets"
-        onclick="switchTabMobile(&#39;budgets&#39;);closeMoreDrawer()">
+      <button class="more-drawer-item" data-tab="budgets" onclick="switchTabMobile('budgets');closeMoreDrawer()">
         <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24"
             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
             stroke-linejoin="round">
@@ -3566,7 +3567,7 @@
           </svg></span><span>Budgets</span>
       </button>
       <button class="more-drawer-item" data-tab="credit-cards"
-        onclick="switchTabMobile(&#39;credit-cards&#39;);closeMoreDrawer()">
+        onclick="switchTabMobile('credit-cards');closeMoreDrawer()">
         <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24"
             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
             stroke-linejoin="round">
@@ -3575,8 +3576,7 @@
             <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
           </svg></span><span>Cards</span>
       </button>
-      <button class="more-drawer-item" data-tab="reports"
-        onclick="switchTabMobile(&#39;reports&#39;);closeMoreDrawer()">
+      <button class="more-drawer-item" data-tab="reports" onclick="switchTabMobile('reports');closeMoreDrawer()">
         <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24"
             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
             stroke-linejoin="round">
@@ -3585,8 +3585,7 @@
             <line x1="6" x2="6" y1="20" y2="14"></line>
           </svg></span><span>Reports</span>
       </button>
-      <button class="more-drawer-item" data-tab="currencies"
-        onclick="switchTabMobile(&#39;currencies&#39;);closeMoreDrawer()">
+      <button class="more-drawer-item" data-tab="currencies" onclick="switchTabMobile('currencies');closeMoreDrawer()">
         <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24"
             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
             stroke-linejoin="round">
@@ -3595,7 +3594,7 @@
             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
           </svg></span><span>Currencies</span>
       </button>
-      <button class="more-drawer-item" data-tab="import" onclick="switchTabMobile(&#39;import&#39;);closeMoreDrawer()">
+      <button class="more-drawer-item" data-tab="import" onclick="switchTabMobile('import');closeMoreDrawer()">
         <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24"
             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
             stroke-linejoin="round">
@@ -4004,7 +4003,7 @@
               <line x1="9" x2="15" y1="12" y2="12"></line>
               <line x1="17" x2="23" y1="16" y2="16"></line>
             </svg> Advanced</button>
-          <button class="mine-toggle" id="expense-mine-toggle" onclick="toggleMineFilter(&#39;expenses&#39;,this)"><svg
+          <button class="mine-toggle" id="expense-mine-toggle" onclick="toggleMineFilter('expenses',this)"><svg
               style="vertical-align:middle;margin-right:0.3rem;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24"
               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
@@ -4071,7 +4070,7 @@
 
       <!-- ── Bills Sub-Section ── -->
       <div class="glass-card collapsible-card">
-        <div class="collapsible-header" onclick="toggleSection(&#39;bills-section&#39;)">
+        <div class="collapsible-header" onclick="toggleSection('bills-section')">
           <span class="card-title" style="margin-bottom:0;"><svg
               style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18" viewBox="0 0 24 24"
               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4143,7 +4142,7 @@
 
       <!-- ── Recurring Sub-Section ── -->
       <div class="glass-card collapsible-card">
-        <div class="collapsible-header" onclick="toggleSection(&#39;recurring-section&#39;)">
+        <div class="collapsible-header" onclick="toggleSection('recurring-section')">
           <span class="card-title" style="margin-bottom:0;">🔄 Recurring Transactions</span>
           <span class="collapse-arrow" id="recurring-section-arrow">▼</span>
         </div>
@@ -4742,7 +4741,7 @@
         <!-- Step 1: Upload -->
         <div id="import-step-1">
           <div class="import-dropzone" id="import-dropzone"
-            onclick="document.getElementById(&#39;import-file-input&#39;).click()">
+            onclick="document.getElementById('import-file-input').click()">
             <div class="dz-icon">📂</div>
             <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem;">Drop your bank CSV or Excel file here
             </div>
@@ -4931,9 +4930,9 @@
           style="background:var(--bg-secondary);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.9rem;">
         </div>
         <div class="split-mode-tabs">
-          <button class="split-mode-tab active" onclick="setSplitMode(&#39;even&#39;,this)">÷ Even</button>
-          <button class="split-mode-tab" onclick="setSplitMode(&#39;pct&#39;,this)">% Percentage</button>
-          <button class="split-mode-tab" onclick="setSplitMode(&#39;amount&#39;,this)">$ Amount</button>
+          <button class="split-mode-tab active" onclick="setSplitMode('even',this)">÷ Even</button>
+          <button class="split-mode-tab" onclick="setSplitMode('pct',this)">% Percentage</button>
+          <button class="split-mode-tab" onclick="setSplitMode('amount',this)">$ Amount</button>
         </div>
         <div id="split-rows-container"></div>
         <div id="split-validation" style="font-size:0.83rem;color:var(--danger);margin-top:0.5rem;min-height:1.2em;">
