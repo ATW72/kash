@@ -39,7 +39,7 @@ def build_welcome_email(username, display_name, temp_password, app_url=''):
     return f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;background:#f9fafb;padding:2rem;">
       <div style="background:linear-gradient(135deg,#0a2540,#0d3d52);border-radius:16px;padding:2rem;text-align:center;margin-bottom:1.5rem;">
-        <h1 style="margin:0;"><img src="https://raw.githubusercontent.com/ATW72/kash/main/static/email_logo.png" alt="Kash" height="28" style="vertical-align:middle;border:none;outline:none;"></h1>
+        <h1 style="margin:0;"><img src="https://raw.githubusercontent.com/ATW72/kash/52a2ed786417678f4be500380b41453cab4aaa27/static/email_logo.png" alt="Kash" height="28" style="vertical-align:middle;border:none;outline:none;"></h1>
         <p style="color:rgba(255,255,255,0.85);margin:0.5rem 0 0;">Private. Simple. Yours.</p>
       </div>
       <div style="background:white;border-radius:16px;padding:2rem;margin-bottom:1rem;">
@@ -85,7 +85,7 @@ def build_bill_alert_email(username, display_name, bills):
     return f'''
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;">
       <div style="background:linear-gradient(135deg,#0a2540,#0d3d52);padding:24px 32px;border-radius:16px 16px 0 0;">
-        <h1 style="margin:0;"><img src="https://raw.githubusercontent.com/ATW72/kash/main/static/email_logo.png" alt="Kash" height="24" style="vertical-align:middle;border:none;outline:none;"></h1>
+        <h1 style="margin:0;"><img src="https://raw.githubusercontent.com/ATW72/kash/52a2ed786417678f4be500380b41453cab4aaa27/static/email_logo.png" alt="Kash" height="24" style="vertical-align:middle;border:none;outline:none;"></h1>
         <p style="color:rgba(255,255,255,0.85);margin:4px 0 0;font-size:0.9rem;">Bill Alert</p>
       </div>
       <div style="background:#ffffff;padding:28px 32px;border:1px solid #e5e7eb;border-top:none;">
@@ -134,7 +134,7 @@ def build_budget_alert_email(username, display_name, budgets):
     return f'''
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;">
       <div style="background:linear-gradient(135deg,#0a2540,#0d3d52);padding:24px 32px;border-radius:16px 16px 0 0;">
-        <h1 style="margin:0;"><img src="https://raw.githubusercontent.com/ATW72/kash/main/static/email_logo.png" alt="Kash" height="24" style="vertical-align:middle;border:none;outline:none;"></h1>
+        <h1 style="margin:0;"><img src="https://raw.githubusercontent.com/ATW72/kash/52a2ed786417678f4be500380b41453cab4aaa27/static/email_logo.png" alt="Kash" height="24" style="vertical-align:middle;border:none;outline:none;"></h1>
         <p style="color:rgba(255,255,255,0.85);margin:4px 0 0;font-size:0.9rem;">Budget Alert</p>
       </div>
       <div style="background:#ffffff;padding:28px 32px;border:1px solid #e5e7eb;border-top:none;">
