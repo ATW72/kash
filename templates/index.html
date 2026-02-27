@@ -3395,6 +3395,19 @@
               </div>
             </form>
           </div>
+          <div class="profile-dropdown-divider"></div>
+          <div class="profile-dropdown-section" id="security-dropdown-section">
+            <div class="profile-section-label">Two-Factor Auth (2FA)</div>
+            <div id="2fa-status-container" style="padding:0 0 0.5rem; font-size:0.9rem;">
+              <p style="margin-bottom:0.5rem; color:var(--text-secondary);">Current Status: <strong
+                  id="2fa-status-text">Checking...</strong></p>
+              <div style="display:flex; gap:0.5rem;" id="2fa-actions">
+                <button type="button" class="btn-sm" onclick="start2FASetup('app')">Set Up App</button>
+                <button type="button" class="btn-sm btn-secondary" onclick="start2FASetup('email')">Set Up
+                  Email</button>
+              </div>
+            </div>
+          </div>
           <div class="profile-dropdown-divider" id="admin-dropdown-divider" style="display:none;"></div>
           <div class="profile-dropdown-section" id="admin-dropdown-section" style="display:none;">
             <div class="profile-section-label">Admin</div>
@@ -3633,6 +3646,28 @@
       <div class="modal-btns">
         <button class="btn-secondary btn-sm" onclick="hideModal()">Cancel</button>
         <button class="btn-danger btn-sm" id="modal-confirm-btn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="mfa-setup-backdrop">
+    <div class="modal" id="mfa-setup-container" style="max-width: 400px; width: 90%;">
+      <h3 style="display: flex; align-items: center; gap: 8px;">
+        <svg fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" viewBox="0 0 24 24">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        Set up 2FA
+      </h3>
+      <div id="mfa-setup-body" style="margin-top: 1rem; font-size: 0.95rem; color: var(--text-secondary);">
+        <!-- Dynamic content -->
+      </div>
+      <div class="form-group" style="margin-top:1rem;">
+        <input type="text" id="mfa-setup-code" placeholder="Enter 6-digit code">
+      </div>
+      <div class="modal-btns" style="margin-top: 1.5rem;">
+        <button class="btn-secondary btn-sm"
+          onclick="document.getElementById('mfa-setup-backdrop').classList.remove('active')">Cancel</button>
+        <button class="btn-sm" onclick="verify2FASetup()">Verify & Enable</button>
       </div>
     </div>
   </div>

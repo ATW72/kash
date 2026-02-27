@@ -23,7 +23,8 @@ import atexit
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 import pathlib
-UPLOAD_FOLDER = pathlib.Path(os.environ.get('APP_UPLOAD_FOLDER', '/opt/kash/data/receipts'))
+DATA_DIR = pathlib.Path(os.environ.get('DATA_DIR', '/home/anwillia/Documents/git/kash/data'))
+UPLOAD_FOLDER = DATA_DIR / 'receipts'
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 ALLOWED_EXTENSIONS = {'png','jpg','jpeg','gif','webp','pdf'}
 app.secret_key = Config.SECRET_KEY
@@ -68,6 +69,8 @@ def init_db():
         ("notify_bills",    "INTEGER DEFAULT 1"),
         ("notify_budgets",  "INTEGER DEFAULT 1"),
         ("notify_monthly",  "INTEGER DEFAULT 1"),
+        ("two_factor_method", "TEXT DEFAULT 'none'"),
+        ("totp_secret",       "TEXT DEFAULT ''"),
     ]:
         try:
             c.execute(f"ALTER TABLE users ADD COLUMN {col} {defn}")
@@ -433,18 +436,51 @@ def login():
         return jsonify({'error': 'Username and password required'}), 400
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT id,username,password_hash,is_admin,display_name,must_change_password FROM users WHERE username=?", (username,))
+    c.execute("SELECT id,username,password_hash,is_admin,display_name,must_change_password,two_factor_method,totp_secret,email FROM users WHERE username=?", (username,))
     user = c.fetchone()
     conn.close()
     if not user or not check_password_hash(user[2], password):
         return jsonify({'error': 'Invalid username or password'}), 401
+        
+    uid, uname, phash, is_admin, display_name, must_change_pw, two_factor_method, totp_secret, email = user
+    two_factor_method = two_factor_method or 'none'
+    code = data.get('code', '').strip()
+
+    if two_factor_method != 'none':
+        if not code:
+            # First pass: valid credentials, but 2FA is required.
+            if two_factor_method == 'email':
+                import random
+                otp = f"{random.randint(100000, 999999)}"
+                session['email_otp'] = otp
+                session['email_otp_username'] = uname
+                if email:
+                    from utils.notifications import send_email
+                    html = f"<h2>Login Verification Code</h2><p>Your correct login code is: <strong>{otp}</strong></p><p>This code expires shortly.</p>"
+                    send_email(email, '✅ Kash: Login Verification Code', html)
+            return jsonify({'success': False, 'status': '2fa_required', 'method': two_factor_method, 'username': uname}), 200
+        else:
+            # Second pass: verify the code
+            if two_factor_method == 'app':
+                import pyotp
+                if not totp_secret:
+                    return jsonify({'error': '2FA secret not found. Check server DB.'}), 500
+                totp = pyotp.TOTP(totp_secret)
+                if not totp.verify(code):
+                    return jsonify({'error': 'Invalid Authenticator code.'}), 401
+            elif two_factor_method == 'email':
+                if code != str(session.get('email_otp')) or uname != session.get('email_otp_username'):
+                    return jsonify({'error': 'Invalid or expired email code.'}), 401
+                session.pop('email_otp', None)
+                session.pop('email_otp_username', None)
+
     session.permanent = True
-    session['user_id'] = user[0]
-    session['username'] = user[1]
-    session['is_admin'] = bool(user[3])
-    session['display_name'] = user[4] or ''
-    session['must_change_password'] = bool(user[5])
-    return jsonify({'success': True, 'user': {'id': user[0], 'username': user[1], 'is_admin': bool(user[3]), 'display_name': user[4] or '', 'must_change_password': bool(user[5])}}), 200
+    session['user_id'] = uid
+    session['username'] = uname
+    session['is_admin'] = bool(is_admin)
+    session['display_name'] = display_name or ''
+    session['must_change_password'] = bool(must_change_pw)
+    return jsonify({'success': True, 'user': {'id': uid, 'username': uname, 'is_admin': bool(is_admin), 'display_name': display_name or '', 'must_change_password': bool(must_change_pw)}}), 200
 
 @app.route('/logout', methods=['POST'])
 def logout():
@@ -2232,6 +2268,97 @@ def force_change_password():
 @app.route('/health')
 def health():
     return jsonify({'status': 'healthy', 'version': os.environ.get('APP_VERSION','3.4')}), 200
+
+@app.route('/api/users/2fa/status', methods=['GET'])
+@login_required
+def get_2fa_status():
+    conn = get_db_connection()
+    row = conn.execute("SELECT two_factor_method FROM users WHERE id=?", (session['user_id'],)).fetchone()
+    conn.close()
+    return jsonify({'method': row['two_factor_method'] if row else 'none'}), 200
+
+@app.route('/api/users/2fa/setup', methods=['POST'])
+@login_required
+def setup_2fa():
+    """Generates a new TOTP secret or sends Email OTP for setup verification."""
+    data = request.json or {}
+    method = data.get('method', 'app')
+    conn = get_db_connection()
+    if method == 'app':
+        import pyotp
+        import qrcode
+        import qrcode.image.svg
+        import io
+        secret = pyotp.random_base32()
+        url = pyotp.totp.TOTP(secret).provisioning_uri(name=session['username'], issuer_name='Kash')
+        # Store temporarily in session before confirming
+        session['pending_2fa_secret'] = secret
+        session['pending_2fa_method'] = method
+        
+        # Generate inline SVG string
+        factory = qrcode.image.svg.SvgPathImage
+        img = qrcode.make(url, image_factory=factory, border=0)
+        stream = io.BytesIO()
+        img.save(stream)
+        svg_str = stream.getvalue().decode()
+        
+        conn.close()
+        return jsonify({'qr_svg': svg_str, 'secret': secret}), 200
+    elif method == 'email':
+        email = conn.execute("SELECT email FROM users WHERE id=?", (session['user_id'],)).fetchone()[0]
+        if not email:
+            conn.close()
+            return jsonify({'error': 'Email not configured on your profile.'}), 400
+        import random
+        otp = f"{random.randint(100000, 999999)}"
+        session['pending_2fa_secret'] = otp # Use secret for email OTP as well
+        session['pending_2fa_method'] = method
+        from utils.notifications import send_email
+        send_email(email, '✅ Kash: 2FA Setup Code', f"<h2>2FA Verification Code</h2><p>Your setup code is: <strong>{otp}</strong></p><p>If you didn't request this, you can safely ignore this email.</p>")
+        conn.close()
+        return jsonify({'message': 'Check your email for the code.'}), 200
+    conn.close()
+    return jsonify({'error': 'Invalid 2FA method'}), 400
+
+@app.route('/api/users/2fa/verify', methods=['POST'])
+@login_required
+def verify_2fa_setup():
+    data = request.json or {}
+    code = data.get('code', '').strip()
+    pending_method = session.get('pending_2fa_method')
+    pending_secret = session.get('pending_2fa_secret')
+    
+    if not pending_method or not pending_secret:
+        return jsonify({'error': 'No 2FA setup in progress.'}), 400
+        
+    conn = get_db_connection()
+    if pending_method == 'app':
+        import pyotp
+        totp = pyotp.TOTP(pending_secret)
+        if not totp.verify(code):
+            conn.close()
+            return jsonify({'error': 'Invalid Authenticator code. Please try again.'}), 400
+        conn.execute("UPDATE users SET two_factor_method='app', totp_secret=? WHERE id=?", (pending_secret, session['user_id']))
+    elif pending_method == 'email':
+        if code != str(pending_secret):
+            conn.close()
+            return jsonify({'error': 'Invalid Email code.'}), 400
+        conn.execute("UPDATE users SET two_factor_method='email', totp_secret='' WHERE id=?", (session['user_id'],))
+        
+    conn.commit()
+    conn.close()
+    session.pop('pending_2fa_method', None)
+    session.pop('pending_2fa_secret', None)
+    return jsonify({'success': True, 'message': '2FA enabled successfully!'}), 200
+
+@app.route('/api/users/2fa/disable', methods=['POST'])
+@login_required
+def disable_2fa():
+    conn = get_db_connection()
+    conn.execute("UPDATE users SET two_factor_method='none', totp_secret='' WHERE id=?", (session['user_id'],))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': '2FA has been disabled.'}), 200
 
 if __name__ == '__main__':
     init_db()
