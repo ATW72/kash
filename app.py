@@ -708,7 +708,8 @@ def delete_income(iid):
 @login_required
 def get_credit_cards():
     conn = get_db_connection()
-    cards = [dict(r) for r in conn.execute("SELECT * FROM credit_cards ORDER BY owner, card_name").fetchall()]
+    vis_clause, vis_params = get_visible_clause('credit_cards', session['username'])
+    cards = [dict(r) for r in conn.execute(f"SELECT * FROM credit_cards WHERE {vis_clause} ORDER BY owner, card_name", vis_params).fetchall()]
     conn.close()
     for card in cards:
         card['balance'] = round(get_credit_card_balance(card['id']), 2)
@@ -762,19 +763,21 @@ def delete_credit_card(cid):
 @login_required
 def get_budgets():
     conn = get_db_connection()
-    rows = [dict(r) for r in conn.execute("SELECT * FROM budgets ORDER BY year DESC, month DESC, category").fetchall()]
+    vis_clause, vis_params = get_visible_clause('budgets', session['username'])
+    rows = [dict(r) for r in conn.execute(f"SELECT * FROM budgets WHERE {vis_clause} ORDER BY year DESC, month DESC, category", vis_params).fetchall()]
     conn.close()
     for b in rows:
         conn2 = get_db_connection()
+        exp_vis, exp_params = get_visible_clause('expenses', session['username'])
         spent = conn2.execute(
-            "SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=?",
-            (b['category'], str(b['year']), f"{b['month']:02d}")).fetchone()[0]
+            f"SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=? AND {exp_vis}",
+            [b['category'], str(b['year']), f"{b['month']:02d}"] + exp_params).fetchone()[0]
         # Also get prev month spending for MoM comparison
         prev_month = b['month'] - 1 if b['month'] > 1 else 12
         prev_year = b['year'] if b['month'] > 1 else b['year'] - 1
         prev_spent = conn2.execute(
-            "SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=?",
-            (b['category'], str(prev_year), f"{prev_month:02d}")).fetchone()[0]
+            f"SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=? AND {exp_vis}",
+            [b['category'], str(prev_year), f"{prev_month:02d}"] + exp_params).fetchone()[0]
         conn2.close()
         effective = b['amount'] + b.get('rollover', 0)
         b['effective_amount'] = round(float(effective), 2)
@@ -793,8 +796,8 @@ def create_budget():
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("INSERT OR REPLACE INTO budgets (category,amount,month,year) VALUES (?,?,?,?)",
-                  (data['category'], float(data['amount']), int(data['month']), int(data['year'])))
+        c.execute("INSERT OR REPLACE INTO budgets (category,amount,month,year,owner) VALUES (?,?,?,?,?)",
+                  (data['category'], float(data['amount']), int(data['month']), int(data['year']), session['username']))
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'id': c.lastrowid}), 201
@@ -819,23 +822,25 @@ def copy_last_month_budgets():
     prev_month = cur_month - 1 if cur_month > 1 else 12
     prev_year = cur_year if cur_month > 1 else cur_year - 1
     conn = get_db_connection()
+    vis_clause, vis_params = get_visible_clause('budgets', session['username'])
     prev_budgets = conn.execute(
-        "SELECT category, amount FROM budgets WHERE month=? AND year=?",
-        (prev_month, prev_year)).fetchall()
+        f"SELECT category, amount FROM budgets WHERE month=? AND year=? AND {vis_clause}",
+        [prev_month, prev_year] + vis_params).fetchall()
     if not prev_budgets:
         conn.close()
         return jsonify({'error': 'No budgets found for last month'}), 404
     copied = 0
     for b in prev_budgets:
         # Calculate rollover from prev month
+        exp_vis, exp_params = get_visible_clause('expenses', session['username'])
         spent = conn.execute(
-            "SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=?",
-            (b['category'], str(prev_year), f"{prev_month:02d}")).fetchone()[0]
+            f"SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=? AND {exp_vis}",
+            [b['category'], str(prev_year), f"{prev_month:02d}"] + exp_params).fetchone()[0]
         rollover = max(0, b['amount'] - float(spent))
         try:
             conn.execute(
-                "INSERT OR IGNORE INTO budgets (category,amount,month,year,rollover) VALUES (?,?,?,?,?)",
-                (b['category'], b['amount'], cur_month, cur_year, round(rollover, 2)))
+                "INSERT OR IGNORE INTO budgets (category,amount,month,year,rollover,owner) VALUES (?,?,?,?,?,?)",
+                (b['category'], b['amount'], cur_month, cur_year, round(rollover, 2), session['username']))
             copied += 1
         except Exception:
             pass
@@ -929,12 +934,13 @@ def spending_by_person():
     month = request.args.get('month', f"{now.year}-{now.month:02d}")
     year, mon = month.split('-')
     conn = get_db_connection()
+    exp_vis, exp_params = get_visible_clause('expenses', session['username'])
     rows = conn.execute(
-        """SELECT paid_by, COALESCE(SUM(amount),0) as total
+        f"""SELECT paid_by, COALESCE(SUM(amount),0) as total
            FROM expenses
-           WHERE strftime('%Y',date)=? AND strftime('%m',date)=?
+           WHERE strftime('%Y',date)=? AND strftime('%m',date)=? AND {exp_vis}
            GROUP BY paid_by ORDER BY total DESC""",
-        (year, mon)).fetchall()
+        [year, mon] + exp_params).fetchall()
     conn.close()
     return jsonify({'data': [dict(r) for r in rows]}), 200
 
@@ -944,7 +950,8 @@ def spending_by_person():
 @login_required
 def get_bills():
     conn = get_db_connection()
-    rows = [dict(r) for r in conn.execute("SELECT * FROM bills ORDER BY due_date ASC").fetchall()]
+    vis_clause, vis_params = get_visible_clause('bills', session['username'])
+    rows = [dict(r) for r in conn.execute(f"SELECT * FROM bills WHERE {vis_clause} ORDER BY due_date ASC", vis_params).fetchall()]
     conn.close()
     today = datetime.now().date()
     for b in rows:
@@ -1008,7 +1015,8 @@ def delete_bill(bid):
 @login_required
 def get_recurring():
     conn = get_db_connection()
-    rows = [dict(r) for r in conn.execute("SELECT * FROM recurring_transactions ORDER BY next_date").fetchall()]
+    vis_clause, vis_params = get_visible_clause('recurring_transactions', session['username'])
+    rows = [dict(r) for r in conn.execute(f"SELECT * FROM recurring_transactions WHERE {vis_clause} ORDER BY next_date", vis_params).fetchall()]
     conn.close()
     return jsonify({'data': rows}), 200
 
@@ -1019,11 +1027,11 @@ def create_recurring():
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("""INSERT INTO recurring_transactions
-                 (type,frequency,next_date,description,amount,category,source,person,payment_method,credit_card_id)
-                 VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                 (type,frequency,next_date,description,amount,category,source,person,payment_method,credit_card_id,owner)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
               (data.get('type'), data.get('frequency'), data.get('next_date'), data.get('description'),
                float(data.get('amount',0)), data.get('category'), data.get('source'),
-               data.get('person'), data.get('payment_method'), data.get('credit_card_id')))
+               data.get('person'), data.get('payment_method'), data.get('credit_card_id'), session['username']))
     rid = c.lastrowid
     conn.commit()
     conn.close()
@@ -1231,7 +1239,8 @@ def get_summary_by_month():
     monthly_income   = qval(f"SELECT COALESCE(SUM(amount),0) FROM income WHERE strftime('%Y-%m',date)=? AND {inc_vis}", [month] + inc_params)
     total_income     = qval(f"SELECT COALESCE(SUM(amount),0) FROM income WHERE {inc_vis}", inc_params)
     unpaid_bills     = qval(f"SELECT COALESCE(SUM(amount),0) FROM bills WHERE is_paid=0 AND {bill_vis}", bill_params)
-    card_ids         = [r[0] for r in conn.execute("SELECT id FROM credit_cards").fetchall()]
+    cc_vis, cc_params = get_visible_clause('credit_cards', username)
+    card_ids         = [r[0] for r in conn.execute(f"SELECT id FROM credit_cards WHERE {cc_vis}", cc_params).fetchall()]
     conn.close()
     total_cc = sum(get_credit_card_balance(cid) for cid in card_ids)
     return jsonify({
@@ -1266,10 +1275,11 @@ def get_insights():
     days_elapsed = now.day
     days_in_month = 30  # approximate
 
+    exp_vis, exp_params = get_visible_clause('expenses', session['username'])
     # Current month spending
     cur_spend = float(conn.execute(
-        "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',date)=?",
-        (cur_month,)).fetchone()[0])
+        f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',date)=? AND {exp_vis}",
+        [cur_month] + exp_params).fetchone()[0])
 
     # Forecast: linear projection
     if days_elapsed > 0:
@@ -1286,14 +1296,14 @@ def get_insights():
 
     # Category anomalies — compare current month vs 3-month average
     cur_cats = {r[0]: float(r[1]) for r in conn.execute(
-        "SELECT category, SUM(amount) FROM expenses WHERE strftime('%Y-%m',date)=? GROUP BY category",
-        (cur_month,)).fetchall()}
+        f"SELECT category, SUM(amount) FROM expenses WHERE strftime('%Y-%m',date)=? AND {exp_vis} GROUP BY category",
+        [cur_month] + exp_params).fetchall()}
 
     for cat, cur_amt in cur_cats.items():
         if not months: continue
         hist_rows = conn.execute(
-            f"SELECT COALESCE(AVG(monthly),0) FROM (SELECT SUM(amount) as monthly FROM expenses WHERE category=? AND strftime('%Y-%m',date) IN ({','.join('?'*len(months))}) GROUP BY strftime('%Y-%m',date))",
-            (cat, *months)).fetchone()
+            f"SELECT COALESCE(AVG(monthly),0) FROM (SELECT SUM(amount) as monthly FROM expenses WHERE category=? AND strftime('%Y-%m',date) IN ({','.join('?'*len(months))}) AND {exp_vis} GROUP BY strftime('%Y-%m',date))",
+            [cat, *months] + exp_params).fetchone()
         avg = float(hist_rows[0]) if hist_rows and hist_rows[0] else 0
         if avg > 10 and cur_amt > avg * 1.4:
             pct = round(((cur_amt - avg) / avg) * 100)
@@ -1316,8 +1326,8 @@ def get_insights():
 
     # Largest single expense this month
     biggest = conn.execute(
-        "SELECT description, amount FROM expenses WHERE strftime('%Y-%m',date)=? ORDER BY amount DESC LIMIT 1",
-        (cur_month,)).fetchone()
+        f"SELECT description, amount FROM expenses WHERE strftime('%Y-%m',date)=? AND {exp_vis} ORDER BY amount DESC LIMIT 1",
+        [cur_month] + exp_params).fetchone()
     if biggest and float(biggest[1]) > 50:
         insights.append({
             'type': 'largest',
@@ -1328,8 +1338,9 @@ def get_insights():
         })
 
     # Unpaid overdue bills
+    bill_vis, bill_params = get_visible_clause('bills', session['username'])
     overdue = conn.execute(
-        "SELECT COUNT(*) FROM bills WHERE is_paid=0 AND due_date < date('now')"
+        f"SELECT COUNT(*) FROM bills WHERE is_paid=0 AND due_date < date('now') AND {bill_vis}", bill_params
     ).fetchone()[0]
     if overdue > 0:
         insights.append({
@@ -1347,8 +1358,9 @@ def get_insights():
         sm -= 1
         if sm == 0: sm = 12; sy -= 1
         mn = f"{sy}-{sm:02d}"
-        inc = float(conn.execute("SELECT COALESCE(SUM(amount),0) FROM income WHERE strftime('%Y-%m',date)=?", (mn,)).fetchone()[0])
-        exp = float(conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',date)=?", (mn,)).fetchone()[0])
+        inc_vis, inc_params = get_visible_clause('income', session['username'])
+        inc = float(conn.execute(f"SELECT COALESCE(SUM(amount),0) FROM income WHERE strftime('%Y-%m',date)=? AND {inc_vis}", [mn] + inc_params).fetchone()[0])
+        exp = float(conn.execute(f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',date)=? AND {exp_vis}", [mn] + exp_params).fetchone()[0])
         if inc - exp > 0:
             streak += 1
         else:
@@ -1383,14 +1395,15 @@ def category_sparklines():
         if m == 0: m = 12; y -= 1
     months.reverse()
 
-    categories = [r[0] for r in conn.execute("SELECT DISTINCT category FROM expenses ORDER BY category").fetchall()]
+    exp_vis, exp_params = get_visible_clause('expenses', session['username'])
+    categories = [r[0] for r in conn.execute(f"SELECT DISTINCT category FROM expenses WHERE {exp_vis} ORDER BY category", exp_params).fetchall()]
     result = {}
     for cat in categories:
         vals = []
         for mn in months:
             v = conn.execute(
-                "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE category=? AND strftime('%Y-%m',date)=?",
-                (cat, mn)).fetchone()[0]
+                f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE category=? AND strftime('%Y-%m',date)=? AND {exp_vis}",
+                [cat, mn] + exp_params).fetchone()[0]
             vals.append(round(float(v), 2))
         result[cat] = {'months': months, 'values': vals}
     conn.close()
