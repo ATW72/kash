@@ -137,6 +137,15 @@ pct exec "$CTID" -- bash -c "
 spinner $!
 msg_ok "Files updated"
 
+# Install dependencies
+msg_info "Installing dependencies"
+pct exec "$CTID" -- bash -c "
+  cd /opt/kash &&
+  venv/bin/pip install --quiet -r requirements.txt
+" &>/dev/null &
+spinner $!
+msg_ok "Dependencies installed"
+
 # Restart service
 msg_info "Restarting service"
 pct exec "$CTID" -- systemctl restart kash &>/dev/null
