@@ -141,7 +141,8 @@ msg_ok "Files updated"
 msg_info "Installing dependencies"
 pct exec "$CTID" -- bash -c "
   cd /opt/kash &&
-  venv/bin/pip install --quiet -r requirements.txt
+  venv/bin/pip install --quiet -r requirements.txt &&
+  chown -R appuser:appuser venv
 " &>/dev/null &
 spinner $!
 msg_ok "Dependencies installed"
