@@ -56,7 +56,77 @@
       }
     }
 
+    /* ── 2FA Functions ── */
+    async function load2FAStatus() {
+      const res = await apiCall('/api/users/2fa/status');
+      if (!res) return;
+      const stText = document.getElementById('2fa-status-text');
+      const container = document.getElementById('2fa-actions');
+      if (res.method === 'none') {
+        stText.textContent = 'Disabled';
+        stText.style.color = 'var(--text-secondary)';
+        container.innerHTML = `
+          <button type="button" class="btn-sm" onclick="start2FASetup('app')">Set Up App</button>
+          <button type="button" class="btn-sm btn-secondary" onclick="start2FASetup('email')">Set Up Email</button>
+        `;
+      } else {
+        stText.textContent = res.method === 'app' ? 'Authenticator App Enabled' : 'Email 2FA Enabled';
+        stText.style.color = 'var(--success)';
+        container.innerHTML = `<button type="button" class="btn-sm btn-danger" onclick="disable2FA()">Disable 2FA</button>`;
+      }
+    }
 
+    async function start2FASetup(method) {
+      if (method === 'email') {
+        const notifEmail = document.getElementById('notif-email').value;
+        if (!notifEmail) {
+          showToast('error', 'Please save your email under Notifications first.');
+          return;
+        }
+      }
+      const res = await apiCall('/api/users/2fa/setup', 'POST', { method });
+      if (!res) return;
+
+      const modal = document.getElementById('mfa-setup-backdrop');
+      const body = document.getElementById('mfa-setup-body');
+      document.getElementById('mfa-setup-code').value = '';
+
+      if (method === 'app') {
+        body.innerHTML = `
+          <p>Scan this QR code with Google Authenticator, Authy, or Apple Passwords:</p>
+          <div style="background:white; padding:10px; border-radius:10px; width: fit-content; margin: 10px auto;">
+            ${res.qr_svg}
+          </div>
+          <p style="text-align:center; font-size:0.8rem; margin-top:5px;">Secret: <strong>${res.secret}</strong></p>
+          <p>Enter the 6-digit code below to confirm.</p>`;
+      } else if (method === 'email') {
+        body.innerHTML = `<p>${res.message}</p><p>Enter the 6-digit code below to confirm.</p>`;
+      }
+
+      closeProfileDropdown();
+      modal.classList.add('active');
+    }
+
+    async function verify2FASetup() {
+      const code = document.getElementById('mfa-setup-code').value.trim();
+      if (!code) {
+        showToast('error', 'Please enter the code');
+        return;
+      }
+      const res = await apiCall('/api/users/2fa/verify', 'POST', { code });
+      if (!res) return;
+      showToast('success', res.message);
+      document.getElementById('mfa-setup-backdrop').classList.remove('active');
+      load2FAStatus();
+    }
+
+    async function disable2FA() {
+      if (!confirm('Are you sure you want to disable Two-Factor Authentication?')) return;
+      const res = await apiCall('/api/users/2fa/disable', 'POST');
+      if (!res) return;
+      showToast('success', res.message);
+      load2FAStatus();
+    }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // RECEIPTS
