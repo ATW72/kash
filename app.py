@@ -302,6 +302,14 @@ def init_db():
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
 
+    # Migrations for loans
+    for col, defn in [("interest_rate", "REAL DEFAULT 0")]:
+        try:
+            c.execute(f"ALTER TABLE loans ADD COLUMN {col} {defn}")
+            conn.commit()
+        except Exception:
+            pass
+
     c.execute("""CREATE TABLE IF NOT EXISTS loan_payments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         loan_id INTEGER NOT NULL,
@@ -321,11 +329,13 @@ def init_db():
         FOREIGN KEY (credit_card_id) REFERENCES credit_cards(id) ON DELETE CASCADE)""")
 
     # Migrations for credit_cards
-    try:
-        c.execute("ALTER TABLE credit_cards ADD COLUMN starting_balance REAL DEFAULT 0")
-        conn.commit()
-    except Exception:
-        pass
+    for col, defn in [("starting_balance", "REAL DEFAULT 0"), ("interest_rate", "REAL DEFAULT 0")]:
+        try:
+            c.execute(f"ALTER TABLE credit_cards ADD COLUMN {col} {defn}")
+            conn.commit()
+        except Exception:
+            pass
+
 
 
     # Default categories
@@ -777,8 +787,8 @@ def create_credit_card():
         return jsonify({'error': 'Owner is required'}), 400
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("INSERT INTO credit_cards (owner,card_name,credit_limit,starting_balance) VALUES (?,?,?,?)",
-              (data['owner'], data['card_name'], data.get('credit_limit'), data.get('starting_balance', 0)))
+    c.execute("INSERT INTO credit_cards (owner,card_name,credit_limit,starting_balance,interest_rate) VALUES (?,?,?,?,?)",
+              (data['owner'], data['card_name'], data.get('credit_limit'), data.get('starting_balance', 0), data.get('interest_rate', 0)))
     cid = c.lastrowid
     conn.commit()
     conn.close()
@@ -804,8 +814,8 @@ def update_credit_card(cid):
     data = request.json or {}
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("UPDATE credit_cards SET owner=?,card_name=?,credit_limit=?,manual_balance=?,starting_balance=? WHERE id=?",
-              (data.get('owner'), data.get('card_name'), data.get('credit_limit'), data.get('manual_balance'), data.get('starting_balance', 0), cid))
+    c.execute("UPDATE credit_cards SET owner=?,card_name=?,credit_limit=?,manual_balance=?,starting_balance=?,interest_rate=? WHERE id=?",
+              (data.get('owner'), data.get('card_name'), data.get('credit_limit'), data.get('manual_balance'), data.get('starting_balance', 0), data.get('interest_rate', 0), cid))
     conn.commit()
     conn.close()
     return jsonify({'success': True}), 200
@@ -1022,10 +1032,10 @@ def create_loan():
         return jsonify({'error': 'Name and total amount required'}), 400
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("""INSERT INTO loans (owner, loan_name, total_amount, monthly_payment, next_due_date, category, notes) 
-                 VALUES (?,?,?,?,?,?,?)""",
+    c.execute("""INSERT INTO loans (owner, loan_name, total_amount, monthly_payment, next_due_date, category, interest_rate, notes) 
+                 VALUES (?,?,?,?,?,?,?,?)""",
               (session['username'], data['loan_name'], float(data['total_amount']), 
-               data.get('monthly_payment'), data.get('next_due_date'), data.get('category'), data.get('notes')))
+               data.get('monthly_payment'), data.get('next_due_date'), data.get('category'), data.get('interest_rate', 0), data.get('notes')))
     lid = c.lastrowid
     conn.commit()
     conn.close()
@@ -1038,9 +1048,9 @@ def update_loan(lid):
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("""UPDATE loans SET loan_name=?, total_amount=?, monthly_payment=?, 
-                 next_due_date=?, category=?, notes=?, is_active=? WHERE id=?""",
+                 next_due_date=?, category=?, interest_rate=?, notes=?, is_active=? WHERE id=?""",
               (data.get('loan_name'), float(data['total_amount']), data.get('monthly_payment'),
-               data.get('next_due_date'), data.get('category'), data.get('notes'), data.get('is_active', 1), lid))
+               data.get('next_due_date'), data.get('category'), data.get('interest_rate', 0), data.get('notes'), data.get('is_active', 1), lid))
     conn.commit()
     conn.close()
     return jsonify({'success': True}), 200
@@ -1934,37 +1944,60 @@ def advisor_plan():
         conn = get_db_connection()
         now = datetime.now()
         month = now.strftime('%Y-%m')
+        username = session['username']
     
         # Gather data
         income_rows = conn.execute("SELECT SUM(amount) as total FROM income WHERE strftime('%Y-%m', date) = ?", (month,)).fetchone()
         income = income_rows['total'] or 0.0
     
+        # Gather fixed bills
         bills = conn.execute("SELECT name, amount FROM bills").fetchall()
-        debts = conn.execute("SELECT card_name as name, manual_balance as balance FROM credit_cards").fetchall()
+        bill_str = ", ".join([f"{b['name']} (${b['amount']})" for b in bills]) or "None"
+
+        # Gather accurate Credit Card data
+        vis_c, params_c = get_visible_clause('credit_cards', username)
+        cc_rows = conn.execute(f"SELECT id, card_name, interest_rate FROM credit_cards WHERE {vis_c}", params_c).fetchall()
+        cc_list = []
+        for cr in cc_rows:
+            bal = get_credit_card_balance(cr['id'])
+            if bal > 0:
+                cc_list.append(f"{cr['card_name']} (Balance: ${bal:,.2f}, {cr['interest_rate']}% APY)")
+        debt_str = ", ".join(cc_list) or "None"
+
+        # Gather Loan data
+        vis_l, params_l = get_visible_clause('loans', username)
+        loan_rows = conn.execute(f"SELECT id, loan_name, total_amount, monthly_payment, interest_rate FROM loans WHERE {vis_l} AND is_active=1", params_l).fetchall()
+        loan_list = []
+        for lr in loan_rows:
+            # Calculate remaining balance
+            paid = conn.execute("SELECT COALESCE(SUM(amount),0.0) FROM loan_payments WHERE loan_id=?", (lr['id'],)).fetchone()[0]
+            rem = lr['total_amount'] - paid
+            if rem > 0:
+                loan_list.append(f"{lr['loan_name']} (Remaining: ${rem:,.2f}, {lr['interest_rate']}% APY, Min: ${lr['monthly_payment'] or 0}/mo)")
+        loan_str = ", ".join(loan_list) or "None"
+        
+        # Gather Budgets
         budgets = conn.execute("SELECT category, amount FROM budgets WHERE year = ? AND month = ?", (now.year, now.month)).fetchall()
+        budget_str = ", ".join([f"{bg['category']} (${bg['amount']})" for bg in budgets]) or "None"
         
         conn.close()
     
-        bill_str = ", ".join([f"{b['name']} (${b['amount']})" for b in bills]) or "None"
-        # some manual_balance could be null depending on DB state, so default to 0.0
-        debt_str = ", ".join([f"{d['name']} (${d['balance'] or 0.0})" for d in debts]) or "None"
-        budget_str = ", ".join([f"{bg['category']} (${bg['amount']})" for bg in budgets]) or "None"
-
         import urllib.request, urllib.error, json as jsonlib
         prompt = f"""You are an expert financial advisor. Provide a concise, actionable financial plan in markdown format.
 
 User's Data for {month}:
-- Total Monthly Income: ${income:.2f}
+- Total Monthly Income: ${income:,.2f}
 - Monthly Fixed Bills: {bill_str}
-- Current Debts/Credit Cards: {debt_str}
+- Credit Card Debt: {debt_str}
+- Installment Loans: {loan_str}
 - Current Budget Limits: {budget_str}
 
 Please advise on:
-1. Debt Payoff Strategy: Should they use Snowball or Avalanche based on their data?
-2. Budget Adjustments: Are their budget limits realistic given their income and bills? Where can they cut back?
-3. Savings: Assuming they stick to this budget, how much can they save this month?
+1. Debt Payoff Strategy: Compare Debt Snowball, Debt Avalanche, and Velocity Banking for this user. Which is most efficient mathematically vs. psychologically? Provide a prioritized payoff order.
+2. Budget Adjustments: Highlight specific areas where they can "find" money to accelerate the plan.
+3. Savings & Cash Flow: How much can they realistically save? Should they build a starter emergency fund before attacking debt?
 
-Your response MUST be exclusively formatted in nice Markdown. Do not include introductory text like "Sure, here is your plan" - start immediately with the markdown headings."""
+Your response MUST be exclusively formatted in nice Markdown with clear headings. Do not include introductory text like "Sure, here is your plan" - start immediately with the markdown content."""
 
         payload = jsonlib.dumps({
             'model': Config.OLLAMA_MODEL,
