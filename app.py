@@ -2229,10 +2229,23 @@ def delete_user(uid):
     if uid == session.get('user_id'):
         return jsonify({'error': 'Cannot delete your own account'}), 400
     conn = get_db_connection()
-    conn.execute("DELETE FROM users WHERE id=?", (uid,))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True}), 200
+    try:
+        # First, check the user exists
+        user = conn.execute("SELECT username FROM users WHERE id=?", (uid,)).fetchone()
+        if not user:
+            conn.close()
+            return jsonify({'error': 'User not found'}), 404
+        username = user['username']
+        # Clean up related data so FK constraints don't block the delete
+        conn.execute("DELETE FROM sharing WHERE owner=? OR shared_with=?", (username, username))
+        conn.execute("DELETE FROM audit_log WHERE username=?", (username,))
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/users/change-password', methods=['POST'])
 @login_required
