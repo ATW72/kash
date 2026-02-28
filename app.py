@@ -1,7 +1,8 @@
 import os
 import sys
 import sqlite3
-from datetime import datetime
+import datetime as dt
+from datetime import datetime, timedelta
 from flask import Flask, jsonify, request, session, redirect, url_for, render_template, send_file
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -18,6 +19,7 @@ from utils.auth import login_required, admin_required
 from utils.notifications import init_mail, run_daily_notifications, send_email, build_bill_alert_email, build_budget_alert_email, build_welcome_email
 import secrets
 import string
+import math
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
 
@@ -1021,6 +1023,32 @@ def get_loans():
         payments = [dict(r) for r in c.execute("SELECT * FROM loan_payments WHERE loan_id=? ORDER BY date DESC", (loan['id'],)).fetchall()]
         loan['payments'] = payments
 
+        # Amortization Calculation
+        loan['payoff_months'] = None
+        loan['payoff_date'] = None
+        
+        if loan['remaining_balance'] > 0 and loan['monthly_payment'] and loan['monthly_payment'] > 0:
+            P = loan['remaining_balance']
+            M = loan['monthly_payment']
+            r = (loan.get('interest_rate', 0) or 0) / 100 / 12
+            
+            if r == 0:
+                months = math.ceil(P / M)
+                loan['payoff_months'] = months
+            elif M > P * r:
+                # Formula: n = -log(1 - (r*P)/M) / log(1+r)
+                try:
+                    months = -math.log(1 - (r * P) / M) / math.log(1 + r)
+                    loan['payoff_months'] = math.ceil(months)
+                except (ValueError, ZeroDivisionError):
+                    pass
+            
+            if loan['payoff_months']:
+                # Simple estimation: current month + months
+                today = dt.date.today()
+                payoff_dt = today + timedelta(days=loan['payoff_months'] * 30)
+                loan['payoff_date'] = payoff_dt.strftime('%b %Y')
+
     conn.close()
     return jsonify({'data': loans}), 200
 
@@ -1407,13 +1435,40 @@ def get_summary_by_month():
     unpaid_bills     = qval(f"SELECT COALESCE(SUM(amount),0) FROM bills WHERE is_paid=0 AND {bill_vis}", bill_params)
     cc_vis, cc_params = get_visible_clause('credit_cards', username)
     card_ids         = [r[0] for r in conn.execute(f"SELECT id FROM credit_cards WHERE {cc_vis}", cc_params).fetchall()]
-    conn.close()
     total_cc = sum(get_credit_card_balance(cid) for cid in card_ids)
+
+    # Debt Payoff Projections
+    loan_vis, loan_params = get_visible_clause('loans', username)
+    all_loans = conn.execute(f"SELECT total_amount, monthly_payment, interest_rate, id FROM loans WHERE is_active=1 AND {loan_vis}", loan_params).fetchall()
+    total_debt = total_cc
+    max_months = 0
+    
+    for L in all_loans:
+        paid = conn.execute("SELECT COALESCE(SUM(amount),0.0) FROM loan_payments WHERE loan_id=?", (L['id'],)).fetchone()[0]
+        rem = L['total_amount'] - paid
+        total_debt += rem
+        if L['monthly_payment'] and L['monthly_payment'] > 0:
+            P, M, r = rem, L['monthly_payment'], (L['interest_rate'] or 0)/100/12
+            if r == 0: m = math.ceil(P/M)
+            elif M > P*r:
+                try: m = math.ceil(-math.log(1-(r*P)/M)/math.log(1+r))
+                except: m = 0
+            else: m = 120 # infinity
+            if m > max_months: max_months = m
+
+    conn.close()
+    debt_free_date = "N/A"
+    if max_months > 0:
+        target = datetime.now() + timedelta(days=max_months*30)
+        debt_free_date = target.strftime('%b %Y')
+
     return jsonify({
         'monthly_expenses': round(monthly_expenses, 2),
         'monthly_income': round(monthly_income, 2),
         'total_income': round(total_income, 2),
         'total_credit_card_balance': round(total_cc, 2),
+        'total_debt': round(total_debt, 2),
+        'debt_free_date': debt_free_date,
         'unpaid_bills_total': round(unpaid_bills, 2),
         'left_after_bills': round(monthly_income - unpaid_bills, 2)
     }), 200
@@ -2047,8 +2102,37 @@ def get_summary_stats():
     monthly_income   = qval("SELECT COALESCE(SUM(amount),0) FROM income WHERE strftime('%Y-%m',date)=?", (current_month,))
     unpaid_bills     = qval("SELECT COALESCE(SUM(amount),0) FROM bills WHERE is_paid=0")
     card_ids         = [r[0] for r in conn.execute("SELECT id FROM credit_cards").fetchall()]
-    conn.close()
+    
     total_cc = sum(get_credit_card_balance(cid) for cid in card_ids)
+    
+    # Total Debt Payoff Projection (Simpler approximation)
+    all_loans = conn.execute("SELECT total_amount, monthly_payment, interest_rate, id FROM loans WHERE is_active=1").fetchall()
+    total_debt = total_cc
+    total_monthly_pmt = 0
+    max_months = 0
+    
+    for L in all_loans:
+        paid = conn.execute("SELECT COALESCE(SUM(amount),0.0) FROM loan_payments WHERE loan_id=?", (L['id'],)).fetchone()[0]
+        rem = L['total_amount'] - paid
+        total_debt += rem
+        if L['monthly_payment'] and L['monthly_payment'] > 0:
+            total_monthly_pmt += L['monthly_payment']
+            # Individual loan payoff for max_months
+            P, M, r = rem, L['monthly_payment'], (L['interest_rate'] or 0)/100/12
+            if r == 0: m = math.ceil(P/M)
+            elif M > P*r:
+                try: m = math.ceil(-math.log(1-(r*P)/M)/math.log(1+r))
+                except: m = 0
+            else: m = 120 # infinity/long
+            if m > max_months: max_months = m
+
+    conn.close()
+    
+    debt_free_date = "N/A"
+    if max_months > 0:
+        from datetime import timedelta
+        target = datetime.now() + timedelta(days=max_months*30)
+        debt_free_date = target.strftime('%b %Y')
 
     return jsonify({
         'total_expenses': round(total_expenses, 2),
@@ -2056,6 +2140,8 @@ def get_summary_stats():
         'monthly_expenses': round(monthly_expenses, 2),
         'monthly_income': round(monthly_income, 2),
         'total_credit_card_balance': round(total_cc, 2),
+        'total_debt': round(total_debt, 2),
+        'debt_free_date': debt_free_date,
         'unpaid_bills_total': round(unpaid_bills, 2),
         'left_after_bills': round(monthly_income - unpaid_bills, 2)
     }), 200

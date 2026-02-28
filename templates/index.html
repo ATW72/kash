@@ -3913,6 +3913,12 @@
           <p id="stat-cc-balance" class="danger">$0.00</p><canvas id="sparkline-cc" height="24"
             style="display:block;width:100%;margin-top:0.3rem;opacity:0.7"></canvas>
         </div>
+        <div class="stat-card" id="stat-card-total-debt" style="flex:0 0 auto;min-width:110px;width:auto;">
+          <h3>Total Debt</h3>
+          <p id="stat-total-debt" class="danger">$0.00</p>
+          <div style="font-size:0.7rem;opacity:0.8;margin-top:0.3rem;">Free by: <span
+              id="stat-debt-free-date">N/A</span></div>
+        </div>
         <div class="stat-card" id="stat-card-income" style="flex:0 0 auto;min-width:110px;width:auto;">
           <h3>All-Time Income</h3>
           <p id="stat-total-income" class="success">$0.00</p><canvas id="sparkline-income" height="24"
@@ -5621,6 +5627,10 @@
         document.getElementById('stat-unpaid-bills').textContent = formatCurrency(stats.unpaid_bills_total);
         document.getElementById('stat-cc-balance').textContent = formatCurrency(stats.total_credit_card_balance);
         document.getElementById('stat-total-income').textContent = formatCurrency(stats.total_income);
+        if (document.getElementById('stat-total-debt')) {
+          document.getElementById('stat-total-debt').textContent = formatCurrency(stats.total_debt || 0);
+          document.getElementById('stat-debt-free-date').textContent = stats.debt_free_date || 'N/A';
+        }
       }
 
       loadTrendChart();
@@ -6418,6 +6428,10 @@
         <div style="flex:1;">
           <div style="color:var(--text-secondary);font-size:0.7rem;text-transform:uppercase;">Interest</div>
           <div style="font-weight:600;color:var(--warning)">${L.interest_rate ? L.interest_rate + '%' : '—'}</div>
+        </div>
+        <div style="flex:1;">
+          <div style="color:var(--text-secondary);font-size:0.7rem;text-transform:uppercase;">Payoff Date</div>
+          <div style="font-weight:600;color:var(--success)">${L.payoff_date || '—'}</div>
         </div>
       </div>
 
