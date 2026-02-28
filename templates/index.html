@@ -3562,6 +3562,17 @@
           <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
           <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
         </svg></span><span class="tab-label">Cards</span></button>
+    <button class="tab-button" data-tab="loans"><span class="tab-icon"><svg
+          style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" x2="21" y1="22" y2="22"></line>
+          <line x1="6" x2="6" y1="18" y2="11"></line>
+          <line x1="10" x2="10" y1="18" y2="11"></line>
+          <line x1="14" x2="14" y1="18" y2="11"></line>
+          <line x1="18" x2="18" y1="18" y2="11"></line>
+          <polyline points="12 2 20 7 4 7 12 2"></polyline>
+        </svg></span><span class="tab-label">Loans</span></button>
+
     <button class="tab-button" data-tab="budgets"><span class="tab-icon"><svg
           style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3665,6 +3676,18 @@
             <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
           </svg></span><span>Cards</span>
       </button>
+      <button class="more-drawer-item" data-tab="loans" onclick="switchTabMobile('loans');closeMoreDrawer()">
+        <span class="mdi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" x2="21" y1="22" y2="22"></line>
+            <line x1="6" x2="6" y1="18" y2="11"></line>
+            <line x1="10" x2="10" y1="18" y2="11"></line>
+            <line x1="14" x2="14" y1="18" y2="11"></line>
+            <line x1="18" x2="18" y1="18" y2="11"></line>
+            <polyline points="12 2 20 7 4 7 12 2"></polyline>
+          </svg></span><span>Loans</span>
+      </button>
+
       <button class="more-drawer-item" data-tab="reports" onclick="switchTabMobile('reports');closeMoreDrawer()">
         <span class="mdi"><svg style="display:inline-block;vertical-align:middle" width="24" height="24"
             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -4504,8 +4527,11 @@
                 placeholder="e.g. Visa Gold" required=""></div>
             <div class="form-group"><label>Credit Limit</label><input type="number" id="credit-card-limit" step="0.01"
                 placeholder="Optional"></div>
+            <div class="form-group"><label>Starting Balance</label><input type="number"
+                id="credit-card-starting-balance" step="0.01" placeholder="Current debt before today"></div>
             <div class="form-group"><label>Manual Balance Override</label><input type="number"
                 id="credit-card-manual-balance" step="0.01" placeholder="Leave blank to auto-calculate"></div>
+
           </div>
           <button type="submit" style="margin-top:1rem;"><svg
               style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14"
@@ -4529,6 +4555,62 @@
         </div>
       </div>
     </div>
+
+    <!-- ═══════════════ LOANS & INSTALLMENTS ═══════════════ -->
+    <div class="tab-content" id="loans-tab">
+      <div class="glass-card">
+        <div class="card-title">
+          <svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <line x1="3" x2="21" y1="22" y2="22"></line>
+            <line x1="6" x2="6" y1="18" y2="11"></line>
+            <line x1="10" x2="10" y1="18" y2="11"></line>
+            <line x1="14" x2="14" y1="18" y2="11"></line>
+            <line x1="18" x2="18" y1="18" y2="11"></line>
+            <polyline points="12 2 20 7 4 7 12 2"></polyline>
+          </svg>
+          Add Loan / Installment
+        </div>
+        <form id="loan-form" onsubmit="submitLoanForm(event)">
+          <div class="form-grid">
+            <div class="form-group"><label>Loan Name *</label><input type="text" id="loan-name"
+                placeholder="e.g. Klarna - Sofa" required=""></div>
+            <div class="form-group"><label>Total Amount Owed *</label><input type="number" id="loan-total-amount"
+                step="0.01" required=""></div>
+            <div class="form-group"><label>Monthly Payment</label><input type="number" id="loan-monthly-payment"
+                step="0.01"></div>
+            <div class="form-group"><label>Next Due Date</label><input type="date" id="loan-next-due-date"></div>
+            <div class="form-group"><label>Category</label>
+              <select id="loan-category">
+                <option value="Bills">Bills</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Education">Education</option>
+                <option value="Transportation">Transportation</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Notes</label><input type="text" id="loan-notes"></div>
+          </div>
+          <button type="submit" style="margin-top:1rem;"><svg
+              style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg> Save Loan</button>
+          <input type="hidden" id="loan-edit-id">
+        </form>
+      </div>
+
+      <div class="card-grid" id="loan-list" style="margin-top:2rem;">
+        <div class="empty-state">
+          No loans added
+        </div>
+      </div>
+    </div>
+
 
     <!-- ═══════════════ BUDGETS ═══════════════ -->
     <div class="tab-content" id="budgets-tab">
@@ -5200,8 +5282,9 @@
           </label>
         </div>
         <div class="modal-btns">
-          <button class="btn-secondary btn-sm" onclick="closeEditUserModal()">Cancel</button>
-          <button class="btn-sm" onclick="saveEditUser()"><svg
+          <button class="btn-secondary btn-sm"
+            onclick="document.getElementById('edit-user-modal-backdrop').classList.remove('active')">Cancel</button>
+          <button class="btn-sm" onclick="saveUserEdit()"><svg
               style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14"
               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
               stroke-linejoin="round">
@@ -5212,6 +5295,66 @@
         </div>
       </div>
     </div>
+
+    <!-- ── CC Payment Modal ── -->
+    <div class="modal-backdrop" id="cc-payment-modal-backdrop">
+      <div class="modal" style="max-width:400px;">
+        <h3 id="cc-payment-title">Record Card Payment</h3>
+        <form id="cc-payment-form" onsubmit="submitCCPayment(event)">
+          <input type="hidden" id="cc-payment-card-id">
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Date</label>
+            <input type="date" id="cc-payment-date" required>
+          </div>
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Amount Paid</label>
+            <input type="number" id="cc-payment-amount" step="0.01" required>
+          </div>
+          <div class="form-group" style="margin-bottom:1.5rem;">
+            <label>Notes</label>
+            <input type="text" id="cc-payment-notes" placeholder="e.g. Monthly payoff">
+          </div>
+          <div class="modal-btns">
+            <button type="button" class="btn-secondary btn-sm"
+              onclick="document.getElementById('cc-payment-modal-backdrop').classList.remove('active')">Cancel</button>
+            <button type="submit" class="btn-sm btn-success">Record Payment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Loan Payment Modal ── -->
+    <div class="modal-backdrop" id="loan-payment-modal-backdrop">
+      <div class="modal" style="max-width:400px;">
+        <h3 id="loan-payment-title">Record Loan Payment</h3>
+        <form id="loan-payment-form" onsubmit="submitLoanPayment(event)">
+          <input type="hidden" id="loan-payment-id">
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Date</label>
+            <input type="date" id="loan-payment-date" required>
+          </div>
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Amount Paid</label>
+            <input type="number" id="loan-payment-amount" step="0.01" required>
+          </div>
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Notes</label>
+            <input type="text" id="loan-payment-notes">
+          </div>
+          <div class="form-group" style="margin-bottom:1.5rem;">
+            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+              <input type="checkbox" id="loan-as-expense" checked> Record as Spending entry
+            </label>
+          </div>
+          <div class="modal-btns">
+            <button type="button" class="btn-secondary btn-sm"
+              onclick="document.getElementById('loan-payment-modal-backdrop').classList.remove('active')">Cancel</button>
+            <button type="submit" class="btn-sm btn-success">Record Payment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
 
   </div><!-- .main -->
 
@@ -5357,7 +5500,9 @@
       if (tabName === 'spending') { loadExpenses(); loadBills(); loadRecurring(); }
       if (tabName === 'income') { loadIncome(); loadRecurringIncomeBanner(); populateRecurringIncomePersons(); }
       if (tabName === 'credit-cards') loadCreditCards();
+      if (tabName === 'loans') loadLoans();
       if (tabName === 'budgets') loadBudgets();
+
       // account tab replaced by profile dropdown
       if (tabName === 'currencies') { loadCurrencies(); loadAuditLog(); }
     }
@@ -6053,17 +6198,22 @@
       <div class="cc-name">${c.card_name}</div>
       <div class="cc-owner">👤 ${c.owner}</div>
       <div class="cc-balance">${formatCurrency(c.balance)}</div>
-      <div class="cc-limit">${c.credit_limit ? `Limit: ${formatCurrency(c.credit_limit)}` : 'No limit set'}</div>
+      <div class="cc-limit">
+        ${c.credit_limit ? `Limit: ${formatCurrency(c.credit_limit)}` : 'No limit set'}
+        ${c.starting_balance ? `<br><small style="opacity:0.7">Starting: ${formatCurrency(c.starting_balance)}</small>` : ''}
+      </div>
       ${c.credit_limit ? `
       <div class="cc-util-bar">
         <div class="cc-util-fill ${utilClass}" style="width:${Math.min(util || 0, 100)}%"></div>
       </div>
       <div style="font-size:0.78rem;opacity:0.85;margin-top:0.25rem;">${util || 0}% utilization</div>` : ''}
       <div class="cc-actions">
+        <button class="btn-success" onclick="openCCPaymentModal(${c.id}, '${c.card_name}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="m17 5-5-3-5 3"/><path d="m17 19-5 3-5-3"/></svg> Payment</button>
         <button onclick="editCreditCard(${c.id})"><svg style="display:inline-block;vertical-align:middle;margin-right:0.2rem" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg> Edit</button>
-        <button onclick="deleteCreditCard(${c.id},'${c.card_name}')"><svg style="display:inline-block;vertical-align:middle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg> Delete</button>
+        <button class="btn-danger" onclick="deleteCreditCard(${c.id},'${c.card_name}')"><svg style="display:inline-block;vertical-align:middle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
       </div>
     </div>`;
+
       }).join('');
       populateCreditCardDropdowns();
     }
@@ -6075,8 +6225,10 @@
         owner: document.getElementById('credit-card-owner').value,
         card_name: document.getElementById('credit-card-name').value.trim(),
         credit_limit: document.getElementById('credit-card-limit').value || null,
+        starting_balance: document.getElementById('credit-card-starting-balance').value || 0,
         manual_balance: document.getElementById('credit-card-manual-balance').value || null
       };
+
       let res;
       if (editId) {
         res = await apiCall(`/api/credit-cards/${editId}`, 'PUT', data);
@@ -6095,8 +6247,10 @@
       document.getElementById('credit-card-owner').value = card.owner;
       document.getElementById('credit-card-name').value = card.card_name;
       document.getElementById('credit-card-limit').value = card.credit_limit || '';
+      document.getElementById('credit-card-starting-balance').value = card.starting_balance || 0;
       document.getElementById('credit-card-manual-balance').value = card.manual_balance || '';
       document.getElementById('cc-edit-id').value = id;
+
       document.getElementById('credit-card-form').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -6211,8 +6365,175 @@
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // LOANS & INSTALLMENTS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    async function loadLoans() {
+      const res = await apiCall('/api/loans');
+      if (!res) return;
+      const grid = document.getElementById('loan-list');
+      if (!res.data.length) {
+        grid.innerHTML = '<div class="empty-state">No loans or installments yet.</div>';
+        return;
+      }
+      grid.innerHTML = res.data.map(L => {
+        const remainingStr = L.remaining_balance <= 0 ? '<span class="label success">PAID</span>' : formatCurrency(L.remaining_balance);
+        return `
+    <div class="glass-card" style="padding:1.25rem;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
+        <div>
+          <div style="font-weight:700;font-size:1.1rem;color:var(--text-primary);">${L.loan_name}</div>
+          <div style="font-size:0.8rem;color:var(--text-secondary);">${L.category || 'Loan'}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-weight:800;font-size:1.15rem;color:var(--text-primary);">${remainingStr}</div>
+          <div style="font-size:0.75rem;opacity:0.7;">of ${formatCurrency(L.total_amount)}</div>
+        </div>
+      </div>
+      
+      <div class="progress-container" style="height:10px;background:var(--bg-secondary);border-radius:10px;margin-bottom:0.5rem;overflow:hidden;">
+        <div class="progress-bar" style="width:${L.progress_pct}%;height:100%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:10px;transition:width 0.6s ease;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.78rem;margin-bottom:1.25rem;opacity:0.9;">
+        <span>${L.progress_pct}% paid</span>
+        <span>${formatCurrency(L.amount_paid)} paid</span>
+      </div>
+
+      <div style="display:flex;gap:0.75rem;font-size:0.85rem;margin-bottom:1.25rem;border-top:1px solid var(--border);padding-top:1rem;">
+        <div style="flex:1;">
+          <div style="color:var(--text-secondary);font-size:0.7rem;text-transform:uppercase;">Next Payment</div>
+          <div style="font-weight:600;">${L.monthly_payment ? formatCurrency(L.monthly_payment) : '—'}</div>
+        </div>
+        <div style="flex:1;">
+          <div style="color:var(--text-secondary);font-size:0.7rem;text-transform:uppercase;">Due Date</div>
+          <div style="font-weight:600;">${L.next_due_date || '—'}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <button class="btn-sm btn-success" style="flex:1;" onclick="openLoanPaymentModal(${L.id}, '${L.loan_name}')">Record Payment</button>
+        <button class="btn-sm btn-secondary" onclick="editLoan(${L.id})">Edit</button>
+        <button class="btn-sm btn-danger" onclick="deleteLoan(${L.id}, '${L.loan_name}')">✕</button>
+      </div>
+    </div>`;
+      }).join('');
+    }
+
+    async function submitLoanForm(e) {
+      e.preventDefault();
+      const editId = document.getElementById('loan-edit-id').value;
+      const data = {
+        loan_name: document.getElementById('loan-name').value,
+        total_amount: document.getElementById('loan-total-amount').value,
+        monthly_payment: document.getElementById('loan-monthly-payment').value || null,
+        next_due_date: document.getElementById('loan-next-due-date').value || null,
+        category: document.getElementById('loan-category').value,
+        notes: document.getElementById('loan-notes').value,
+        is_active: 1
+      };
+
+      let res;
+      if (editId) {
+        res = await apiCall(`/api/loans/${editId}`, 'PUT', data);
+        if (res) {
+          showToast('success', 'Loan updated');
+          document.getElementById('loan-form').reset();
+          document.getElementById('loan-edit-id').value = '';
+          loadLoans();
+        }
+      } else {
+        res = await apiCall('/api/loans', 'POST', data);
+        if (res) {
+          showToast('success', 'Loan added');
+          document.getElementById('loan-form').reset();
+          loadLoans();
+        }
+      }
+    }
+
+    async function editLoan(id) {
+      const res = await apiCall('/api/loans');
+      if (!res) return;
+      const loan = res.data.find(L => L.id === id);
+      if (!loan) return;
+
+      document.getElementById('loan-name').value = loan.loan_name;
+      document.getElementById('loan-total-amount').value = loan.total_amount;
+      document.getElementById('loan-monthly-payment').value = loan.monthly_payment || '';
+      document.getElementById('loan-next-due-date').value = loan.next_due_date || '';
+      document.getElementById('loan-category').value = loan.category || 'Bills';
+      document.getElementById('loan-notes').value = loan.notes || '';
+      document.getElementById('loan-edit-id').value = id;
+
+      document.getElementById('loan-form').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function deleteLoan(id, name) {
+      showModal('Delete Loan', `Are you sure you want to delete "${name}"? This will also delete all payment history for this loan.`, async () => {
+        const res = await apiCall(`/api/loans/${id}`, 'DELETE');
+        if (res) {
+          showToast('success', 'Loan deleted');
+          loadLoans();
+        }
+      });
+    }
+
+    // PAYMENT MODALS
+
+    function openCCPaymentModal(cid, name) {
+      document.getElementById('cc-payment-card-id').value = cid;
+      document.getElementById('cc-payment-title').textContent = `Record Payment: ${name}`;
+      document.getElementById('cc-payment-date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('cc-payment-modal-backdrop').classList.add('active');
+    }
+
+    async function submitCCPayment(e) {
+      e.preventDefault();
+      const cid = document.getElementById('cc-payment-card-id').value;
+      const data = {
+        amount: document.getElementById('cc-payment-amount').value,
+        date: document.getElementById('cc-payment-date').value,
+        notes: document.getElementById('cc-payment-notes').value
+      };
+      const res = await apiCall(`/api/credit-cards/${cid}/payment`, 'POST', data);
+      if (res) {
+        showToast('success', 'Payment recorded');
+        document.getElementById('cc-payment-modal-backdrop').classList.remove('active');
+        document.getElementById('cc-payment-form').reset();
+        loadCreditCards();
+      }
+    }
+
+    function openLoanPaymentModal(lid, name) {
+      document.getElementById('loan-payment-id').value = lid;
+      document.getElementById('loan-payment-title').textContent = `Record Payment: ${name}`;
+      document.getElementById('loan-payment-date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('loan-payment-modal-backdrop').classList.add('active');
+    }
+
+    async function submitLoanPayment(e) {
+      e.preventDefault();
+      const lid = document.getElementById('loan-payment-id').value;
+      const data = {
+        amount: document.getElementById('loan-payment-amount').value,
+        date: document.getElementById('loan-payment-date').value,
+        notes: document.getElementById('loan-payment-notes').value,
+        as_expense: document.getElementById('loan-as-expense').checked
+      };
+      const res = await apiCall(`/api/loans/${lid}/payment`, 'POST', data);
+      if (res) {
+        showToast('success', 'Payment recorded');
+        document.getElementById('loan-payment-modal-backdrop').classList.remove('active');
+        document.getElementById('loan-payment-form').reset();
+        loadLoans();
+        if (data.as_expense) loadExpenses();
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // BUDGETS
     // ═══════════════════════════════════════════════════════════════════════════
+
 
     async function loadBudgets() {
       // Auto-fill current month/year if empty

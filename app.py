@@ -280,7 +280,6 @@ def init_db():
         except Exception:
             pass
 
-    # Indexes
     for sql in [
         "CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)",
         "CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category)",
@@ -289,6 +288,45 @@ def init_db():
         "CREATE INDEX IF NOT EXISTS idx_income_source ON income(source)",
     ]:
         c.execute(sql)
+
+    # New Tables for Loans and CC Payments
+    c.execute("""CREATE TABLE IF NOT EXISTS loans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner TEXT NOT NULL,
+        loan_name TEXT NOT NULL,
+        total_amount REAL NOT NULL,
+        monthly_payment REAL,
+        next_due_date TEXT,
+        category TEXT,
+        is_active INTEGER DEFAULT 1,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS loan_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        loan_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        date TEXT NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE)""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS cc_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        credit_card_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        date TEXT NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (credit_card_id) REFERENCES credit_cards(id) ON DELETE CASCADE)""")
+
+    # Migrations for credit_cards
+    try:
+        c.execute("ALTER TABLE credit_cards ADD COLUMN starting_balance REAL DEFAULT 0")
+        conn.commit()
+    except Exception:
+        pass
+
 
     # Default categories
     for cat in ['Groceries','Dining Out','Transportation','Utilities','Entertainment',
@@ -314,15 +352,25 @@ def init_db():
 def get_credit_card_balance(card_id):
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT manual_balance FROM credit_cards WHERE id = ?", (card_id,))
+    c.execute("SELECT manual_balance, starting_balance FROM credit_cards WHERE id = ?", (card_id,))
     row = c.fetchone()
     if row and row[0] is not None:
         conn.close()
         return float(row[0])
+    
+    starting_bal = float(row[1]) if row and row[1] else 0.0
+    
+    # Sum expenses
     c.execute("SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE credit_card_id = ?", (card_id,))
-    val = float(c.fetchone()[0])
+    expenses_sum = float(c.fetchone()[0])
+    
+    # Sum payments
+    c.execute("SELECT COALESCE(SUM(amount),0.0) FROM cc_payments WHERE credit_card_id = ?", (card_id,))
+    payments_sum = float(c.fetchone()[0])
+    
     conn.close()
-    return val
+    return starting_bal + expenses_sum - payments_sum
+
 
 def log_audit(conn, action, table_name, record_id, changes=None):
     """Log an audit trail entry. action = CREATE | UPDATE | DELETE"""
@@ -729,12 +777,26 @@ def create_credit_card():
         return jsonify({'error': 'Owner is required'}), 400
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("INSERT INTO credit_cards (owner,card_name,credit_limit) VALUES (?,?,?)",
-              (data['owner'], data['card_name'], data.get('credit_limit')))
+    c.execute("INSERT INTO credit_cards (owner,card_name,credit_limit,starting_balance) VALUES (?,?,?,?)",
+              (data['owner'], data['card_name'], data.get('credit_limit'), data.get('starting_balance', 0)))
     cid = c.lastrowid
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'id': cid}), 201
+
+@app.route('/api/credit-cards/<int:cid>/payment', methods=['POST'])
+@login_required
+def create_cc_payment(cid):
+    data = request.json or {}
+    if not data.get('amount') or not data.get('date'):
+        return jsonify({'error': 'Amount and date required'}), 400
+    conn = get_db_connection()
+    conn.execute("INSERT INTO cc_payments (credit_card_id, amount, date, notes) VALUES (?,?,?,?)",
+              (cid, data['amount'], data['date'], data.get('notes')))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True}), 201
+
 
 @app.route('/api/credit-cards/<int:cid>', methods=['PUT'])
 @login_required
@@ -742,11 +804,12 @@ def update_credit_card(cid):
     data = request.json or {}
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("UPDATE credit_cards SET owner=?,card_name=?,credit_limit=?,manual_balance=? WHERE id=?",
-              (data.get('owner'), data.get('card_name'), data.get('credit_limit'), data.get('manual_balance'), cid))
+    c.execute("UPDATE credit_cards SET owner=?,card_name=?,credit_limit=?,manual_balance=?,starting_balance=? WHERE id=?",
+              (data.get('owner'), data.get('card_name'), data.get('credit_limit'), data.get('manual_balance'), data.get('starting_balance', 0), cid))
     conn.commit()
     conn.close()
     return jsonify({'success': True}), 200
+
 
 @app.route('/api/credit-cards/<int:cid>', methods=['DELETE'])
 @login_required
@@ -924,6 +987,99 @@ def delete_savings_goal(gid):
     conn.commit()
     conn.close()
     return jsonify({'success': True}), 200
+
+# ── Loans ─────────────────────────────────────────────────────────────────────
+
+@app.route('/api/loans', methods=['GET'])
+@login_required
+def get_loans():
+    conn = get_db_connection()
+    c = conn.cursor()
+    # Basic visibility check
+    vis_clause, vis_params = get_visible_clause('loans', session['username'])
+    loans = [dict(r) for r in c.execute(f"SELECT * FROM loans WHERE {vis_clause} ORDER BY is_active DESC, created_at DESC", vis_params).fetchall()]
+    
+    for loan in loans:
+        # Sum payments
+        c.execute("SELECT COALESCE(SUM(amount),0.0) FROM loan_payments WHERE loan_id=?", (loan['id'],))
+        paid = float(c.fetchone()[0])
+        loan['amount_paid'] = round(paid, 2)
+        loan['remaining_balance'] = round(loan['total_amount'] - paid, 2)
+        loan['progress_pct'] = min(100, round((paid / loan['total_amount'] * 100), 1)) if loan['total_amount'] > 0 else 0
+        
+        # Get payment history
+        payments = [dict(r) for r in c.execute("SELECT * FROM loan_payments WHERE loan_id=? ORDER BY date DESC", (loan['id'],)).fetchall()]
+        loan['payments'] = payments
+
+    conn.close()
+    return jsonify({'data': loans}), 200
+
+@app.route('/api/loans', methods=['POST'])
+@login_required
+def create_loan():
+    data = request.json or {}
+    if not data.get('loan_name') or not data.get('total_amount'):
+        return jsonify({'error': 'Name and total amount required'}), 400
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""INSERT INTO loans (owner, loan_name, total_amount, monthly_payment, next_due_date, category, notes) 
+                 VALUES (?,?,?,?,?,?,?)""",
+              (session['username'], data['loan_name'], float(data['total_amount']), 
+               data.get('monthly_payment'), data.get('next_due_date'), data.get('category'), data.get('notes')))
+    lid = c.lastrowid
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'id': lid}), 201
+
+@app.route('/api/loans/<int:lid>', methods=['PUT'])
+@login_required
+def update_loan(lid):
+    data = request.json or {}
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""UPDATE loans SET loan_name=?, total_amount=?, monthly_payment=?, 
+                 next_due_date=?, category=?, notes=?, is_active=? WHERE id=?""",
+              (data.get('loan_name'), float(data['total_amount']), data.get('monthly_payment'),
+               data.get('next_due_date'), data.get('category'), data.get('notes'), data.get('is_active', 1), lid))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True}), 200
+
+@app.route('/api/loans/<int:lid>', methods=['DELETE'])
+@login_required
+def delete_loan(lid):
+    conn = get_db_connection()
+    conn.execute("DELETE FROM loans WHERE id=?", (lid,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True}), 200
+
+@app.route('/api/loans/<int:lid>/payment', methods=['POST'])
+@login_required
+def create_loan_payment(lid):
+    data = request.json or {}
+    if not data.get('amount') or not data.get('date'):
+        return jsonify({'error': 'Amount and date required'}), 400
+    
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    # 1. Record the loan payment
+    c.execute("INSERT INTO loan_payments (loan_id, amount, date, notes) VALUES (?,?,?,?)",
+              (lid, float(data['amount']), data['date'], data.get('notes')))
+    
+    # 2. Optionally record it as an expense if user wants
+    if data.get('as_expense'):
+        loan = c.execute("SELECT loan_name, category FROM loans WHERE id=?", (lid,)).fetchone()
+        c.execute("""INSERT INTO expenses (date, category, description, amount, paid_by, notes) 
+                     VALUES (?,?,?,?,?,?)""",
+                  (data['date'], loan['category'] or 'Bills', f"Payment: {loan['loan_name']}", 
+                   float(data['amount']), session['username'], data.get('notes')))
+        
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True}), 201
+
 
 # ── Spending by Person ─────────────────────────────────────────────────────────
 
