@@ -5410,17 +5410,25 @@
       });
     }
 
+    let currentDisplayName = '';
+
     async function populateUserDropdowns() {
-      const res = await apiCall('/api/users');
-      if (!res) return;
-      const users = res.users || res.data || [];
+      // Try to fetch all users (only works for admins)
+      const res = await apiCall('/api/users', 'GET', null, true);
+      let users = [];
+      if (res && res.data) {
+        users = res.data;
+      } else {
+        // Fallback for non-admins: just show current user
+        users = [{ username: currentUser, display_name: currentDisplayName }];
+      }
+
       const dropdownIds = ['expense-paid-by', 'income-received-by', 'credit-card-owner', 'rec-person', 'ri-person'];
       dropdownIds.forEach(id => {
         const sel = document.getElementById(id);
         if (!sel) return;
-        const placeholder = sel.options[0];
-        sel.innerHTML = '';
-        sel.appendChild(placeholder);
+        const placeholderText = id === 'credit-card-owner' ? '-- Owner --' : '-- Person --';
+        sel.innerHTML = `<option value="">${placeholderText}</option>`;
         users.forEach(u => {
           const opt = document.createElement('option');
           opt.value = u.username;
@@ -5430,6 +5438,7 @@
         });
       });
     }
+
 
     async function populateCreditCardDropdowns() {
       const res = await apiCall('/api/credit-cards');
@@ -6641,8 +6650,10 @@
       const me = await apiCall('/api/auth/me');
       if (me) {
         currentUser = me.user.username;
+        currentDisplayName = me.user.display_name || me.user.username;
         window._currentUserId = me.user.id;
-        const displayName = me.user.display_name || me.user.username;
+        const displayName = currentDisplayName;
+
         document.getElementById('user-greeting').textContent = `Hi, ${displayName} \u{1F44B}`;
         const ddName = document.getElementById('profile-dropdown-name');
         const ddUser = document.getElementById('profile-dropdown-username');

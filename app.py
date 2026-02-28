@@ -2103,22 +2103,13 @@ def mail_status():
 # ── Users ─────────────────────────────────────────────────────────────────────
 
 @app.route('/api/users', methods=['GET'])
-@login_required
+@admin_required
 def get_users():
     conn = get_db_connection()
-    is_admin = False
-    row = conn.execute("SELECT is_admin FROM users WHERE id=?", (session['user_id'],)).fetchone()
-    if row and row['is_admin']:
-        is_admin = True
-
-    if is_admin:
-        rows = [dict(r) for r in conn.execute("SELECT id,username,is_admin,display_name,created_at,must_change_password FROM users").fetchall()]
-    else:
-        # Standard users only get basic info
-        rows = [dict(r) for r in conn.execute("SELECT id,username,is_admin,display_name FROM users").fetchall()]
-
+    rows = [dict(r) for r in conn.execute("SELECT id,username,is_admin,display_name,created_at,must_change_password FROM users").fetchall()]
     conn.close()
     return jsonify({'data': rows}), 200
+
 
 
 @app.route('/api/users/usernames')
