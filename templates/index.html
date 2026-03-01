@@ -4515,12 +4515,23 @@
     <!-- ═══════════════ CREDIT CARDS ═══════════════ -->
     <div class="tab-content" id="credit-cards-tab">
       <div class="glass-card">
-        <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18"
-            height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round">
-            <rect width="20" height="14" x="2" y="5" rx="2"></rect>
-            <line x1="2" x2="22" y1="10" y2="10"></line>
-          </svg> Add Credit Card</div>
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <div><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18" height="18"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round">
+              <rect width="20" height="14" x="2" y="5" rx="2"></rect>
+              <line x1="2" x2="22" y1="10" y2="10"></line>
+            </svg> Add Credit Card</div>
+          <button id="cc-bulk-clear" class="btn-danger" style="display:none; font-size:0.75rem; padding:4px 10px;"
+            onclick="clearSampleCards()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.2rem">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+            </svg> Clear Sample Cards
+          </button>
+        </div>
         <form id="credit-card-form" onsubmit="submitCreditCardForm(event)">
           <div class="form-grid">
             <div class="form-group"><label>Owner *</label>
@@ -6323,7 +6334,37 @@
     </div>`;
 
         }).join('');
+
+        // Show "Clear Samples" button if placeholders are found
+        const placeholders = ['American Express', 'Apple Card', 'Care Credit', 'Dillards', 'Chase', 'Visa', 'Kohl', 'MilStar', 'PayPal', 'Sam', 'TJ Maxx'];
+        const hasSamples = res.data.some(c => placeholders.some(p => c.card_name.includes(p)) && c.balance === 0);
+        const clearBtn = document.getElementById('cc-bulk-clear');
+        if (clearBtn) clearBtn.style.display = hasSamples ? 'block' : 'none';
+
         populateCreditCardDropdowns();
+      }
+
+      async function clearSampleCards() {
+        showModal('Clear Samples', "This will remove all placeholder credit cards with $0 balance. Real user data will NOT be touched. Proceed?", async () => {
+          const res = await apiCall('/api/credit-cards');
+          if (!res) return;
+          const placeholders = ['American Express', 'Apple Card', 'Care Credit', 'Dillards', 'Chase', 'Visa', 'Kohl', 'MilStar', 'PayPal', 'Sam', 'TJ Maxx'];
+          const toDelete = res.data.filter(c => placeholders.some(p => c.card_name.includes(p)) && c.balance === 0);
+
+          if (toDelete.length === 0) {
+            showToast('info', 'No sample cards found to clear');
+            return;
+          }
+
+          let successCount = 0;
+          for (const card of toDelete) {
+            const del = await apiCall(`/api/credit-cards/${card.id}`, 'DELETE');
+            if (del) successCount++;
+          }
+
+          showToast('success', `Cleared ${successCount} sample cards`);
+          loadCreditCards();
+        });
       }
 
       async function submitCreditCardForm(e) {
