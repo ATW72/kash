@@ -1312,6 +1312,51 @@
       font-size: 0.8rem;
     }
 
+    /* ── CC Creator Preview ── */
+    .cc-creator-card {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      min-height: 220px;
+      padding: 1.5rem;
+      border-radius: 20px;
+      position: relative;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .cc-creator-card.active {
+      border: 2px solid var(--primary);
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      box-shadow: 0 12px 40px rgba(0, 212, 170, 0.25);
+    }
+
+    .cc-creator-card input,
+    .cc-creator-card select {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: white;
+      font-family: inherit;
+      border-radius: 8px;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.9rem;
+      width: 100%;
+    }
+
+    .cc-creator-card input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .cc-creator-card .card-chip {
+      width: 40px;
+      height: 30px;
+      background: linear-gradient(135deg, #ffd700, #b8860b);
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      opacity: 0.8;
+    }
+
     /* ── Budget ── */
     .budget-item {
       background: var(--card-bg);
@@ -4514,52 +4559,72 @@
 
     <!-- ═══════════════ CREDIT CARDS ═══════════════ -->
     <div class="tab-content" id="credit-cards-tab">
-      <div class="glass-card">
-        <div class="card-title"><svg style="vertical-align:middle;margin-right:0.5rem;flex-shrink:0" width="18"
-            height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round">
-            <rect width="20" height="14" x="2" y="5" rx="2"></rect>
-            <line x1="2" x2="22" y1="10" y2="10"></line>
-          </svg> Add Credit Card</div>
-        <form id="credit-card-form" onsubmit="submitCreditCardForm(event)">
-          <div class="form-grid">
-            <div class="form-group"><label>Owner *</label>
-              <select id="credit-card-owner" required="">
-                <option value="">-- Owner --</option>
-
-              </select>
-            </div>
-            <div class="form-group"><label>Card Name *</label><input type="text" id="credit-card-name"
-                placeholder="e.g. Visa Gold" required=""></div>
-            <div class="form-group"><label>Credit Limit</label><input type="number" id="credit-card-limit" step="0.01"
-                placeholder="Optional"></div>
-            <div class="form-group"><label>Starting Balance</label><input type="number"
-                id="credit-card-starting-balance" step="0.01" placeholder="Current debt before today"></div>
-            <div class="form-group"><label>APY (%) / Interest Rate</label><input type="number"
-                id="credit-card-interest-rate" step="0.01" placeholder="e.g. 19.99"></div>
-            <div class="form-group"><label>Manual Balance Override</label><input type="number"
-                id="credit-card-manual-balance" step="0.01" placeholder="Leave blank to auto-calculate"></div>
-
-          </div>
-          <button type="submit" style="margin-top:1rem;"><svg
-              style="display:inline-block;vertical-align:middle;margin-right:0.3rem" width="14" height="14"
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-              stroke-linejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-              <polyline points="17 21 17 13 7 13 7 21"></polyline>
-              <polyline points="7 3 7 8 15 8"></polyline>
-            </svg> Save Card</button>
-          <input type="hidden" id="cc-edit-id">
-        </form>
+      <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+          <h2 style="margin-bottom: 0.3rem;">Credit Cards</h2>
+          <p style="opacity: 0.7; font-size: 0.9rem;">Manage your accounts and track utilization.</p>
+        </div>
       </div>
-      <div class="credit-card-grid" id="credit-card-list">
-        <div class="empty-state">
-          <div class="icon"><svg style="vertical-align:middle;flex-shrink:0" width="40" height="40" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
-              <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
-              <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
-            </svg></div>No credit cards added
+
+      <div class="credit-card-grid">
+        <!-- The "Visual Creator" Card -->
+        <div id="cc-creator-container">
+          <form id="credit-card-form" onsubmit="submitCreditCardForm(event)" class="cc-creator-card">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
+                <div class="card-chip"></div>
+                <div style="font-size:0.7rem; font-weight:800; opacity:0.6; letter-spacing:1px;">NEW CARD</div>
+              </div>
+
+              <div style="margin-bottom: 0.75rem;">
+                <label
+                  style="font-size:0.65rem; text-transform:uppercase; opacity:0.7; display:block; margin-bottom:0.2rem;">Card
+                  Name</label>
+                <input type="text" id="credit-card-name" placeholder="Bank Name / Card Type" required
+                  oninput="document.getElementById('cc-creator-container').firstElementChild.classList.add('active')">
+              </div>
+
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+                <div>
+                  <label
+                    style="font-size:0.65rem; text-transform:uppercase; opacity:0.7; display:block; margin-bottom:0.2rem;">Owner</label>
+                  <select id="credit-card-owner" required></select>
+                </div>
+                <div>
+                  <label
+                    style="font-size:0.65rem; text-transform:uppercase; opacity:0.7; display:block; margin-bottom:0.2rem;">Interest
+                    (APY %)</label>
+                  <input type="number" id="credit-card-interest-rate" step="0.01" placeholder="0.00">
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+                <div>
+                  <label
+                    style="font-size:0.65rem; text-transform:uppercase; opacity:0.7; display:block; margin-bottom:0.2rem;">Limit</label>
+                  <input type="number" id="credit-card-limit" step="0.01" placeholder="0.00">
+                </div>
+                <div>
+                  <label
+                    style="font-size:0.65rem; text-transform:uppercase; opacity:0.7; display:block; margin-bottom:0.2rem;">Start
+                    Balance</label>
+                  <input type="number" id="credit-card-starting-balance" step="0.01" placeholder="0.00">
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:1.5rem; display:flex; gap:0.5rem;">
+              <button type="submit" class="btn-success" style="flex:2; padding:0.6rem;">Save Card</button>
+              <button type="button" class="btn-secondary" style="flex:1; padding:0.6rem;"
+                onclick="resetCCForm()">Clear</button>
+            </div>
+            <input type="hidden" id="cc-edit-id">
+          </form>
+        </div>
+
+        <!-- The List of Active Cards -->
+        <div id="credit-card-list" style="display: contents;">
+          <!-- Fetched cards will live here as grid items -->
         </div>
       </div>
     </div>
@@ -6343,8 +6408,7 @@
           res = await apiCall(`/api/credit-cards/${editId}`, 'PUT', data);
           if (res) {
             showToast('success', 'Card updated');
-            document.getElementById('credit-card-form').reset();
-            document.getElementById('cc-edit-id').value = '';
+            resetCCForm();
             _simDebts = null;
             loadCreditCards();
           }
@@ -6352,11 +6416,18 @@
           res = await apiCall('/api/credit-cards', 'POST', data);
           if (res) {
             showToast('success', 'Card added');
-            document.getElementById('credit-card-form').reset();
+            resetCCForm();
             _simDebts = null;
             loadCreditCards();
           }
         }
+      }
+
+      function resetCCForm() {
+        document.getElementById('credit-card-form').reset();
+        document.getElementById('cc-edit-id').value = '';
+        document.getElementById('cc-creator-container').firstElementChild.classList.remove('active');
+        populateCreditCardDropdowns();
       }
 
       async function editCreditCard(id) {
@@ -6372,7 +6443,8 @@
         document.getElementById('credit-card-manual-balance').value = card.manual_balance || '';
         document.getElementById('cc-edit-id').value = id;
 
-        document.getElementById('credit-card-form').scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('cc-creator-container').firstElementChild.classList.add('active');
+        document.getElementById('cc-creator-container').scrollIntoView({ behavior: 'smooth' });
       }
 
       function deleteCreditCard(id, name) {

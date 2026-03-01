@@ -404,7 +404,7 @@ def get_visible_clause(table_name, username, alias=''):
     """Returns a WHERE clause fragment and params that filters to records
     owned by username OR shared with username."""
     tbl = f"{alias}." if alias else ""
-    clause = f"({tbl}owner = ? OR {tbl}owner = '' OR id IN (SELECT record_id FROM sharing WHERE table_name=? AND shared_with=?))"
+    clause = f"({tbl}owner = ? OR id IN (SELECT record_id FROM sharing WHERE table_name=? AND shared_with=?))"
     params = [username, table_name, username]
     return clause, params
 
