@@ -6336,7 +6336,7 @@
         }).join('');
 
         // Show "Clear Samples" button if placeholders are found
-        const placeholders = ['American Express', 'Apple Card', 'Care Credit', 'Dillards', 'Chase', 'Visa', 'Kohl', 'MilStar', 'PayPal', 'Sam', 'TJ Maxx'];
+        const placeholders = ['American Express', 'Apple Card', 'Care Credit', 'Dillards', 'Chase', 'Visa', 'Kohl', 'MilStar', 'PayPal', 'Sam', 'TJ Max'];
         const hasSamples = res.data.some(c => placeholders.some(p => c.card_name.includes(p)) && c.balance === 0);
         const clearBtn = document.getElementById('cc-bulk-clear');
         if (clearBtn) clearBtn.style.display = hasSamples ? 'block' : 'none';
@@ -6348,7 +6348,7 @@
         showModal('Clear Samples', "This will remove all placeholder credit cards with $0 balance. Real user data will NOT be touched. Proceed?", async () => {
           const res = await apiCall('/api/credit-cards');
           if (!res) return;
-          const placeholders = ['American Express', 'Apple Card', 'Care Credit', 'Dillards', 'Chase', 'Visa', 'Kohl', 'MilStar', 'PayPal', 'Sam', 'TJ Maxx'];
+          const placeholders = ['American Express', 'Apple Card', 'Care Credit', 'Dillards', 'Chase', 'Visa', 'Kohl', 'MilStar', 'PayPal', 'Sam', 'TJ Max'];
           const toDelete = res.data.filter(c => placeholders.some(p => c.card_name.includes(p)) && c.balance === 0);
 
           if (toDelete.length === 0) {
