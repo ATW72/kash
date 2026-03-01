@@ -1334,27 +1334,45 @@
 
     .cc-creator-card input,
     .cc-creator-card select {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       color: white;
       font-family: inherit;
-      border-radius: 8px;
-      padding: 0.4rem 0.6rem;
+      border-radius: 10px;
+      padding: 0.5rem 0.7rem;
       font-size: 0.9rem;
       width: 100%;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .cc-creator-card input:focus {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--primary);
     }
 
     .cc-creator-card input::placeholder {
-      color: rgba(255, 255, 255, 0.4);
+      color: rgba(255, 255, 255, 0.3);
     }
 
     .cc-creator-card .card-chip {
-      width: 40px;
-      height: 30px;
-      background: linear-gradient(135deg, #ffd700, #b8860b);
-      border-radius: 6px;
+      width: 44px;
+      height: 32px;
+      background: linear-gradient(135deg, #e3c467, #a68b33);
+      border-radius: 4px;
       margin-bottom: 1rem;
-      opacity: 0.8;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cc-creator-card .card-chip::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1) 2px, transparent 2px, transparent 4px);
     }
 
     /* ── Budget ── */
@@ -4564,6 +4582,8 @@
           <h2 style="margin-bottom: 0.3rem;">Credit Cards</h2>
           <p style="opacity: 0.7; font-size: 0.9rem;">Manage your accounts and track utilization.</p>
         </div>
+        <button id="cc-bulk-clear" class="btn-sm btn-danger" style="display:none;" onclick="clearPlaceholderCards()">🧹
+          Clear Sample Cards</button>
       </div>
 
       <div class="credit-card-grid">
@@ -6388,7 +6408,31 @@
     </div>`;
 
         }).join('');
+
+        // Show "Clear Placeholders" button if any of the common ones exist
+        const placeholders = ['American Express', 'Apple Card', 'Care Credit', 'Dillards', 'Chase', 'Visa'];
+        const hasPlaceholders = res.data.some(c => placeholders.some(p => c.card_name.includes(p)) && c.balance === 0);
+        if (hasPlaceholders && document.getElementById('cc-bulk-clear')) {
+          document.getElementById('cc-bulk-clear').style.display = 'block';
+        }
+
         populateCreditCardDropdowns();
+      }
+
+      async function clearPlaceholderCards() {
+        const placeholders = ['American Express', 'Apple Card', 'Care Credit', 'Dillards', 'Kohl', 'PayPal', 'Sam', 'TJ Max'];
+        const res = await apiCall('/api/credit-cards');
+        const toDelete = res.data.filter(c => placeholders.some(p => c.card_name.includes(p)) && c.balance === 0);
+
+        if (toDelete.length === 0) return;
+
+        showModal('Clear Placeholders', `This will delete ${toDelete.length} sample cards. Proceed?`, async () => {
+          for (const card of toDelete) {
+            await apiCall(`/api/credit-cards/${card.id}`, 'DELETE');
+          }
+          showToast('success', 'Sample data cleared');
+          loadCreditCards();
+        });
       }
 
       async function submitCreditCardForm(e) {
