@@ -5609,7 +5609,10 @@
       if (tabName === 'budgets') loadBudgets();
 
       // account tab replaced by profile dropdown
-      if (tabName === 'currencies') { loadCurrencies(); loadAuditLog(); }
+      if (tabName === 'currencies') {
+        loadCurrencies();
+        if (window._isAdmin) loadAuditLog();
+      }
     }
 
     function toggleSection(id) {
