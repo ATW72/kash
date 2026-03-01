@@ -3,7 +3,7 @@ import secrets
 
 class Config:
     SECRET_KEY = os.environ.get('FLASK_SECRET_KEY') or secrets.token_hex(32)
-    DATABASE_PATH = os.environ.get('APP_DATABASE_PATH', '/app/data/expenses.db')
+    DATABASE_PATH = os.environ.get('APP_DATABASE_PATH', os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'expenses.db'))
     HOST = os.environ.get('APP_HOST', '0.0.0.0')
     PORT = int(os.environ.get('APP_PORT', 5000))
     DEBUG = os.environ.get('APP_DEBUG', 'false').lower() == 'true'

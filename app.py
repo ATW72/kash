@@ -25,7 +25,7 @@ import atexit
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 import pathlib
-UPLOAD_FOLDER = pathlib.Path(os.environ.get('APP_UPLOAD_FOLDER', '/opt/kash/data/receipts'))
+UPLOAD_FOLDER = pathlib.Path(os.environ.get('APP_UPLOAD_FOLDER', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'receipts')))
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 ALLOWED_EXTENSIONS = {'png','jpg','jpeg','gif','webp','pdf'}
 app.secret_key = Config.SECRET_KEY
