@@ -402,9 +402,12 @@ def log_audit(conn, action, table_name, record_id, changes=None):
 
 def get_visible_clause(table_name, username, alias=''):
     """Returns a WHERE clause fragment and params that filters to records
-    owned by username OR shared with username."""
+    owned by username OR shared with username. Admins see all."""
     tbl = f"{alias}." if alias else ""
-    clause = f"({tbl}owner = ? OR id IN (SELECT record_id FROM sharing WHERE table_name=? AND shared_with=?))"
+    if session.get('is_admin'):
+        return "1=1", []
+    # Include records with empty/null owner as visible to everyone (historical/legacy data)
+    clause = f"({tbl}owner = ? OR {tbl}owner = '' OR {tbl}owner IS NULL OR id IN (SELECT record_id FROM sharing WHERE table_name=? AND shared_with=?))"
     params = [username, table_name, username]
     return clause, params
 
