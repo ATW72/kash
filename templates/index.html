@@ -5572,7 +5572,7 @@
         setTimeout(() => { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 300); }, 4000);
       }
 
-      async function apiCall(endpoint, method = 'GET', data = null, returnError = false) {
+      async function apiCall(endpoint, method = 'GET', data = null, silent = false) {
         try {
           const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' };
           if (data && method !== 'GET') opts.body = JSON.stringify(data);
@@ -5587,13 +5587,13 @@
           }
 
           if (!resp.ok) {
-            showToast('error', result.error || 'Operation failed');
-            return returnError ? { error: result.error || 'Operation failed' } : null;
+            if (!silent) showToast('error', result.error || 'Operation failed');
+            return silent ? { error: result.error || 'Operation failed' } : null;
           }
           return result;
         } catch (e) {
-          showToast('error', `Network error: ${e.message}`);
-          return returnError ? { error: `Network error: ${e.message}` } : null;
+          if (!silent) showToast('error', `Network error: ${e.message}`);
+          return silent ? { error: `Network error: ${e.message}` } : null;
         }
       }
 
@@ -5672,13 +5672,17 @@
       let currentDisplayName = '';
 
       async function populateUserDropdowns() {
-        // Try to fetch all users (only works for admins)
-        const res = await apiCall('/api/users', 'GET', null, true);
         let users = [];
-        if (res && res.data) {
-          users = res.data;
-        } else {
-          // Fallback for non-admins: just show current user
+        // Only attempt to fetch all users if the current user is an admin
+        if (window._isAdmin) {
+          const res = await apiCall('/api/users', 'GET', null, true);
+          if (res && res.data) {
+            users = res.data;
+          }
+        }
+
+        // Fallback for non-admins or if the fetch failed: just show current user
+        if (users.length === 0) {
           users = [{ username: currentUser, display_name: currentDisplayName }];
         }
 
@@ -7276,6 +7280,7 @@
           currentUser = me.user.username;
           currentDisplayName = me.user.display_name || me.user.username;
           window._currentUserId = me.user.id;
+          window._isAdmin = !!me.user.is_admin;
           const displayName = currentDisplayName;
 
           document.getElementById('user-greeting').textContent = `Hi, ${displayName} \u{1F44B}`;
