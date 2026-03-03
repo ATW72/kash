@@ -3436,60 +3436,27 @@
         width: 100%;
         max-width: 360px;
       }
-
-      /* ── Business Budget Form Grid ─────── */
-      .biz-budget-form-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .biz-budget-save-btn {
-        width: 100%;
-      }
-
-      /* ── Invoice Generator ──────────────── */
-      .biz-invoice-header {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .biz-invoice-header-btns {
-        width: 100%;
-        display: flex;
-      }
-
-      .biz-invoice-header-btns .btn-sm,
-      .biz-invoice-header-btns a.btn-sm {
-        flex: 1;
-        text-align: center;
-        justify-content: center;
-      }
-
-      .biz-inv-form-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .biz-inv-action-btns {
-        flex-direction: column;
-      }
-
-      .biz-inv-action-btns .btn-sm {
-        width: 100%;
-        text-align: center;
-      }
     }
 
-    /* ── Desktop defaults for biz classes ──── */
+    /* ─────────────────────────────────────────────────────────
+       Biz layout: mobile-first base (single column everywhere)
+       Upgraded to multi-column via min-width query below.
+    ───────────────────────────────────────────────────────── */
     .biz-budget-form-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr auto;
+      grid-template-columns: 1fr;
       gap: 0.75rem;
       align-items: end;
     }
 
+    .biz-budget-save-btn {
+      width: 100%;
+    }
+
     .biz-invoice-header {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
+      align-items: flex-start;
       flex-wrap: wrap;
       gap: 0.5rem;
     }
@@ -3497,18 +3464,69 @@
     .biz-invoice-header-btns {
       display: flex;
       gap: 0.5rem;
-      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .biz-invoice-header-btns .btn-sm,
+    .biz-invoice-header-btns a.btn-sm {
+      flex: 1;
+      text-align: center;
+      justify-content: center;
     }
 
     .biz-inv-form-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 0.75rem;
     }
 
     .biz-inv-action-btns {
       display: flex;
+      flex-direction: column;
       gap: 0.75rem;
+    }
+
+    .biz-inv-action-btns .btn-sm {
+      width: 100%;
+      text-align: center;
+    }
+
+    /* Desktop upgrade ≥641px */
+    @media (min-width: 641px) {
+      .biz-budget-form-grid {
+        grid-template-columns: 1fr 1fr 1fr auto;
+      }
+
+      .biz-budget-save-btn {
+        width: auto;
+      }
+
+      .biz-invoice-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .biz-invoice-header-btns {
+        width: auto;
+      }
+
+      .biz-invoice-header-btns .btn-sm,
+      .biz-invoice-header-btns a.btn-sm {
+        flex: unset;
+      }
+
+      .biz-inv-form-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .biz-inv-action-btns {
+        flex-direction: row;
+      }
+
+      .biz-inv-action-btns .btn-sm {
+        width: auto;
+      }
     }
   </style>
 </head>
