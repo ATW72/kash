@@ -27,11 +27,13 @@ import math
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
 from authlib.integrations.flask_client import OAuth
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # ── Google OAuth Config ───────────────────────────────────────────────────────
 
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 import pathlib
 UPLOAD_FOLDER = pathlib.Path(os.environ.get('APP_UPLOAD_FOLDER', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'receipts')))
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
