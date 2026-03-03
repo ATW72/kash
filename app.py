@@ -22,6 +22,10 @@ import string
 import math
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
+from authlib.integrations.flask_client import OAuth
+
+# ── Google OAuth Config ───────────────────────────────────────────────────────
+
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 import pathlib
@@ -34,6 +38,18 @@ app.config['SESSION_COOKIE_HTTPONLY'] = Config.SESSION_COOKIE_HTTPONLY
 app.config['SESSION_COOKIE_SAMESITE'] = Config.SESSION_COOKIE_SAMESITE
 app.config['PERMANENT_SESSION_LIFETIME'] = Config.PERMANENT_SESSION_LIFETIME
 CORS(app)
+
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=Config.GOOGLE_CLIENT_ID,
+    client_secret=Config.GOOGLE_CLIENT_SECRET,
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={
+        'scope': 'openid email profile',
+    }
+)
+
 
 # ── Database ──────────────────────────────────────────────────────────────────
 
@@ -72,6 +88,8 @@ def init_db():
         ("notify_monthly",  "INTEGER DEFAULT 1"),
         ("two_factor_method", "TEXT DEFAULT 'none'"),
         ("totp_secret",       "TEXT DEFAULT ''"),
+        ("google_id",       "TEXT DEFAULT ''"),
+        ("avatar_url",      "TEXT DEFAULT ''"),
     ]:
         try:
             c.execute(f"ALTER TABLE users ADD COLUMN {col} {defn}")
@@ -548,6 +566,51 @@ def login():
 def logout():
     session.clear()
     return jsonify({'success': True, 'message': 'Logged out successfully'}), 200
+
+@app.route('/login/google')
+def login_google():
+    if 'user_id' in session:
+        return redirect(url_for('index'))
+    redirect_uri = url_for('auth_google', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/auth/google')
+def auth_google():
+    token = google.authorize_access_token()
+    user_info = token.get('userinfo')
+    
+    email = user_info.get('email')
+    google_id = user_info.get('id')
+    display_name = user_info.get('name', '')
+    avatar_url = user_info.get('picture', '')
+
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    c.execute("SELECT id, username, is_admin, must_change_password FROM users WHERE google_id=?", (google_id,))
+    user = c.fetchone()
+    
+    if not user and email:
+        c.execute("SELECT id, username, is_admin, must_change_password FROM users WHERE email=?", (email,))
+        user = c.fetchone()
+        if user:
+            c.execute("UPDATE users SET google_id=?, avatar_url=? WHERE id=?", (google_id, avatar_url, user['id']))
+            conn.commit()
+            
+    if not user:
+        conn.close()
+        return redirect(url_for('login', error='not_found'))
+
+    conn.close()
+    
+    session.permanent = True
+    session['user_id'] = user['id']
+    session['username'] = user['username']
+    session['is_admin'] = bool(user['is_admin'])
+    session['display_name'] = display_name
+    session['must_change_password'] = False
+    
+    return redirect(url_for('index'))
 
 @app.route('/api/auth/me')
 @login_required
