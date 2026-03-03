@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 from datetime import datetime, timedelta
-from flask import Flask, jsonify, request, session, redirect, url_for, render_template, send_file
+from flask import Flask, jsonify, request, session, redirect, url_for, render_template, send_file, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import openpyxl
@@ -37,6 +37,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 import pathlib
 UPLOAD_FOLDER = pathlib.Path(os.environ.get('APP_UPLOAD_FOLDER', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'receipts')))
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
 ALLOWED_EXTENSIONS = {'png','jpg','jpeg','gif','webp','pdf'}
 app.secret_key = Config.SECRET_KEY
 app.config['SESSION_COOKIE_SECURE'] = Config.SESSION_COOKIE_SECURE
@@ -474,8 +475,8 @@ def get_visible_clause(table_name, username, alias=''):
     tbl = f"{alias}." if alias else ""
     if session.get('is_admin'):
         return "1=1", []
-    # Include records with empty/null owner as visible to everyone (historical/legacy data)
-    clause = f"({tbl}owner = ? OR {tbl}owner = '' OR {tbl}owner IS NULL OR id IN (SELECT record_id FROM sharing WHERE table_name=? AND shared_with=?))"
+    # Only records owned by the user or explicitly shared are visible.
+    clause = f"({tbl}owner = ? OR id IN (SELECT record_id FROM sharing WHERE table_name=? AND shared_with=?))"
     params = [username, table_name, username]
     return clause, params
 
@@ -769,6 +770,15 @@ def update_expense(eid):
         return jsonify({'error': err}), 400
     try:
         conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'expenses', eid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Expense not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
         c = conn.cursor()
         old = conn.execute("SELECT * FROM expenses WHERE id=?", (eid,)).fetchone()
         c.execute("""UPDATE expenses SET date=?,category=?,description=?,amount=?,
@@ -776,9 +786,6 @@ def update_expense(eid):
                   (data['date'], data['category'], data['description'], float(data['amount']),
                    data['paid_by'], data.get('payment_method'), data.get('credit_card_id'),
                    data.get('notes',''), int(data.get('is_business', 0)), eid))
-        if c.rowcount == 0:
-            conn.close()
-            return jsonify({'error': 'Expense not found'}), 404
         log_audit(conn, 'UPDATE', 'expenses', eid, {
             'before': {'description': old['description'], 'amount': old['amount'], 'date': old['date'], 'is_business': old['is_business']} if old else {},
             'after':  {'description': data['description'], 'amount': float(data['amount']), 'date': data['date'], 'is_business': int(data.get('is_business', 0))}})
@@ -793,12 +800,18 @@ def update_expense(eid):
 def delete_expense(eid):
     try:
         conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'expenses', eid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Expense not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
         c = conn.cursor()
         row = conn.execute("SELECT * FROM expenses WHERE id=?", (eid,)).fetchone()
         c.execute("DELETE FROM expenses WHERE id=?", (eid,))
-        if c.rowcount == 0:
-            conn.close()
-            return jsonify({'error': 'Expense not found'}), 404
         log_audit(conn, 'DELETE', 'expenses', eid, {
             'description': row['description'] if row else '', 'amount': row['amount'] if row else 0,
             'date': row['date'] if row else ''})
@@ -862,13 +875,19 @@ def update_income(iid):
         return jsonify({'error': err}), 400
     try:
         conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'income', iid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Income not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
         c = conn.cursor()
         c.execute("UPDATE income SET date=?,source=?,description=?,amount=?,received_by=?,notes=?,is_business=? WHERE id=?",
                   (data['date'], data['source'], data['description'], float(data['amount']),
                    data['received_by'], data.get('notes',''), int(data.get('is_business', 0)), iid))
-        if c.rowcount == 0:
-            conn.close()
-            return jsonify({'error': 'Income not found'}), 404
         conn.commit()
         conn.close()
         return jsonify({'success': True}), 200
@@ -878,9 +897,24 @@ def update_income(iid):
 @app.route('/api/income/<int:iid>', methods=['DELETE'])
 @login_required
 def delete_income(iid):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("DELETE FROM income WHERE id=?", (iid,))
+    try:
+        conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'income', iid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Income not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+            
+        c = conn.cursor()
+        c.execute("DELETE FROM income WHERE id=?", (iid,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Income deleted successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
     if c.rowcount == 0:
         conn.close()
         return jsonify({'error': 'Income not found'}), 404
@@ -909,14 +943,13 @@ def get_credit_cards():
 @login_required
 def create_credit_card():
     data = request.json or {}
-    if not data.get('owner') or not data.get('card_name'):
-        return jsonify({'error': 'Owner and card name required'}), 400
-    if not data.get('owner','').strip():
-        return jsonify({'error': 'Owner is required'}), 400
+    if not data.get('card_name'):
+        return jsonify({'error': 'Card name required'}), 400
     conn = get_db_connection()
     c = conn.cursor()
+    # Always set owner to current user
     c.execute("INSERT INTO credit_cards (owner,card_name,credit_limit,starting_balance,interest_rate) VALUES (?,?,?,?,?)",
-              (data['owner'], data['card_name'], data.get('credit_limit'), data.get('starting_balance', 0), data.get('interest_rate', 0)))
+              (session['username'], data['card_name'], data.get('credit_limit'), data.get('starting_balance', 0), data.get('interest_rate', 0)))
     cid = c.lastrowid
     conn.commit()
     conn.close()
@@ -928,12 +961,24 @@ def create_cc_payment(cid):
     data = request.json or {}
     if not data.get('amount') or not data.get('date'):
         return jsonify({'error': 'Amount and date required'}), 400
-    conn = get_db_connection()
-    conn.execute("INSERT INTO cc_payments (credit_card_id, amount, date, notes) VALUES (?,?,?,?)",
-              (cid, data['amount'], data['date'], data.get('notes')))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True}), 201
+    try:
+        conn = get_db_connection()
+        # Ownership check on the card
+        can_see, can_edit = is_owner_or_shared(conn, 'credit_cards', cid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Credit card not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        conn.execute("INSERT INTO cc_payments (credit_card_id, amount, date, notes) VALUES (?,?,?,?)",
+                  (cid, data['amount'], data['date'], data.get('notes')))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/credit-cards/<int:cid>', methods=['PUT'])
@@ -999,6 +1044,7 @@ def create_budget():
     try:
         conn = get_db_connection()
         c = conn.cursor()
+        # Always set owner to current user
         c.execute("INSERT OR REPLACE INTO budgets (category,amount,month,year,owner,is_business) VALUES (?,?,?,?,?,?)",
                   (data['category'], float(data['amount']), int(data['month']), int(data['year']), session['username'], int(data.get('is_business', 0))))
         conn.commit()
@@ -1010,11 +1056,23 @@ def create_budget():
 @app.route('/api/budgets/<int:bid>', methods=['DELETE'])
 @login_required
 def delete_budget(bid):
-    conn = get_db_connection()
-    conn.execute("DELETE FROM budgets WHERE id=?", (bid,))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True}), 200
+    try:
+        conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'budgets', bid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Budget not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        conn.execute("DELETE FROM budgets WHERE id=?", (bid,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # ── Business API ──────────────────────────────────────────────────────────────
 
@@ -1094,11 +1152,14 @@ def export_business_csv():
 @login_required
 def get_invoices():
     username = session['username']
-    conn = get_db_connection()
-    rows = conn.execute(
-        "SELECT * FROM invoices WHERE owner=? ORDER BY created_at DESC", (username,)).fetchall()
-    conn.close()
-    return jsonify({'data': [dict(r) for r in rows]}), 200
+    try:
+        conn = get_db_connection()
+        # Strictly only owner can see invoices (no sharing for now)
+        rows = conn.execute("SELECT * FROM invoices WHERE owner=? ORDER BY created_at DESC", (username,)).fetchall()
+        conn.close()
+        return jsonify({'data': [dict(r) for r in rows]}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/invoices', methods=['POST'])
 @login_required
@@ -1122,7 +1183,7 @@ def create_invoice():
         data.get('notes', ''),
         float(data.get('tax_rate', 0)),
         'draft',
-        username
+        username  # Strictly from session
     ))
     conn.commit()
     inv_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -1136,12 +1197,24 @@ def update_invoice_status(inv_id):
     status = data.get('status')
     if status not in ('draft', 'sent', 'paid'):
         return jsonify({'error': 'Invalid status'}), 400
-    username = session['username']
-    conn = get_db_connection()
-    conn.execute("UPDATE invoices SET status=? WHERE id=? AND owner=?", (status, inv_id, username))
-    conn.commit()
-    conn.close()
-    return jsonify({'message': 'Status updated'}), 200
+    try:
+        conn = get_db_connection()
+        # Ownership check
+        c = conn.cursor()
+        row = c.execute("SELECT owner FROM invoices WHERE id=?", (inv_id,)).fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'error': 'Invoice not found'}), 404
+        if row['owner'] != session['username']:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        conn.execute("UPDATE invoices SET status=? WHERE id=?", (status, inv_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Status updated'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/business/advisor')
 @login_required
@@ -1279,23 +1352,39 @@ def get_savings_goals():
 def create_savings_goal():
     data = request.json or {}
     if not data.get('name') or not data.get('target_amount') or not data.get('target_date'):
-        return jsonify({'error': 'Name, amount and target date are required'}), 400
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("INSERT INTO savings_goals (name,target_amount,target_date,owner) VALUES (?,?,?,?)",
-              (data['name'], float(data['target_amount']), data['target_date'], session['username']))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True, 'id': c.lastrowid}), 201
+        return jsonify({'error': 'Name, target amount and date required'}), 400
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("INSERT INTO savings_goals (name,target_amount,target_date,owner) VALUES (?,?,?,?)",
+                  (data['name'], float(data['target_amount']), data['target_date'], session['username']))
+        gid = c.lastrowid
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'id': gid}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/savings-goals/<int:gid>', methods=['DELETE'])
 @login_required
 def delete_savings_goal(gid):
-    conn = get_db_connection()
-    conn.execute("DELETE FROM savings_goals WHERE id=?", (gid,))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True}), 200
+    try:
+        conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'savings_goals', gid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Savings goal not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        conn.execute("DELETE FROM savings_goals WHERE id=?", (gid,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # ── Loans ─────────────────────────────────────────────────────────────────────
 
@@ -1370,24 +1459,48 @@ def create_loan():
 @login_required
 def update_loan(lid):
     data = request.json or {}
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("""UPDATE loans SET loan_name=?, total_amount=?, monthly_payment=?, 
-                 next_due_date=?, category=?, interest_rate=?, notes=?, is_active=? WHERE id=?""",
-              (data.get('loan_name'), float(data['total_amount']), data.get('monthly_payment'),
-               data.get('next_due_date'), data.get('category'), data.get('interest_rate', 0), data.get('notes'), data.get('is_active', 1), lid))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True}), 200
+    try:
+        conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'loans', lid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Loan not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        c = conn.cursor()
+        c.execute("""UPDATE loans SET loan_name=?, total_amount=?, monthly_payment=?, 
+                     next_due_date=?, category=?, interest_rate=?, notes=?, is_active=? WHERE id=?""",
+                  (data.get('loan_name'), float(data['total_amount']), data.get('monthly_payment'),
+                   data.get('next_due_date'), data.get('category'), data.get('interest_rate', 0), data.get('notes'), data.get('is_active', 1), lid))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/loans/<int:lid>', methods=['DELETE'])
 @login_required
 def delete_loan(lid):
-    conn = get_db_connection()
-    conn.execute("DELETE FROM loans WHERE id=?", (lid,))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True}), 200
+    try:
+        conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'loans', lid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Loan not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        conn.execute("DELETE FROM loans WHERE id=?", (lid,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/loans/<int:lid>/payment', methods=['POST'])
 @login_required
@@ -1395,16 +1508,34 @@ def create_loan_payment(lid):
     data = request.json or {}
     if not data.get('amount') or not data.get('date'):
         return jsonify({'error': 'Amount and date required'}), 400
-    
-    conn = get_db_connection()
-    c = conn.cursor()
-    
-    # 1. Record the loan payment
-    c.execute("INSERT INTO loan_payments (loan_id, amount, date, notes) VALUES (?,?,?,?)",
-              (lid, float(data['amount']), data['date'], data.get('notes')))
-    
-    # 2. Optionally record it as an expense if user wants
-    if data.get('as_expense'):
+    try:
+        conn = get_db_connection()
+        # Ownership check on the loan
+        can_see, can_edit = is_owner_or_shared(conn, 'loans', lid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Loan not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        c = conn.cursor()
+        # 1. Record the loan payment
+        c.execute("INSERT INTO loan_payments (loan_id, amount, date, notes) VALUES (?,?,?,?)",
+                  (lid, float(data['amount']), data['date'], data.get('notes')))
+        
+        # 2. Optionally record it as an expense if user wants
+        if data.get('as_expense'):
+            c.execute("SELECT loan_name FROM loans WHERE id=?", (lid,))
+            loan_name = c.fetchone()[0]
+            c.execute("INSERT INTO expenses (date,category,description,amount,owner) VALUES (?,?,?,?,?)",
+                      (data['date'], 'Debt', f"Loan Payment: {loan_name}", float(data['amount']), session['username']))
+        
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
         loan = c.execute("SELECT loan_name, category FROM loans WHERE id=?", (lid,)).fetchone()
         c.execute("""INSERT INTO expenses (date, category, description, amount, paid_by, notes) 
                      VALUES (?,?,?,?,?,?)""",
@@ -1474,33 +1605,69 @@ def create_bill():
 @login_required
 def update_bill(bid):
     data = request.json or {}
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("UPDATE bills SET name=?,amount=?,due_date=?,category=?,is_paid=?,notes=?,is_business=? WHERE id=?",
-              (data.get('name'), data.get('amount'), data.get('due_date'),
-               data.get('category'), data.get('is_paid',0), data.get('notes',''), data.get('is_business', 0), bid))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True}), 200
+    try:
+        conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'bills', bid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Bill not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        c = conn.cursor()
+        c.execute("UPDATE bills SET name=?,amount=?,due_date=?,category=?,is_paid=?,notes=?,is_business=? WHERE id=?",
+                  (data.get('name'), data.get('amount'), data.get('due_date'),
+                   data.get('category'), data.get('is_paid',0), data.get('notes',''), data.get('is_business', 0), bid))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/bills/<int:bid>/toggle', methods=['POST'])
 @login_required
 def toggle_bill_paid(bid):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("UPDATE bills SET is_paid = CASE WHEN is_paid=1 THEN 0 ELSE 1 END WHERE id=?", (bid,))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True}), 200
+    try:
+        conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'bills', bid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Bill not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        c = conn.cursor()
+        c.execute("UPDATE bills SET is_paid = CASE WHEN is_paid=1 THEN 0 ELSE 1 END WHERE id=?", (bid,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/bills/<int:bid>', methods=['DELETE'])
 @login_required
 def delete_bill(bid):
-    conn = get_db_connection()
-    conn.execute("DELETE FROM bills WHERE id=?", (bid,))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True}), 200
+    try:
+        conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'bills', bid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Bill not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        conn.execute("DELETE FROM bills WHERE id=?", (bid,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # ── Recurring ─────────────────────────────────────────────────────────────────
 
@@ -1535,91 +1702,154 @@ def create_recurring():
 @app.route('/api/recurring/<int:rid>/process', methods=['POST'])
 @login_required
 def process_recurring(rid):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT * FROM recurring_transactions WHERE id=?", (rid,))
-    rec = c.fetchone()
-    if not rec:
+    try:
+        conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'recurring_transactions', rid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Recurring transaction not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        c = conn.cursor()
+        c.execute("SELECT * FROM recurring_transactions WHERE id=?", (rid,))
+        rec = c.fetchone()
+        if not rec:
+            conn.close()
+            return jsonify({'error': 'Not found'}), 404
+        rec = dict(rec)
+        today = datetime.now().strftime('%Y-%m-%d')
+        if rec['type'] == 'expense':
+            c.execute("INSERT INTO expenses (date,category,description,amount,paid_by,payment_method,credit_card_id,notes,owner,is_business) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                      (today, rec['category'] or 'Other', rec['description'], rec['amount'],
+                       rec['person'], rec['payment_method'], rec['credit_card_id'], 'Auto from recurring', rec['owner'], rec.get('is_business', 0)))
+        else:
+            c.execute("INSERT INTO income (date,source,description,amount,received_by,notes,owner,is_business) VALUES (?,?,?,?,?,?,?,?)",
+                      (today, rec['source'] or 'Other', rec['description'], rec['amount'],
+                       rec['person'], 'Auto from recurring', rec['owner'], rec.get('is_business', 0)))
+        # Advance next_date
+        freq = rec['frequency']
+        from datetime import timedelta
+        nd = datetime.strptime(rec['next_date'], '%Y-%m-%d')
+        if freq == 'weekly': nd += timedelta(weeks=1)
+        elif freq == 'biweekly': nd += timedelta(weeks=2)
+        elif freq == 'monthly': nd = nd.replace(month=nd.month % 12 + 1) if nd.month < 12 else nd.replace(year=nd.year+1, month=1)
+        elif freq == 'yearly': nd = nd.replace(year=nd.year+1)
+        c.execute("UPDATE recurring_transactions SET next_date=? WHERE id=?", (nd.strftime('%Y-%m-%d'), rid))
+        conn.commit()
         conn.close()
-        return jsonify({'error': 'Not found'}), 404
-    rec = dict(rec)
-    today = datetime.now().strftime('%Y-%m-%d')
-    if rec['type'] == 'expense':
-        c.execute("INSERT INTO expenses (date,category,description,amount,paid_by,payment_method,credit_card_id,notes,owner,is_business) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                  (today, rec['category'] or 'Other', rec['description'], rec['amount'],
-                   rec['person'], rec['payment_method'], rec['credit_card_id'], 'Auto from recurring', rec['owner'], rec.get('is_business', 0)))
-    else:
-        c.execute("INSERT INTO income (date,source,description,amount,received_by,notes,owner,is_business) VALUES (?,?,?,?,?,?,?,?)",
-                  (today, rec['source'] or 'Other', rec['description'], rec['amount'],
-                   rec['person'], 'Auto from recurring', rec['owner'], rec.get('is_business', 0)))
-    # Advance next_date
-    freq = rec['frequency']
-    from datetime import timedelta
-    nd = datetime.strptime(rec['next_date'], '%Y-%m-%d')
-    if freq == 'weekly': nd += timedelta(weeks=1)
-    elif freq == 'biweekly': nd += timedelta(weeks=2)
-    elif freq == 'monthly': nd = nd.replace(month=nd.month % 12 + 1) if nd.month < 12 else nd.replace(year=nd.year+1, month=1)
-    elif freq == 'yearly': nd = nd.replace(year=nd.year+1)
-    c.execute("UPDATE recurring_transactions SET next_date=? WHERE id=?", (nd.strftime('%Y-%m-%d'), rid))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True, 'message': f'Processed and next date is {nd.strftime("%Y-%m-%d")}'}), 200
+        return jsonify({'success': True, 'message': f'Processed and next date is {nd.strftime("%Y-%m-%d")}'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/recurring/<int:rid>', methods=['DELETE'])
 @login_required
 def delete_recurring(rid):
-    conn = get_db_connection()
-    conn.execute("DELETE FROM recurring_transactions WHERE id=?", (rid,))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True}), 200
+    try:
+        conn = get_db_connection()
+        # Ownership check
+        can_see, can_edit = is_owner_or_shared(conn, 'recurring_transactions', rid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Recurring transaction not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        conn.execute("DELETE FROM recurring_transactions WHERE id=?", (rid,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/expenses/<int:eid>/receipt', methods=['POST'])
 @login_required
 def upload_receipt(eid):
     if 'file' not in request.files:
-        return jsonify({'error': 'No file'}), 400
-    f = request.files['file']
-    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
-    if ext not in ALLOWED_EXTENSIONS:
-        return jsonify({'error': 'File type not allowed'}), 400
-    import uuid
-    filename = f"{uuid.uuid4().hex}.{ext}"
-    f.save(str(UPLOAD_FOLDER / filename))
-    # Delete old receipt if exists
-    conn = get_db_connection()
-    old = conn.execute("SELECT receipt_filename FROM expenses WHERE id=?", (eid,)).fetchone()
-    if old and old['receipt_filename']:
-        old_path = UPLOAD_FOLDER / old['receipt_filename']
-        if old_path.exists():
-            old_path.unlink()
-    conn.execute("UPDATE expenses SET receipt_filename=? WHERE id=?", (filename, eid))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True, 'filename': filename}), 200
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    try:
+        conn = get_db_connection()
+        # Ownership check on the expense
+        can_see, can_edit = is_owner_or_shared(conn, 'expenses', eid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Expense not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        import uuid
+        ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'bin'
+        filename = f"{uuid.uuid4().hex}.{ext}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        c = conn.cursor()
+        c.execute("UPDATE expenses SET receipt_filename=? WHERE id=?", (filename, eid))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'path': filename}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/expenses/<int:eid>/receipt', methods=['DELETE'])
 @login_required
 def delete_receipt(eid):
-    conn = get_db_connection()
-    row = conn.execute("SELECT receipt_filename FROM expenses WHERE id=?", (eid,)).fetchone()
-    if row and row['receipt_filename']:
-        path = UPLOAD_FOLDER / row['receipt_filename']
-        if path.exists():
-            path.unlink()
-        conn.execute("UPDATE expenses SET receipt_filename=NULL WHERE id=?", (eid,))
-        conn.commit()
-    conn.close()
-    return jsonify({'success': True}), 200
+    try:
+        conn = get_db_connection()
+        # Ownership check on the expense
+        can_see, can_edit = is_owner_or_shared(conn, 'expenses', eid, session['username'])
+        if not can_see:
+            conn.close()
+            return jsonify({'error': 'Expense not found'}), 404
+        if not can_edit:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        row = conn.execute("SELECT receipt_filename FROM expenses WHERE id=?", (eid,)).fetchone()
+        if row and row['receipt_filename']:
+            import os
+            path = os.path.join(app.config['UPLOAD_FOLDER'], row['receipt_filename'])
+            if os.path.exists(path):
+                os.remove(path)
+            conn.execute("UPDATE expenses SET receipt_filename=NULL WHERE id=?", (eid,))
+            conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/receipts/<filename>')
 @login_required
 def serve_receipt(filename):
-    import re
-    if not re.match(r'^[a-f0-9]{32}[.][a-z]+$', filename):
-        return jsonify({'error': 'Invalid filename'}), 400
-    return send_file(str(UPLOAD_FOLDER / filename))
+    try:
+        conn = get_db_connection()
+        # Find the expense associated with this receipt
+        row = conn.execute("SELECT id FROM expenses WHERE receipt_filename=?", (filename,)).fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'error': 'Receipt not found'}), 404
+        
+        eid = row['id']
+        # Ownership check
+        can_see, _ = is_owner_or_shared(conn, 'expenses', eid, session['username'])
+        conn.close()
+        
+        if not can_see:
+            return jsonify({'error': 'Permission denied'}), 403
+            
+        import os
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # ── Currencies ─────────────────────────────────────────────────────────────────
