@@ -50,11 +50,37 @@ def test_ownership_logic():
     conn.commit()
     conn.close()
 
+def test_admin_isolation():
+    print("Testing admin isolation...")
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    # Create an expense owned by 'user1'
+    c.execute("INSERT INTO expenses (date, category, description, amount, paid_by, owner) VALUES (?,?,?,?,?,?)",
+              ('2023-01-01', 'Test', 'User1 Expense', 10.0, 'user1', 'user1'))
+    eid = c.lastrowid
+    
+    # Test admin ('admin_user') cannot see/edit 'user1''s expense
+    # We assume 'admin_user' is an admin in the session, but is_owner_or_shared 
+    # now only cares about the username and shared permissions.
+    can_see, can_edit = is_owner_or_shared(conn, 'expenses', eid, 'admin_user')
+    print(f"Admin check on User1 data: can_see={can_see}, can_edit={can_edit}")
+    assert can_see is False
+    assert can_edit is False
+    
+    # Cleanup
+    conn.execute("DELETE FROM expenses WHERE id=?", (eid,))
+    conn.commit()
+    conn.close()
+
 if __name__ == "__main__":
     try:
         test_visibility()
         test_ownership_logic()
+        test_admin_isolation()
         print("\nAll logical isolation tests passed!")
     except Exception as e:
         print(f"\nTests failed: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
