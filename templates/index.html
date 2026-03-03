@@ -656,6 +656,8 @@
     :root {
       --primary: #00d4aa;
       --primary-dark: #00b894;
+      --primary-biz: #7c4dff;
+      /* Indigo/Deep Purple for Business */
       --secondary: #0d3d52;
       --success: #00d4aa;
       --danger: #ff6b8a;
@@ -686,6 +688,37 @@
       --input-border: rgba(0, 212, 170, 0.28);
       --shadow: rgba(0, 0, 0, 0.28);
       --border: rgba(0, 212, 170, 0.18);
+    }
+
+    /* Business Mode Theme */
+    body[data-theme="business"] {
+      --primary: var(--primary-biz);
+      --primary-dark: #6200ea;
+      --input-border: rgba(124, 77, 255, 0.28);
+      --border: rgba(124, 77, 255, 0.18);
+    }
+
+    body[data-theme="business"] .header {
+      background: linear-gradient(135deg, #1a237e, #4a148c);
+      box-shadow: 0 4px 20px rgba(124, 77, 255, 0.3);
+    }
+
+    .biz-badge {
+      display: none;
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      margin-left: 8px;
+    }
+
+    body[data-theme="business"] .biz-badge {
+      display: inline-block;
     }
 
     * {
@@ -943,6 +976,43 @@
 
     .profile-menu-danger:hover {
       background: rgba(239, 68, 68, 0.08);
+    }
+
+    .header-business-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 212, 170, 0.1);
+      border: 1px solid rgba(0, 212, 170, 0.2);
+      color: var(--primary);
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-right: 4px;
+      text-decoration: none;
+    }
+
+    .header-business-btn:hover {
+      background: rgba(0, 212, 170, 0.15);
+      border-color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    .header-business-btn svg {
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 640px) {
+      .header-business-btn span {
+        display: none;
+      }
+
+      .header-business-btn {
+        padding: 0.5rem;
+      }
     }
 
     /* ── Tabs ── */
@@ -2748,6 +2818,19 @@
       position: relative;
     }
 
+    .mobile-biz-btn {
+      color: var(--primary-biz) !important;
+    }
+
+    .mobile-biz-btn.active {
+      background: rgba(124, 77, 255, 0.12) !important;
+      color: var(--primary-biz) !important;
+    }
+
+    .mobile-biz-btn.active::after {
+      background: var(--primary-biz) !important;
+    }
+
     /* More drawer items — teal active */
     .more-drawer-item.active {
       background: rgba(0, 212, 170, 0.12);
@@ -3365,6 +3448,7 @@
             font-family="DM Sans,sans-serif" font-weight="800" font-size="23" fill="none" stroke="#00d4aa"
             stroke-width="1.3">K</text><text x="16" y="21" font-family="DM Sans,sans-serif" font-weight="800"
             font-size="23" fill="#ffffff">ash</text></svg></h1>
+      <span class="biz-badge" id="biz-mode-badge">Business Mode</span>
     </div>
     <!-- Desktop search -->
     <div class="search-wrapper desktop-search">
@@ -3386,6 +3470,14 @@
           <circle cx="11" cy="11" r="8"></circle>
           <path d="m21 21-4.3-4.3"></path>
         </svg>
+      </button>
+      <button class="header-business-btn" onclick="switchTab('business')" title="Go to Business section">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect width="20" height="14" x="2" y="7" rx="2" />
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+        </svg>
+        <span>Business</span>
       </button>
       <div class="profile-dropdown-wrapper" id="profile-dropdown-wrapper">
         <button class="profile-trigger" id="profile-trigger" onclick="toggleProfileDropdown()" aria-haspopup="true"
@@ -3555,6 +3647,7 @@
           <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
           <polyline points="16 7 22 7 22 13"></polyline>
         </svg></span><span class="tab-label">Income</span></button>
+
     <button class="tab-button" data-tab="credit-cards"><span class="tab-icon"><svg
           style="display:inline-block;vertical-align:middle" width="16" height="16" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3641,6 +3734,16 @@
           <polyline points="16 7 22 7 22 13"></polyline>
         </svg></span><span class="mn-label">Income</span>
     </button>
+
+    <button class="mobile-nav-btn mobile-biz-btn" data-tab="business" onclick="switchTabMobile('business',this)">
+      <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22"
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <rect width="20" height="14" x="2" y="7" rx="2" />
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+        </svg></span><span class="mn-label">Biz</span>
+    </button>
+
     <button class="mobile-nav-btn" id="more-btn" onclick="openMoreDrawer()">
       <span class="mn-icon"><svg style="display:inline-block;vertical-align:middle" width="22" height="22"
           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -3715,6 +3818,7 @@
             <line x1="12" x2="12" y1="3" y2="15"></line>
           </svg></span><span>Import</span>
       </button>
+
       <button class="more-drawer-item" onclick="closeMoreDrawer();toggleWidgetDropdown(event)">
         <span class="mdi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4080,6 +4184,7 @@
               </select></div>
             <div class="form-group"><label>Notes</label><textarea id="expense-notes" rows="2"
                 placeholder="Optional notes..."></textarea></div>
+
           </div>
           <div style="margin-top:1rem; display:flex; gap:0.75rem;">
             <button type="submit" id="expense-submit-btn"><svg
@@ -4451,6 +4556,7 @@
                   <option value="">-- Person --</option>
                 </select>
               </div>
+
               <div class="form-group"><label>Notes</label><textarea id="income-notes" rows="2"></textarea></div>
             </div>
             <div style="margin-top:1rem;display:flex;gap:0.75rem;">
@@ -4510,6 +4616,318 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ═══════════════ BUSINESS ═══════════════ -->
+    <div class="tab-content" id="business-tab">
+      <!-- Budget Alert Banner (hidden by default, shown by JS) -->
+      <div id="biz-budget-alerts" style="margin-bottom:1rem;display:none;"></div>
+
+      <!-- Business Dashboard Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(0,123,255,0.1); color:var(--primary);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          </div>
+          <div class="stat-label">Business Revenue</div>
+          <div class="stat-value" id="biz-revenue-val">$0.00</div>
+          <div class="stat-trend" id="biz-revenue-trend">This Month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(255,107,107,0.1); color:var(--danger);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          </div>
+          <div class="stat-label">Business Expenses</div>
+          <div class="stat-value" id="biz-expenses-val">$0.00</div>
+          <div class="stat-trend" id="biz-expenses-trend">This Month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(46,204,113,0.1); color:var(--success);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+              <polyline points="16 7 22 7 22 13" />
+            </svg>
+          </div>
+          <div class="stat-label">Net Profit</div>
+          <div class="stat-value" id="biz-profit-val">$0.00</div>
+          <div class="stat-trend" id="biz-margin-val">0% Margin</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(241,196,15,0.1); color:var(--warning);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <div class="stat-label">Est. Tax (25%)</div>
+          <div class="stat-value" id="biz-tax-val">$0.00</div>
+          <div class="stat-trend">Set aside for IRS/State</div>
+        </div>
+      </div>
+
+      <!-- AI Business Advisor -->
+      <div class="glass-card" style="border-left: 4px solid var(--primary);">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">✨ Business AI Advisor</div>
+            <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:8px;">Get advice on taxes,
+              deadlines, and profitability for any location.</div>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <input type="text" id="biz-location-input" placeholder="e.g. California, France" value="Connecticut (CT)"
+                style="padding:4px 8px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,0.05); color:var(--text-primary); font-size:0.85rem; width:180px;">
+            </div>
+          </div>
+          <button class="btn-sm" onclick="generateBusinessAdvice()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
+              <path
+                d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+            </svg>
+            Ask Guru
+          </button>
+        </div>
+        <div id="biz-advisor-output"
+          style="margin-top:1rem; display:none; padding:1rem; background:rgba(255,255,255,0.05); border-radius:10px; font-size:0.95rem; line-height:1.5;">
+          <!-- Advice goes here -->
+        </div>
+      </div>
+
+      <div class="dashboard-grid" style="margin-top:1.5rem;">
+        <!-- Add Business Expense -->
+        <div class="glass-card">
+          <div class="card-title">💼 Add Business Expense</div>
+          <form id="biz-expense-form" onsubmit="submitBizExpense(event)">
+            <div class="form-grid">
+              <div class="form-group"><label>Date</label><input type="date" id="biz-exp-date" required></div>
+              <div class="form-group"><label>Category</label>
+                <select id="biz-exp-category" required>
+                  <option value="">-- Loading --</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Description</label><input type="text" id="biz-exp-desc"
+                  placeholder="Software, Supplies..." required></div>
+              <div class="form-group"><label>Amount</label><input type="number" id="biz-exp-amount" step="0.01"
+                  required></div>
+            </div>
+            <button type="submit" class="btn-danger" style="margin-top:1rem;">Add Expense</button>
+          </form>
+        </div>
+
+        <!-- Add Business Income -->
+        <div class="glass-card">
+          <div class="card-title">💰 Add Business Income</div>
+          <form id="biz-income-form" onsubmit="submitBizIncome(event)">
+            <div class="form-grid">
+              <div class="form-group"><label>Date</label><input type="date" id="biz-inc-date" required></div>
+              <div class="form-group"><label>Source</label><input type="text" id="biz-inc-source"
+                  placeholder="Client, Sale..." required></div>
+              <div class="form-group"><label>Description</label><input type="text" id="biz-inc-desc"
+                  placeholder="Project name..."></div>
+              <div class="form-group"><label>Amount</label><input type="number" id="biz-inc-amount" step="0.01"
+                  required></div>
+            </div>
+            <button type="submit" class="btn-success" style="margin-top:1rem;">Add Income</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Business History -->
+      <div class="glass-card" style="margin-top:1.5rem;">
+        <div class="card-title">📊 Business History (Last 30 Days)</div>
+        <div class="overflow-table">
+          <table class="expense-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Category/Source</th>
+                <th>Description</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody id="biz-history-list">
+              <!-- History goes here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+      <!-- Business Budgets Section -->
+      <div class="glass-card" style="margin-top:1.5rem;" id="biz-budgets-card">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>🎯 Business Budgets</span>
+          <button onclick="document.getElementById('biz-budget-form-wrap').classList.toggle('hidden')" class="btn-sm"
+            style="background:var(--primary-biz);border-color:var(--primary-biz);">
+            + Set Budget
+          </button>
+        </div>
+
+        <!-- Add Budget Form (hidden by default) -->
+        <div id="biz-budget-form-wrap" class="hidden"
+          style="margin-top:1rem;padding:1rem;background:var(--bg-secondary);border-radius:12px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:0.75rem;align-items:end;">
+            <div>
+              <label style="font-size:0.78rem;color:var(--text-secondary);font-weight:600;">Category</label>
+              <select id="biz-budget-category" class="form-control" style="margin-top:0.25rem;"></select>
+            </div>
+            <div>
+              <label style="font-size:0.78rem;color:var(--text-secondary);font-weight:600;">Month</label>
+              <input type="month" id="biz-budget-month" class="form-control" style="margin-top:0.25rem;">
+            </div>
+            <div>
+              <label style="font-size:0.78rem;color:var(--text-secondary);font-weight:600;">Budget Amount ($)</label>
+              <input type="number" id="biz-budget-amount" class="form-control" placeholder="500" min="0"
+                style="margin-top:0.25rem;">
+            </div>
+            <button onclick="saveBizBudget()" class="btn-sm"
+              style="background:var(--primary-biz);border-color:var(--primary-biz);white-space:nowrap;">
+              Save
+            </button>
+          </div>
+        </div>
+
+        <!-- Budget Progress Bars -->
+        <div id="biz-budget-list" style="margin-top:1rem;">
+          <p style="color:var(--text-secondary);font-size:0.85rem;text-align:center;">
+            No budgets set yet. Click "Set Budget" to get started.
+          </p>
+        </div>
+      </div>
+
+      <!-- Invoice Generator -->
+      <div class="glass-card" style="margin-top:1.5rem;" id="biz-invoice-card">
+        <div class="card-title"
+          style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+          <span>🧾 Invoice Generator</span>
+          <div style="display:flex;gap:0.5rem;">
+            <a href="/api/business/export/csv" class="btn-sm"
+              style="background:var(--bg-secondary);border:1px solid var(--border-color);color:var(--text-primary);text-decoration:none;padding:0.4rem 0.85rem;border-radius:8px;font-size:0.8rem;font-weight:600;">
+              ⬇️ Export CSV
+            </a>
+            <button onclick="document.getElementById('biz-invoice-form-wrap').classList.toggle('hidden')" class="btn-sm"
+              style="background:var(--primary-biz);border-color:var(--primary-biz);">
+              + New Invoice
+            </button>
+          </div>
+        </div>
+
+        <!-- Invoice Form -->
+        <div id="biz-invoice-form-wrap" class="hidden"
+          style="margin-top:1rem;padding:1rem;background:var(--bg-secondary);border-radius:12px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+            <div>
+              <label style="font-size:0.78rem;color:var(--text-secondary);font-weight:600;">Client Name *</label>
+              <input type="text" id="inv-client-name" class="form-control" placeholder="Acme Corp"
+                style="margin-top:0.25rem;">
+            </div>
+            <div>
+              <label style="font-size:0.78rem;color:var(--text-secondary);font-weight:600;">Client Email</label>
+              <input type="email" id="inv-client-email" class="form-control" placeholder="client@example.com"
+                style="margin-top:0.25rem;">
+            </div>
+            <div>
+              <label style="font-size:0.78rem;color:var(--text-secondary);font-weight:600;">Issue Date</label>
+              <input type="date" id="inv-issue-date" class="form-control" style="margin-top:0.25rem;">
+            </div>
+            <div>
+              <label style="font-size:0.78rem;color:var(--text-secondary);font-weight:600;">Due Date</label>
+              <input type="date" id="inv-due-date" class="form-control" style="margin-top:0.25rem;">
+            </div>
+          </div>
+
+          <!-- Line Items -->
+          <div style="margin-bottom:0.75rem;">
+            <label style="font-size:0.78rem;color:var(--text-secondary);font-weight:600;">Line Items</label>
+            <div id="inv-items-container" style="margin-top:0.35rem;"></div>
+            <button onclick="addInvoiceItem()" class="btn-sm"
+              style="margin-top:0.5rem;background:var(--bg-tertiary,var(--bg-secondary));border:1px solid var(--border-color);">
+              + Add Item
+            </button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+            <div>
+              <label style="font-size:0.78rem;color:var(--text-secondary);font-weight:600;">Tax Rate (%)</label>
+              <input type="number" id="inv-tax-rate" class="form-control" value="0" min="0" max="100"
+                oninput="updateInvoiceTotals()" style="margin-top:0.25rem;">
+            </div>
+            <div>
+              <label style="font-size:0.78rem;color:var(--text-secondary);font-weight:600;">Notes</label>
+              <input type="text" id="inv-notes" class="form-control" placeholder="Payment terms, bank details..."
+                style="margin-top:0.25rem;">
+            </div>
+          </div>
+
+          <!-- Live Totals -->
+          <div
+            style="background:var(--bg-primary,rgba(0,0,0,0.2));border-radius:8px;padding:0.75rem;margin-bottom:0.75rem;">
+            <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.3rem;">
+              <span style="color:var(--text-secondary);">Subtotal</span>
+              <span id="inv-subtotal">$0.00</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.3rem;">
+              <span style="color:var(--text-secondary);">Tax</span>
+              <span id="inv-tax-amount">$0.00</span>
+            </div>
+            <div
+              style="display:flex;justify-content:space-between;font-size:1rem;font-weight:700;border-top:1px solid var(--border-color);padding-top:0.5rem;margin-top:0.5rem;">
+              <span>Total</span>
+              <span id="inv-total" style="color:var(--primary-biz);">$0.00</span>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:0.75rem;">
+            <button onclick="previewInvoice()" class="btn-sm"
+              style="background:var(--bg-secondary);border:1px solid var(--border-color);">
+              👁️ Preview
+            </button>
+            <button onclick="saveInvoice()" class="btn-sm"
+              style="background:var(--primary-biz);border-color:var(--primary-biz);">
+              💾 Save Invoice
+            </button>
+          </div>
+        </div>
+
+        <!-- Invoice History -->
+        <div id="biz-invoice-list" style="margin-top:1rem;"></div>
+      </div>
+
+      <!-- Invoice Preview Modal -->
+      <div id="inv-preview-modal"
+        style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;overflow-y:auto;padding:2rem;">
+        <div style="max-width:700px;margin:0 auto;background:#fff;color:#111;border-radius:16px;overflow:hidden;"
+          id="inv-preview-content">
+        </div>
+        <div style="text-align:center;margin-top:1rem;display:flex;gap:1rem;justify-content:center;">
+          <button onclick="window.print()" class="btn-sm"
+            style="background:var(--primary-biz);border-color:var(--primary-biz);color:#fff;">🖨️ Print / Save
+            PDF</button>
+          <button onclick="document.getElementById('inv-preview-modal').style.display='none'" class="btn-sm"
+            style="background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-color);">✕
+            Close</button>
+        </div>
+      </div>
+
+      <!-- Business Cash Flow Chart -->
+      <div class="glass-card" style="margin-top:1.5rem;">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>&#x1F4C8; Cash Flow &#x2014; Revenue vs. Expenses</span>
+          <span style="font-size:0.78rem;color:var(--text-secondary);font-weight:400;">Last 6 Months</span>
+        </div>
+        <div style="position:relative;height:240px;margin-top:1rem;">
+          <canvas id="biz-cashflow-chart"></canvas>
+        </div>
+      </div>
+
     </div>
 
     <!-- ═══════════════ CREDIT CARDS ═══════════════ -->
@@ -5600,6 +6018,14 @@
     function switchTab(tabName) {
       document.querySelectorAll('.tab-button').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
       document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `${tabName}-tab`));
+
+      // Business Mode theming
+      if (tabName === 'business') {
+        document.body.setAttribute('data-theme', 'business');
+      } else {
+        document.body.removeAttribute('data-theme');
+      }
+
       // Lazy-load data
       if (tabName === 'dashboard') loadDashboard();
       if (tabName === 'spending') { loadExpenses(); loadBills(); loadRecurring(); }
@@ -5607,6 +6033,7 @@
       if (tabName === 'credit-cards') loadCreditCards();
       if (tabName === 'loans') loadLoans();
       if (tabName === 'budgets') loadBudgets();
+      if (tabName === 'business') loadBusinessTab();
 
       // account tab replaced by profile dropdown
       if (tabName === 'currencies') {
@@ -5641,6 +6068,560 @@
     function clearFormErrors() {
       document.querySelectorAll('.error').forEach(e => e.classList.remove('error'));
       document.querySelectorAll('.field-error').forEach(e => e.remove());
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // BUSINESS TAB
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    async function loadBusinessTab() {
+      // Set default date for forms
+      document.getElementById('biz-exp-date').value = today();
+      document.getElementById('biz-inc-date').value = today();
+
+      // Init budget month to current month
+      const now = new Date();
+      const monthVal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const budgetMonthEl = document.getElementById('biz-budget-month');
+      if (budgetMonthEl) budgetMonthEl.value = monthVal;
+
+      // Init invoice dates to today / 30 days out
+      const invIssue = document.getElementById('inv-issue-date');
+      const invDue = document.getElementById('inv-due-date');
+      if (invIssue) invIssue.value = today();
+      if (invDue) {
+        const due = new Date(); due.setDate(due.getDate() + 30);
+        invDue.value = due.toISOString().split('T')[0];
+      }
+
+      await Promise.all([
+        loadBusinessStats(),
+        loadBusinessCategories(),
+        loadBusinessHistory(),
+        loadBizBudgets(),
+        loadInvoices()
+      ]);
+      // Defer chart render so the canvas is fully painted and sized
+      setTimeout(() => renderCashFlowChart(), 100);
+    }
+
+    function animateCounter(el, targetValue, prefix = '$', duration = 700) {
+      const startTime = performance.now();
+      const startVal = 0;
+      const isNeg = targetValue < 0;
+      const absTarget = Math.abs(targetValue);
+      function step(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3); // cubic ease-out
+        const current = startVal + (absTarget - startVal) * eased;
+        el.textContent = (isNeg ? '-' : '') + prefix + current.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    async function loadBusinessStats() {
+      const res = await apiCall('/api/business/stats');
+      if (!res) return;
+      const d = res.data;
+      animateCounter(document.getElementById('biz-revenue-val'), d.revenue);
+      animateCounter(document.getElementById('biz-expenses-val'), d.expenses);
+      animateCounter(document.getElementById('biz-profit-val'), d.profit);
+      document.getElementById('biz-margin-val').textContent = `${d.margin}% Margin`;
+      animateCounter(document.getElementById('biz-tax-val'), Math.max(0, d.profit * 0.25));
+    }
+
+    async function loadBusinessCategories() {
+      const res = await apiCall('/api/categories?type=business');
+      if (!res) return;
+      // Populate the expense category dropdown
+      const sel = document.getElementById('biz-exp-category');
+      if (sel) {
+        sel.innerHTML = '<option value="">-- Category --</option>';
+        res.data.forEach(c => {
+          sel.insertAdjacentHTML('beforeend', `<option value="${c.name}">${c.name}</option>`);
+        });
+      }
+      // Also populate the budget category dropdown
+      const budgetSel = document.getElementById('biz-budget-category');
+      if (budgetSel) {
+        budgetSel.innerHTML = '<option value="">-- Category --</option>';
+        res.data.forEach(c => {
+          budgetSel.insertAdjacentHTML('beforeend', `<option value="${c.name}">${c.name}</option>`);
+        });
+      }
+    }
+
+    let _bizChart = null;
+    async function renderCashFlowChart() {
+      const canvas = document.getElementById('biz-cashflow-chart');
+      if (!canvas) return;
+
+      const [expRes, incRes] = await Promise.all([
+        apiCall('/api/expenses?is_business=1'),
+        apiCall('/api/income?is_business=1')
+      ]);
+
+      // Build last 6-month labels
+      const months = [];
+      const revenueByMonth = {};
+      const expensesByMonth = {};
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+        months.push({ key, label });
+        revenueByMonth[key] = 0;
+        expensesByMonth[key] = 0;
+      }
+
+      if (incRes) incRes.data.forEach(i => {
+        const key = i.date ? i.date.substring(0, 7) : '';
+        if (key in revenueByMonth) revenueByMonth[key] += parseFloat(i.amount) || 0;
+      });
+      if (expRes) expRes.data.forEach(e => {
+        const key = e.date ? e.date.substring(0, 7) : '';
+        if (key in expensesByMonth) expensesByMonth[key] += parseFloat(e.amount) || 0;
+      });
+
+      const labels = months.map(m => m.label);
+      const revenueData = months.map(m => revenueByMonth[m.key]);
+      const expensesData = months.map(m => expensesByMonth[m.key]);
+      const profitData = months.map(m => revenueByMonth[m.key] - expensesByMonth[m.key]);
+
+      const isDark = document.body.classList.contains('dark-mode');
+      const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+      const textColor = isDark ? '#90bfcf' : '#4a6d7c';
+
+      if (_bizChart) { _bizChart.destroy(); _bizChart = null; }
+
+      _bizChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Revenue',
+              data: revenueData,
+              backgroundColor: 'rgba(0, 212, 170, 0.55)',
+              borderColor: '#00d4aa',
+              borderWidth: 1,
+              borderRadius: 6,
+            },
+            {
+              label: 'Expenses',
+              data: expensesData,
+              backgroundColor: 'rgba(255, 107, 138, 0.55)',
+              borderColor: '#ff6b8a',
+              borderWidth: 1,
+              borderRadius: 6,
+            },
+            {
+              label: 'Net Profit',
+              data: profitData,
+              type: 'line',
+              borderColor: '#fbbf24',
+              backgroundColor: 'rgba(251, 191, 36, 0.15)',
+              borderWidth: 2.5,
+              borderDash: [6, 3],
+              pointBackgroundColor: '#fbbf24',
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              fill: false,
+              tension: 0.35,
+              order: 0,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: textColor, font: { family: 'DM Sans, sans-serif', weight: '600' } } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { color: gridColor }, ticks: { color: textColor } },
+            y: {
+              grid: { color: gridColor },
+              ticks: {
+                color: textColor,
+                callback: (v) => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v)
+              }
+            }
+          }
+        }
+      });
+    }
+
+    async function saveBizBudget() {
+      const category = document.getElementById('biz-budget-category').value;
+      const month = document.getElementById('biz-budget-month').value;
+      const amount = parseFloat(document.getElementById('biz-budget-amount').value);
+      if (!category || !month || isNaN(amount) || amount <= 0) {
+        showToast('error', 'Please fill in all budget fields.'); return;
+      }
+      // Use existing budgets API with is_business flag
+      const res = await apiCall('/api/budgets', 'POST', {
+        category, month, amount, is_business: 1
+      });
+      if (res) {
+        showToast('success', `Budget set: ${category} — $${amount.toFixed(2)}`);
+        document.getElementById('biz-budget-form-wrap').classList.add('hidden');
+        document.getElementById('biz-budget-amount').value = '';
+        loadBizBudgets();
+      }
+    }
+
+    async function loadBizBudgets() {
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const [budgetRes, expRes] = await Promise.all([
+        apiCall(`/api/budgets?month=${month}&is_business=1`),
+        apiCall(`/api/expenses?is_business=1`)
+      ]);
+
+      const list = document.getElementById('biz-budget-list');
+      if (!list) return;
+
+      const budgets = budgetRes?.data || [];
+      if (!budgets.length) {
+        list.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem;text-align:center;">No budgets set yet. Click "+ Set Budget" to get started.</p>';
+        return;
+      }
+
+      // Build actual spending this month per category (business only)
+      const actualByCategory = {};
+      if (expRes?.data) {
+        expRes.data.forEach(e => {
+          if (e.date && e.date.startsWith(month)) {
+            actualByCategory[e.category] = (actualByCategory[e.category] || 0) + parseFloat(e.amount);
+          }
+        });
+      }
+
+      list.innerHTML = budgets.map(b => {
+        const actual = actualByCategory[b.category] || 0;
+        const pct = Math.min((actual / b.amount) * 100, 100);
+        const overBudget = actual > b.amount;
+        const barColor = overBudget ? '#ff6b8a' : pct > 75 ? '#fbbf24' : 'var(--primary-biz)';
+        return `
+          <div style="margin-bottom:1rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+              <span style="font-weight:600;font-size:0.9rem;">${b.category}</span>
+              <span style="font-size:0.8rem;color:${overBudget ? '#ff6b8a' : 'var(--text-secondary)'};">
+                $${actual.toFixed(2)} / $${parseFloat(b.amount).toFixed(2)}
+                ${overBudget ? ' ⚠️ Over budget' : ''}
+              </span>
+            </div>
+            <div style="background:var(--bg-secondary);border-radius:999px;height:10px;overflow:hidden;">
+              <div style="width:${pct}%;background:${barColor};height:100%;border-radius:999px;
+                transition:width 0.6s cubic-bezier(0.25,0.46,0.45,0.94);"></div>
+            </div>
+          </div>`;
+      }).join('');
+
+      // ── Budget Alerts ─────────────────────────────────────────────────────
+      const alertsEl = document.getElementById('biz-budget-alerts');
+      if (alertsEl) {
+        const alerts = budgets.filter(b => {
+          const actual = actualByCategory[b.category] || 0;
+          const pct = (actual / b.amount) * 100;
+          return pct >= 80;
+        });
+        if (alerts.length) {
+          alertsEl.style.display = 'block';
+          alertsEl.innerHTML = alerts.map(b => {
+            const actual = actualByCategory[b.category] || 0;
+            const pct = Math.round((actual / b.amount) * 100);
+            const over = actual > b.amount;
+            const bg = over ? 'rgba(255,107,138,0.12)' : 'rgba(251,191,36,0.12)';
+            const border = over ? '#ff6b8a' : '#fbbf24';
+            return `<div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:0.65rem 1rem;margin-bottom:0.5rem;display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:0.85rem;font-weight:600;">
+                ${over ? '🔴' : '🟡'} <strong>${b.category}</strong>: ${pct}% used ($${actual.toFixed(2)} of $${parseFloat(b.amount).toFixed(2)})${over ? ' — Over budget!' : ''}
+              </span>
+            </div>`;
+          }).join('');
+        } else {
+          alertsEl.style.display = 'none';
+          alertsEl.innerHTML = '';
+        }
+      }
+    }
+
+    // ── Invoice JS ─────────────────────────────────────────────────────────────
+
+    let _invoiceItems = [];
+
+    function addInvoiceItem() {
+      _invoiceItems.push({ description: '', amount: 0 });
+      renderInvoiceItems();
+    }
+
+    function removeInvoiceItem(idx) {
+      _invoiceItems.splice(idx, 1);
+      renderInvoiceItems();
+    }
+
+    function renderInvoiceItems() {
+      const container = document.getElementById('inv-items-container');
+      if (!container) return;
+      if (!_invoiceItems.length) {
+        container.innerHTML = '<p style="font-size:0.82rem;color:var(--text-secondary);">No items yet. Click "+ Add Item".</p>';
+        updateInvoiceTotals();
+        return;
+      }
+      container.innerHTML = _invoiceItems.map((item, i) => `
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:0.5rem;margin-bottom:0.4rem;align-items:center;">
+          <input type="text" class="form-control" placeholder="Description" value="${item.description}"
+            oninput="_invoiceItems[${i}].description=this.value" style="font-size:0.85rem;">
+          <input type="number" class="form-control" placeholder="Amount" value="${item.amount || ''}" min="0" step="0.01"
+            oninput="_invoiceItems[${i}].amount=parseFloat(this.value)||0;updateInvoiceTotals()" style="width:120px;font-size:0.85rem;">
+          <button onclick="removeInvoiceItem(${i})" style="background:transparent;border:none;color:#ff6b8a;cursor:pointer;font-size:1.1rem;padding:0.25rem;">✕</button>
+        </div>`).join('');
+      updateInvoiceTotals();
+    }
+
+    function updateInvoiceTotals() {
+      const subtotal = _invoiceItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+      const taxRate = parseFloat(document.getElementById('inv-tax-rate')?.value || 0);
+      const tax = subtotal * (taxRate / 100);
+      const total = subtotal + tax;
+      const fmt = v => '$' + v.toFixed(2);
+      if (document.getElementById('inv-subtotal')) document.getElementById('inv-subtotal').textContent = fmt(subtotal);
+      if (document.getElementById('inv-tax-amount')) document.getElementById('inv-tax-amount').textContent = fmt(tax);
+      if (document.getElementById('inv-total')) document.getElementById('inv-total').textContent = fmt(total);
+    }
+
+    async function saveInvoice() {
+      const clientName = document.getElementById('inv-client-name')?.value?.trim();
+      if (!clientName) { showToast('error', 'Client name is required.'); return; }
+      if (!_invoiceItems.length) { showToast('error', 'Add at least one line item.'); return; }
+
+      const payload = {
+        client_name: clientName,
+        client_email: document.getElementById('inv-client-email')?.value || '',
+        issue_date: document.getElementById('inv-issue-date')?.value || '',
+        due_date: document.getElementById('inv-due-date')?.value || '',
+        items: _invoiceItems,
+        notes: document.getElementById('inv-notes')?.value || '',
+        tax_rate: parseFloat(document.getElementById('inv-tax-rate')?.value || 0)
+      };
+
+      const res = await apiCall('/api/invoices', 'POST', payload);
+      if (res) {
+        showToast('success', `Invoice ${res.invoice_number} saved!`);
+        _invoiceItems = [];
+        renderInvoiceItems();
+        document.getElementById('inv-client-name').value = '';
+        document.getElementById('inv-client-email').value = '';
+        document.getElementById('inv-notes').value = '';
+        document.getElementById('inv-tax-rate').value = '0';
+        document.getElementById('biz-invoice-form-wrap').classList.add('hidden');
+        loadInvoices();
+      }
+    }
+
+    function previewInvoice() {
+      const clientName = document.getElementById('inv-client-name')?.value?.trim() || 'Client';
+      const issueDate = document.getElementById('inv-issue-date')?.value || '';
+      const dueDate = document.getElementById('inv-due-date')?.value || '';
+      const notes = document.getElementById('inv-notes')?.value || '';
+      const taxRate = parseFloat(document.getElementById('inv-tax-rate')?.value || 0);
+      const subtotal = _invoiceItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+      const tax = subtotal * (taxRate / 100);
+      const total = subtotal + tax;
+
+      const modal = document.getElementById('inv-preview-modal');
+      const content = document.getElementById('inv-preview-content');
+      if (!modal || !content) return;
+
+      content.innerHTML = `
+        <div style="background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff;padding:2rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div><div style="font-size:1.8rem;font-weight:800;letter-spacing:-1px;">KASH</div><div style="font-size:0.85rem;opacity:0.75;">Business Finance</div></div>
+            <div style="text-align:right;"><div style="font-size:1.2rem;font-weight:700;">INVOICE</div><div style="opacity:0.75;">#DRAFT</div></div>
+          </div>
+        </div>
+        <div style="padding:2rem;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+            <div>
+              <div style="font-size:0.75rem;color:#6b7280;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Bill To</div>
+              <div style="font-size:1rem;font-weight:600;margin-top:0.25rem;">${clientName}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:0.8rem;color:#6b7280;">Issue Date: <strong>${issueDate || '—'}</strong></div>
+              <div style="font-size:0.8rem;color:#6b7280;margin-top:0.25rem;">Due Date: <strong>${dueDate || '—'}</strong></div>
+            </div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:1.5rem;">
+            <thead>
+              <tr style="border-bottom:2px solid #e5e7eb;">
+                <th style="text-align:left;padding:0.5rem 0;font-size:0.75rem;text-transform:uppercase;color:#6b7280;letter-spacing:1px;">Description</th>
+                <th style="text-align:right;padding:0.5rem 0;font-size:0.75rem;text-transform:uppercase;color:#6b7280;letter-spacing:1px;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${_invoiceItems.map(item => `<tr style="border-bottom:1px solid #f3f4f6;">
+                <td style="padding:0.65rem 0;font-size:0.9rem;">${item.description || '—'}</td>
+                <td style="padding:0.65rem 0;text-align:right;font-size:0.9rem;">$${(parseFloat(item.amount) || 0).toFixed(2)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+          <div style="margin-left:auto;max-width:250px;">
+            <div style="display:flex;justify-content:space-between;padding:0.35rem 0;font-size:0.85rem;color:#6b7280;"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
+            ${taxRate > 0 ? `<div style="display:flex;justify-content:space-between;padding:0.35rem 0;font-size:0.85rem;color:#6b7280;"><span>Tax (${taxRate}%)</span><span>$${tax.toFixed(2)}</span></div>` : ''}
+            <div style="display:flex;justify-content:space-between;padding:0.6rem 0;font-size:1.1rem;font-weight:700;border-top:2px solid #e5e7eb;margin-top:0.25rem;"><span>Total</span><span style="color:#7c3aed;">$${total.toFixed(2)}</span></div>
+          </div>
+          ${notes ? `<div style="margin-top:1.5rem;padding:1rem;background:#f9fafb;border-radius:8px;font-size:0.85rem;color:#6b7280;"><strong>Notes:</strong> ${notes}</div>` : ''}
+          <div style="margin-top:2rem;text-align:center;font-size:0.75rem;color:#9ca3af;">Generated by Kash · Thank you for your business</div>
+        </div>`;
+
+      modal.style.display = 'block';
+    }
+
+    async function loadInvoices() {
+      const res = await apiCall('/api/invoices');
+      const listEl = document.getElementById('biz-invoice-list');
+      if (!listEl) return;
+      const invoices = res?.data || [];
+      if (!invoices.length) {
+        listEl.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem;text-align:center;">No invoices yet. Click "+ New Invoice" to create one.</p>';
+        return;
+      }
+      const statusColors = { draft: '#fbbf24', sent: '#00d4aa', paid: '#a78bfa' };
+      listEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead><tr style="border-bottom:1px solid var(--border-color);">
+          <th style="text-align:left;padding:0.5rem;color:var(--text-secondary);">INVOICE</th>
+          <th style="text-align:left;padding:0.5rem;color:var(--text-secondary);">CLIENT</th>
+          <th style="text-align:right;padding:0.5rem;color:var(--text-secondary);">DUE</th>
+          <th style="text-align:right;padding:0.5rem;color:var(--text-secondary);">STATUS</th>
+          <th style="text-align:right;padding:0.5rem;color:var(--text-secondary);">ACTION</th>
+        </tr></thead>
+        <tbody>
+          ${invoices.map(inv => {
+        const items = JSON.parse(inv.items || '[]');
+        const subtotal = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+        const tax = subtotal * ((inv.tax_rate || 0) / 100);
+        const total = subtotal + tax;
+        const color = statusColors[inv.status] || '#6b7280';
+        return `<tr style="border-bottom:1px solid var(--border-color);">
+              <td style="padding:0.6rem 0.5rem;font-weight:600;">${inv.invoice_number}</td>
+              <td style="padding:0.6rem 0.5rem;">${inv.client_name}</td>
+              <td style="padding:0.6rem 0.5rem;text-align:right;color:var(--primary-biz);">$${total.toFixed(2)}</td>
+              <td style="padding:0.6rem 0.5rem;text-align:right;">
+                <span style="background:${color}22;color:${color};padding:0.2rem 0.6rem;border-radius:999px;font-size:0.75rem;font-weight:700;">${inv.status.toUpperCase()}</span>
+              </td>
+              <td style="padding:0.6rem 0.5rem;text-align:right;">
+                ${inv.status !== 'paid' ? `<button onclick="markInvoicePaid(${inv.id})" style="font-size:0.75rem;background:transparent;border:1px solid var(--primary-biz);color:var(--primary-biz);border-radius:6px;padding:0.2rem 0.5rem;cursor:pointer;">Mark Paid</button>` : ''}
+              </td>
+            </tr>`;
+      }).join('')}
+        </tbody>
+      </table>`;
+    }
+
+    async function markInvoicePaid(id) {
+      const res = await apiCall(`/api/invoices/${id}`, 'PATCH', { status: 'paid' });
+      if (res) { showToast('success', 'Invoice marked as Paid! 🎉'); loadInvoices(); }
+    }
+
+    async function loadBusinessHistory() {
+      const [expRes, incRes] = await Promise.all([
+        apiCall('/api/expenses?is_business=1'),
+        apiCall('/api/income?is_business=1')
+      ]);
+
+      const list = document.getElementById('biz-history-list');
+      if (!list) return;
+      list.innerHTML = '';
+
+      let all = [];
+      if (expRes) expRes.data.forEach(e => all.push({ ...e, dataType: 'Expense' }));
+      if (incRes) incRes.data.forEach(i => all.push({ ...i, dataType: 'Income', category: i.source }));
+
+      all.sort((a, b) => new Date(b.date) - new Date(a.date));
+      const recent = all.slice(0, 10);
+
+      if (recent.length === 0) {
+        list.innerHTML = '<tr><td colspan="5" class="empty-state">No recent business history</td></tr>';
+        return;
+      }
+
+      recent.forEach(t => {
+        const row = `
+          <tr>
+            <td>${t.date}</td>
+            <td><span class="badge ${t.dataType === 'Income' ? 'badge-success' : 'badge-danger'}">${t.dataType}</span></td>
+            <td>${t.category}</td>
+            <td>${t.description || '-'}</td>
+            <td style="font-weight:600; color:${t.dataType === 'Income' ? 'var(--success)' : 'var(--danger)'}">
+              ${t.dataType === 'Income' ? '+' : '-'}${formatCurrency(t.amount)}
+            </td>
+          </tr>
+        `;
+        list.insertAdjacentHTML('beforeend', row);
+      });
+    }
+
+    async function submitBizExpense(e) {
+      e.preventDefault();
+      const data = {
+        date: document.getElementById('biz-exp-date').value,
+        category: document.getElementById('biz-exp-category').value,
+        description: document.getElementById('biz-exp-desc').value,
+        amount: document.getElementById('biz-exp-amount').value,
+        is_business: 1,
+        paid_by: currentUser,
+        payment_method: 'Business Card'
+      };
+      const res = await apiCall('/api/expenses', 'POST', data);
+      if (res) {
+        showToast('success', 'Business expense added');
+        e.target.reset();
+        loadBusinessTab();
+      }
+    }
+
+    async function submitBizIncome(event) {
+      event.preventDefault();
+      const data = {
+        date: document.getElementById('biz-inc-date').value,
+        source: document.getElementById('biz-inc-source').value,
+        description: document.getElementById('biz-inc-desc').value,
+        amount: document.getElementById('biz-inc-amount').value,
+        is_business: 1,
+        received_by: currentUser
+      };
+      const res = await apiCall('/api/income', 'POST', data);
+      if (res) {
+        showToast('success', 'Business income added');
+        event.target.reset();
+        loadBusinessTab();
+      }
+    }
+
+    async function generateBusinessAdvice() {
+      const output = document.getElementById('biz-advisor-output');
+      if (!output) return;
+      output.style.display = 'block';
+      output.innerHTML = '<div style="text-align:center; padding:1rem;"><div style="display:inline-block;border:2px solid var(--border);border-top:2px solid var(--primary);border-radius:50%;width:16px;height:16px;animation:spin 1s linear infinite;"></div> Consulting Guru...</div>';
+
+      const location = document.getElementById('biz-location-input')?.value || 'Connecticut (CT)';
+      const res = await apiCall(`/api/business/advisor?location=${encodeURIComponent(location)}`);
+      if (res && res.advice) {
+        output.innerHTML = marked.parse(res.advice);
+      } else {
+        output.innerHTML = '<div style="color:var(--danger);">Error reaching AI Advisor. Please ensure Ollama is running.</div>';
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -6136,7 +7117,8 @@
         payment_method: document.getElementById('expense-payment-method').value,
         credit_card_id: document.getElementById('expense-credit-card').value || null,
         notes: document.getElementById('expense-notes').value,
-        currency: document.getElementById('expense-currency').value || 'USD'
+        currency: document.getElementById('expense-currency').value || 'USD',
+        is_business: 0
       };
       // Check for duplicates first
       document.getElementById('dup-warning').classList.remove('show');
@@ -6178,6 +7160,7 @@
       document.getElementById('expense-payment-method').value = exp.payment_method || '';
       document.getElementById('expense-credit-card').value = exp.credit_card_id || '';
       document.getElementById('expense-notes').value = exp.notes || '';
+      // document.getElementById('expense-is-business').checked = !!exp.is_business;
       document.getElementById('expense-edit-id').value = id;
       document.getElementById('expense-submit-btn').textContent = '💾 Update Expense';
       document.getElementById('expense-form').scrollIntoView({ behavior: 'smooth' });
@@ -6246,7 +7229,8 @@
         description: document.getElementById('income-description').value.trim(),
         amount: document.getElementById('income-amount').value,
         received_by: document.getElementById('income-received-by').value,
-        notes: document.getElementById('income-notes').value
+        notes: document.getElementById('income-notes').value,
+        is_business: 0
       };
       let res;
       if (editId) {
@@ -6275,6 +7259,7 @@
       document.getElementById('income-amount').value = inc.amount;
       document.getElementById('income-received-by').value = inc.received_by;
       document.getElementById('income-notes').value = inc.notes || '';
+      // document.getElementById('income-is-business').checked = !!inc.is_business;
       document.getElementById('income-edit-id').value = id;
       document.getElementById('income-submit-btn').textContent = '💾 Update Income';
       document.getElementById('income-form').scrollIntoView({ behavior: 'smooth' });

@@ -122,13 +122,29 @@ def init_db():
         except Exception:
             pass
 
+    # Migration: is_business column for data isolation
+    for tbl in ['expenses', 'income', 'budgets', 'bills', 'recurring_transactions']:
+        try:
+            c.execute(f"ALTER TABLE {tbl} ADD COLUMN is_business INTEGER DEFAULT 0")
+            conn.commit()
+        except Exception:
+            pass
+
+    # Migration: category type (personal vs business)
+    try:
+        c.execute("ALTER TABLE categories ADD COLUMN type TEXT DEFAULT 'personal'")
+        conn.commit()
+    except Exception:
+        pass
+
     # Migrations: rollover on budgets
 
 
 
     c.execute("""CREATE TABLE IF NOT EXISTS categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE)""")
+        name TEXT NOT NULL UNIQUE,
+        type TEXT DEFAULT 'personal')""")
 
     c.execute("""CREATE TABLE IF NOT EXISTS credit_cards (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,6 +165,8 @@ def init_db():
         credit_card_id INTEGER,
         notes TEXT,
         receipt_filename TEXT,
+        is_business INTEGER DEFAULT 0,
+        owner TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (credit_card_id) REFERENCES credit_cards(id) ON DELETE SET NULL)""")
 
@@ -160,6 +178,8 @@ def init_db():
         amount REAL NOT NULL,
         received_by TEXT NOT NULL,
         notes TEXT,
+        is_business INTEGER DEFAULT 0,
+        owner TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
 
     c.execute("""CREATE TABLE IF NOT EXISTS budgets (
@@ -169,6 +189,8 @@ def init_db():
         month INTEGER NOT NULL,
         year INTEGER NOT NULL,
         rollover REAL NOT NULL DEFAULT 0,
+        is_business INTEGER DEFAULT 0,
+        owner TEXT,
         UNIQUE(category, month, year))""")
 
     c.execute("""CREATE TABLE IF NOT EXISTS savings_goals (
@@ -190,6 +212,8 @@ def init_db():
         is_recurring INTEGER DEFAULT 0,
         frequency TEXT DEFAULT 'monthly',
         notes TEXT,
+        is_business INTEGER DEFAULT 0,
+        owner TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
 
     c.execute("""CREATE TABLE IF NOT EXISTS recurring_transactions (
@@ -369,6 +393,11 @@ def init_db():
                 'Healthcare','Shopping','Mortgage','Child Support','Education','Other']:
         c.execute("INSERT OR IGNORE INTO categories (name) VALUES (?)", (cat,))
 
+    # Business categories
+    for cat in ['Business Taxes', 'Payroll', 'Software Subscriptions', 'Office Supplies', 
+                'Marketing', 'Inventory', 'Business Travel', 'Legal/Professional']:
+        c.execute("INSERT OR IGNORE INTO categories (name, type) VALUES (?, 'business')", (cat,))
+
     # Bootstrap admin
     admin_user = os.environ.get('APP_LOGIN_USERNAME')
     admin_pass = os.environ.get('APP_LOGIN_PASSWORD')
@@ -381,6 +410,21 @@ def init_db():
         phash = generate_password_hash(secrets.token_urlsafe(16), method='pbkdf2:sha256')
         c.execute("INSERT OR IGNORE INTO users (username, password_hash, is_admin, must_change_password) VALUES (?,?,1,1)",
                   ('admin', phash))
+
+    # Invoices table for business invoice generation
+    c.execute("""CREATE TABLE IF NOT EXISTS invoices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_number TEXT NOT NULL,
+        client_name TEXT NOT NULL,
+        client_email TEXT DEFAULT '',
+        issue_date TEXT NOT NULL,
+        due_date TEXT NOT NULL,
+        items TEXT NOT NULL,
+        notes TEXT DEFAULT '',
+        tax_rate REAL DEFAULT 0,
+        status TEXT DEFAULT 'draft',
+        owner TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
 
     conn.commit()
     conn.close()
@@ -628,8 +672,10 @@ def get_current_user():
 @app.route('/api/categories')
 @login_required
 def get_categories():
+    ctype = request.args.get('type', 'personal')
     conn = get_db_connection()
-    cats = [row['name'] for row in conn.execute("SELECT name FROM categories ORDER BY name").fetchall()]
+    q = "SELECT name FROM categories WHERE type = ? ORDER BY name"
+    cats = [row['name'] for row in conn.execute(q, (ctype,)).fetchall()]
     conn.close()
     return jsonify({'data': cats}), 200
 
@@ -638,10 +684,11 @@ def get_categories():
 @app.route('/api/expenses', methods=['GET'])
 @login_required
 def get_expenses():
-    start    = request.args.get('start_date')
-    end      = request.args.get('end_date')
-    category = request.args.get('category')
+    start     = request.args.get('start_date')
+    end       = request.args.get('end_date')
+    category  = request.args.get('category')
     mine_only = request.args.get('mine_only') == '1'
+    is_business = request.args.get('is_business', '0')
     username = session['username']
     conn = get_db_connection()
     if mine_only:
@@ -651,6 +698,8 @@ def get_expenses():
         vis_clause, vis_params = get_visible_clause('expenses', username)
         q = f"SELECT * FROM expenses WHERE {vis_clause}"
         params = vis_params
+    
+    q += " AND is_business = ?"; params.append(int(is_business))
     if start:    q += " AND date >= ?";     params.append(start)
     if end:      q += " AND date <= ?";     params.append(end)
     if category: q += " AND category = ?"; params.append(category)
@@ -695,11 +744,12 @@ def create_expense():
 
         c = conn.cursor()
         c.execute("""INSERT INTO expenses (date,category,description,amount,paid_by,payment_method,
-                     credit_card_id,notes,currency,original_amount,owner)
-                     VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                     credit_card_id,notes,currency,original_amount,owner,is_business)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
                   (data['date'], data['category'], data['description'], amount_home,
                    data['paid_by'], data.get('payment_method'), data.get('credit_card_id'),
-                   data.get('notes',''), currency, original_amount, session['username']))
+                   data.get('notes',''), currency, original_amount, session['username'],
+                   int(data.get('is_business', 0))))
         eid = c.lastrowid
         log_audit(conn, 'CREATE', 'expenses', eid, {
             'description': data['description'], 'amount': amount_home,
@@ -722,15 +772,16 @@ def update_expense(eid):
         c = conn.cursor()
         old = conn.execute("SELECT * FROM expenses WHERE id=?", (eid,)).fetchone()
         c.execute("""UPDATE expenses SET date=?,category=?,description=?,amount=?,
-                     paid_by=?,payment_method=?,credit_card_id=?,notes=? WHERE id=?""",
+                     paid_by=?,payment_method=?,credit_card_id=?,notes=?,is_business=? WHERE id=?""",
                   (data['date'], data['category'], data['description'], float(data['amount']),
-                   data['paid_by'], data.get('payment_method'), data.get('credit_card_id'), data.get('notes',''), eid))
+                   data['paid_by'], data.get('payment_method'), data.get('credit_card_id'),
+                   data.get('notes',''), int(data.get('is_business', 0)), eid))
         if c.rowcount == 0:
             conn.close()
             return jsonify({'error': 'Expense not found'}), 404
         log_audit(conn, 'UPDATE', 'expenses', eid, {
-            'before': {'description': old['description'], 'amount': old['amount'], 'date': old['date']} if old else {},
-            'after':  {'description': data['description'], 'amount': float(data['amount']), 'date': data['date']}})
+            'before': {'description': old['description'], 'amount': old['amount'], 'date': old['date'], 'is_business': old['is_business']} if old else {},
+            'after':  {'description': data['description'], 'amount': float(data['amount']), 'date': data['date'], 'is_business': int(data.get('is_business', 0))}})
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'message': 'Expense updated'}), 200
@@ -762,9 +813,10 @@ def delete_expense(eid):
 @app.route('/api/income', methods=['GET'])
 @login_required
 def get_income():
-    start = request.args.get('start_date')
-    end   = request.args.get('end_date')
+    start     = request.args.get('start_date')
+    end       = request.args.get('end_date')
     mine_only = request.args.get('mine_only') == '1'
+    is_business = request.args.get('is_business', '0')
     username  = session['username']
     conn = get_db_connection()
     if mine_only:
@@ -772,6 +824,8 @@ def get_income():
     else:
         vis_clause, params = get_visible_clause('income', username)
         q = f"SELECT * FROM income WHERE {vis_clause}"
+    
+    q += " AND is_business = ?"; params.append(int(is_business))
     if start: q += " AND date >= ?"; params.append(start)
     if end:   q += " AND date <= ?"; params.append(end)
     q += " ORDER BY date DESC, created_at DESC"
@@ -789,9 +843,9 @@ def create_income():
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("INSERT INTO income (date,source,description,amount,received_by,notes,owner) VALUES (?,?,?,?,?,?,?)",
+        c.execute("INSERT INTO income (date,source,description,amount,received_by,notes,owner,is_business) VALUES (?,?,?,?,?,?,?,?)",
                   (data['date'], data['source'], data['description'], float(data['amount']),
-                   data['received_by'], data.get('notes',''), session['username']))
+                   data['received_by'], data.get('notes',''), session['username'], int(data.get('is_business', 0))))
         iid = c.lastrowid
         conn.commit()
         conn.close()
@@ -809,9 +863,9 @@ def update_income(iid):
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("UPDATE income SET date=?,source=?,description=?,amount=?,received_by=?,notes=? WHERE id=?",
+        c.execute("UPDATE income SET date=?,source=?,description=?,amount=?,received_by=?,notes=?,is_business=? WHERE id=?",
                   (data['date'], data['source'], data['description'], float(data['amount']),
-                   data['received_by'], data.get('notes',''), iid))
+                   data['received_by'], data.get('notes',''), int(data.get('is_business', 0)), iid))
         if c.rowcount == 0:
             conn.close()
             return jsonify({'error': 'Income not found'}), 404
@@ -910,21 +964,23 @@ def delete_credit_card(cid):
 @login_required
 def get_budgets():
     conn = get_db_connection()
+    is_business = request.args.get('is_business', '0')
     vis_clause, vis_params = get_visible_clause('budgets', session['username'])
-    rows = [dict(r) for r in conn.execute(f"SELECT * FROM budgets WHERE {vis_clause} ORDER BY year DESC, month DESC, category", vis_params).fetchall()]
+    q = f"SELECT * FROM budgets WHERE {vis_clause} AND is_business = ? ORDER BY year DESC, month DESC, category"
+    rows = [dict(r) for r in conn.execute(q, vis_params + [int(is_business)]).fetchall()]
     conn.close()
     for b in rows:
         conn2 = get_db_connection()
         exp_vis, exp_params = get_visible_clause('expenses', session['username'])
         spent = conn2.execute(
-            f"SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=? AND {exp_vis}",
-            [b['category'], str(b['year']), f"{b['month']:02d}"] + exp_params).fetchone()[0]
+            f"SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=? AND is_business=? AND {exp_vis}",
+            [b['category'], str(b['year']), f"{b['month']:02d}", int(is_business)] + exp_params).fetchone()[0]
         # Also get prev month spending for MoM comparison
         prev_month = b['month'] - 1 if b['month'] > 1 else 12
         prev_year = b['year'] if b['month'] > 1 else b['year'] - 1
         prev_spent = conn2.execute(
-            f"SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=? AND {exp_vis}",
-            [b['category'], str(prev_year), f"{prev_month:02d}"] + exp_params).fetchone()[0]
+            f"SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=? AND is_business=? AND {exp_vis}",
+            [b['category'], str(prev_year), f"{prev_month:02d}", int(is_business)] + exp_params).fetchone()[0]
         conn2.close()
         effective = b['amount'] + b.get('rollover', 0)
         b['effective_amount'] = round(float(effective), 2)
@@ -943,8 +999,8 @@ def create_budget():
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("INSERT OR REPLACE INTO budgets (category,amount,month,year,owner) VALUES (?,?,?,?,?)",
-                  (data['category'], float(data['amount']), int(data['month']), int(data['year']), session['username']))
+        c.execute("INSERT OR REPLACE INTO budgets (category,amount,month,year,owner,is_business) VALUES (?,?,?,?,?,?)",
+                  (data['category'], float(data['amount']), int(data['month']), int(data['year']), session['username'], int(data.get('is_business', 0))))
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'id': c.lastrowid}), 201
@@ -960,6 +1016,175 @@ def delete_budget(bid):
     conn.close()
     return jsonify({'success': True}), 200
 
+# ── Business API ──────────────────────────────────────────────────────────────
+
+@app.route('/api/business/stats')
+@login_required
+def get_business_stats():
+    month = request.args.get('month')
+    if not month:
+        now = datetime.now()
+        month = now.strftime('%Y-%m')
+    
+    conn = get_db_connection()
+    username = session['username']
+    vis_clause, vis_params = get_visible_clause('expenses', username)
+    
+    # Revenue (Income where is_business=1)
+    revenue = conn.execute(
+        f"SELECT COALESCE(SUM(amount), 0.0) FROM income WHERE is_business=1 AND date LIKE ? AND {vis_clause.replace('expenses', 'income')}",
+        [month + '%'] + vis_params).fetchone()[0]
+    
+    # Expenses (Expenses where is_business=1)
+    expenses = conn.execute(
+        f"SELECT COALESCE(SUM(amount), 0.0) FROM expenses WHERE is_business=1 AND date LIKE ? AND {vis_clause}",
+        [month + '%'] + vis_params).fetchone()[0]
+    
+    conn.close()
+    
+    profit = revenue - expenses
+    margin = (profit / revenue * 100) if revenue > 0 else 0
+    
+    return jsonify({
+        'data': {
+            'revenue': round(revenue, 2),
+            'expenses': round(expenses, 2),
+            'profit': round(profit, 2),
+            'margin': round(margin, 1)
+        }
+    }), 200
+
+# ─── Business CSV Export ──────────────────────────────────────────────────────
+
+@app.route('/api/business/export/csv')
+@login_required
+def export_business_csv():
+    import csv, io
+    username = session['username']
+    conn = get_db_connection()
+    vis_clause_exp, vis_params_exp = get_visible_clause('expenses', username)
+    vis_clause_inc, vis_params_inc = get_visible_clause('income', username)
+
+    expenses = conn.execute(
+        f"SELECT date, category, description, amount, payment_method FROM expenses WHERE is_business=1 AND {vis_clause_exp} ORDER BY date DESC",
+        vis_params_exp).fetchall()
+    income = conn.execute(
+        f"SELECT date, source, description, amount FROM income WHERE is_business=1 AND {vis_clause_inc} ORDER BY date DESC",
+        vis_params_inc).fetchall()
+    conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['TYPE', 'DATE', 'CATEGORY/SOURCE', 'DESCRIPTION', 'AMOUNT', 'PAYMENT'])
+    for e in expenses:
+        writer.writerow(['Expense', e['date'], e['category'], e['description'], f"-{e['amount']:.2f}", e['payment_method'] or ''])
+    for i in income:
+        writer.writerow(['Income', i['date'], i['source'], i['description'], f"+{i['amount']:.2f}", ''])
+
+    output.seek(0)
+    from flask import make_response
+    response = make_response(output.getvalue())
+    response.headers['Content-Disposition'] = 'attachment; filename=business_report.csv'
+    response.headers['Content-Type'] = 'text/csv'
+    return response
+
+# ─── Invoice API ──────────────────────────────────────────────────────────────
+
+@app.route('/api/invoices', methods=['GET'])
+@login_required
+def get_invoices():
+    username = session['username']
+    conn = get_db_connection()
+    rows = conn.execute(
+        "SELECT * FROM invoices WHERE owner=? ORDER BY created_at DESC", (username,)).fetchall()
+    conn.close()
+    return jsonify({'data': [dict(r) for r in rows]}), 200
+
+@app.route('/api/invoices', methods=['POST'])
+@login_required
+def create_invoice():
+    import json as _json
+    data = request.get_json()
+    username = session['username']
+    # Auto-generate invoice number
+    conn = get_db_connection()
+    count = conn.execute("SELECT COUNT(*) FROM invoices WHERE owner=?", (username,)).fetchone()[0]
+    inv_number = f"INV-{datetime.now().strftime('%Y%m')}-{count+1:03d}"
+    conn.execute("""INSERT INTO invoices
+        (invoice_number, client_name, client_email, issue_date, due_date, items, notes, tax_rate, status, owner)
+        VALUES (?,?,?,?,?,?,?,?,?,?)""", (
+        inv_number,
+        data.get('client_name', ''),
+        data.get('client_email', ''),
+        data.get('issue_date', ''),
+        data.get('due_date', ''),
+        _json.dumps(data.get('items', [])),
+        data.get('notes', ''),
+        float(data.get('tax_rate', 0)),
+        'draft',
+        username
+    ))
+    conn.commit()
+    inv_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.close()
+    return jsonify({'message': 'Invoice created', 'invoice_number': inv_number, 'id': inv_id}), 201
+
+@app.route('/api/invoices/<int:inv_id>', methods=['PATCH'])
+@login_required
+def update_invoice_status(inv_id):
+    data = request.get_json()
+    status = data.get('status')
+    if status not in ('draft', 'sent', 'paid'):
+        return jsonify({'error': 'Invalid status'}), 400
+    username = session['username']
+    conn = get_db_connection()
+    conn.execute("UPDATE invoices SET status=? WHERE id=? AND owner=?", (status, inv_id, username))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Status updated'}), 200
+
+@app.route('/api/business/advisor')
+@login_required
+def get_business_advice():
+    # Prompt Ollama for business advice
+    location = request.args.get('location', 'Connecticut (CT)')
+    ollama_url = Config.OLLAMA_URL
+    if not ollama_url:
+        return jsonify({'error': 'Ollama not configured'}), 400
+    
+    import requests
+    
+    username = session['username']
+    conn = get_db_connection()
+    month = datetime.now().strftime('%Y-%m')
+    
+    # Get some context
+    revenue = conn.execute("SELECT COALESCE(SUM(amount),0) FROM income WHERE is_business=1 AND owner=?", (username,)).fetchone()[0]
+    expenses = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE is_business=1 AND owner=?", (username,)).fetchone()[0]
+    conn.close()
+    
+    system_prompt = (
+        "You are Kash Business Advisor. Provide concise, expert advice on small business finances. "
+        f"User is based in {location}. Focus on tax deadlines (e.g., quarterly estimated taxes or VAT), "
+        "profitability, and business growth. If the location is in France, consider French tax laws like TVA and URSSAF. "
+        "Format with markdown."
+    )
+    user_prompt = f"My business currently has ${revenue:,.2f} in revenue and ${expenses:,.2f} in expenses to date. It is currently {datetime.now().strftime('%B %Y')}. Give me some advice on what I should be looking out for regarding {location} business requirements or taxes."
+
+    payload = {
+        "model": Config.OLLAMA_MODEL,
+        "prompt": f"{system_prompt}\n\nUser: {user_prompt}\n\nAdvisor:",
+        "stream": False
+    }
+    
+    try:
+        r = requests.post(f"{ollama_url}/api/generate", json=payload, timeout=30)
+        r.raise_for_status()
+        advice = r.json().get('response', '')
+        return jsonify({'advice': advice}), 200
+    except Exception as e:
+        return jsonify({'error': f"Failed to reach Ollama: {str(e)}"}), 500
+
 
 @app.route('/api/budgets/copy-last-month', methods=['POST'])
 @login_required
@@ -971,7 +1196,7 @@ def copy_last_month_budgets():
     conn = get_db_connection()
     vis_clause, vis_params = get_visible_clause('budgets', session['username'])
     prev_budgets = conn.execute(
-        f"SELECT category, amount FROM budgets WHERE month=? AND year=? AND {vis_clause}",
+        f"SELECT category, amount, is_business FROM budgets WHERE month=? AND year=? AND {vis_clause}",
         [prev_month, prev_year] + vis_params).fetchall()
     if not prev_budgets:
         conn.close()
@@ -981,13 +1206,13 @@ def copy_last_month_budgets():
         # Calculate rollover from prev month
         exp_vis, exp_params = get_visible_clause('expenses', session['username'])
         spent = conn.execute(
-            f"SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=? AND {exp_vis}",
-            [b['category'], str(prev_year), f"{prev_month:02d}"] + exp_params).fetchone()[0]
+            f"SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=? AND is_business=? AND {exp_vis}",
+            [b['category'], str(prev_year), f"{prev_month:02d}", b['is_business']] + exp_params).fetchone()[0]
         rollover = max(0, b['amount'] - float(spent))
         try:
             conn.execute(
-                "INSERT OR IGNORE INTO budgets (category,amount,month,year,rollover,owner) VALUES (?,?,?,?,?,?)",
-                (b['category'], b['amount'], cur_month, cur_year, round(rollover, 2), session['username']))
+                "INSERT OR IGNORE INTO budgets (category,amount,month,year,rollover,owner,is_business) VALUES (?,?,?,?,?,?,?)",
+                (b['category'], b['amount'], cur_month, cur_year, round(rollover, 2), session['username'], b['is_business']))
             copied += 1
         except Exception:
             pass
@@ -1005,17 +1230,17 @@ def apply_rollover():
     prev_year = cur_year if cur_month > 1 else cur_year - 1
     conn = get_db_connection()
     cur_budgets = conn.execute(
-        "SELECT id, category, amount FROM budgets WHERE month=? AND year=?",
+        "SELECT id, category, amount, is_business FROM budgets WHERE month=? AND year=?",
         (cur_month, cur_year)).fetchall()
     updated = 0
     for b in cur_budgets:
         prev = conn.execute(
-            "SELECT amount FROM budgets WHERE category=? AND month=? AND year=?",
-            (b['category'], prev_month, prev_year)).fetchone()
+            "SELECT amount FROM budgets WHERE category=? AND month=? AND year=? AND is_business=?",
+            (b['category'], prev_month, prev_year, b['is_business'])).fetchone()
         if prev:
             prev_spent = conn.execute(
-                "SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=?",
-                (b['category'], str(prev_year), f"{prev_month:02d}")).fetchone()[0]
+                "SELECT COALESCE(SUM(amount),0.0) FROM expenses WHERE category=? AND strftime('%Y',date)=? AND strftime('%m',date)=? AND is_business=?",
+                (b['category'], str(prev_year), f"{prev_month:02d}", b['is_business'])).fetchone()[0]
             rollover = max(0, prev['amount'] - float(prev_spent))
             if rollover > 0:
                 conn.execute("UPDATE budgets SET rollover=? WHERE id=?", (round(rollover, 2), b['id']))
@@ -1032,8 +1257,8 @@ def get_savings_goals():
     conn = get_db_connection()
     goals = [dict(r) for r in conn.execute("SELECT * FROM savings_goals ORDER BY target_date").fetchall()]
     # Calculate current savings (total income - total expenses)
-    total_income = conn.execute("SELECT COALESCE(SUM(amount),0) FROM income").fetchone()[0]
-    total_expenses = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses").fetchone()[0]
+    total_income = conn.execute("SELECT COALESCE(SUM(amount),0) FROM income WHERE is_business=0").fetchone()[0]
+    total_expenses = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE is_business=0").fetchone()[0]
     current_savings = float(total_income) - float(total_expenses)
     conn.close()
     for g in goals:
@@ -1204,9 +1429,9 @@ def spending_by_person():
     rows = conn.execute(
         f"""SELECT paid_by, COALESCE(SUM(amount),0) as total
            FROM expenses
-           WHERE strftime('%Y',date)=? AND strftime('%m',date)=? AND {exp_vis}
+           WHERE strftime('%Y',date)=? AND strftime('%m',date)=? AND is_business=? AND {exp_vis}
            GROUP BY paid_by ORDER BY total DESC""",
-        [year, mon] + exp_params).fetchall()
+        [year, mon, int(request.args.get('is_business', '0'))] + exp_params).fetchall()
     conn.close()
     return jsonify({'data': [dict(r) for r in rows]}), 200
 
@@ -1215,9 +1440,11 @@ def spending_by_person():
 @app.route('/api/bills', methods=['GET'])
 @login_required
 def get_bills():
+    is_business = request.args.get('is_business', '0')
     conn = get_db_connection()
     vis_clause, vis_params = get_visible_clause('bills', session['username'])
-    rows = [dict(r) for r in conn.execute(f"SELECT * FROM bills WHERE {vis_clause} ORDER BY due_date ASC", vis_params).fetchall()]
+    q = f"SELECT * FROM bills WHERE {vis_clause} AND is_business = ? ORDER BY due_date ASC"
+    rows = [dict(r) for r in conn.execute(q, vis_params + [int(is_business)]).fetchall()]
     conn.close()
     today = datetime.now().date()
     for b in rows:
@@ -1236,8 +1463,8 @@ def create_bill():
         return jsonify({'error': 'Name, amount, and due_date required'}), 400
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("INSERT INTO bills (name,amount,due_date,category,notes,owner) VALUES (?,?,?,?,?,?)",
-              (data['name'], float(data['amount']), data['due_date'], data.get('category'), data.get('notes',''), session['username']))
+    c.execute("INSERT INTO bills (name,amount,due_date,category,notes,owner,is_business) VALUES (?,?,?,?,?,?,?)",
+              (data['name'], float(data['amount']), data['due_date'], data.get('category'), data.get('notes',''), session['username'], data.get('is_business', 0)))
     bid = c.lastrowid
     conn.commit()
     conn.close()
@@ -1249,9 +1476,9 @@ def update_bill(bid):
     data = request.json or {}
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("UPDATE bills SET name=?,amount=?,due_date=?,category=?,is_paid=?,notes=? WHERE id=?",
+    c.execute("UPDATE bills SET name=?,amount=?,due_date=?,category=?,is_paid=?,notes=?,is_business=? WHERE id=?",
               (data.get('name'), data.get('amount'), data.get('due_date'),
-               data.get('category'), data.get('is_paid',0), data.get('notes',''), bid))
+               data.get('category'), data.get('is_paid',0), data.get('notes',''), data.get('is_business', 0), bid))
     conn.commit()
     conn.close()
     return jsonify({'success': True}), 200
@@ -1280,9 +1507,11 @@ def delete_bill(bid):
 @app.route('/api/recurring', methods=['GET'])
 @login_required
 def get_recurring():
+    is_business = request.args.get('is_business', '0')
     conn = get_db_connection()
     vis_clause, vis_params = get_visible_clause('recurring_transactions', session['username'])
-    rows = [dict(r) for r in conn.execute(f"SELECT * FROM recurring_transactions WHERE {vis_clause} ORDER BY next_date", vis_params).fetchall()]
+    q = f"SELECT * FROM recurring_transactions WHERE {vis_clause} AND is_business = ? ORDER BY next_date"
+    rows = [dict(r) for r in conn.execute(q, vis_params + [int(is_business)]).fetchall()]
     conn.close()
     return jsonify({'data': rows}), 200
 
@@ -1293,11 +1522,11 @@ def create_recurring():
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("""INSERT INTO recurring_transactions
-                 (type,frequency,next_date,description,amount,category,source,person,payment_method,credit_card_id,owner)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                 (type,frequency,next_date,description,amount,category,source,person,payment_method,credit_card_id,owner,is_business)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
               (data.get('type'), data.get('frequency'), data.get('next_date'), data.get('description'),
                float(data.get('amount',0)), data.get('category'), data.get('source'),
-               data.get('person'), data.get('payment_method'), data.get('credit_card_id'), session['username']))
+               data.get('person'), data.get('payment_method'), data.get('credit_card_id'), session['username'], data.get('is_business', 0)))
     rid = c.lastrowid
     conn.commit()
     conn.close()
@@ -1316,13 +1545,13 @@ def process_recurring(rid):
     rec = dict(rec)
     today = datetime.now().strftime('%Y-%m-%d')
     if rec['type'] == 'expense':
-        c.execute("INSERT INTO expenses (date,category,description,amount,paid_by,payment_method,credit_card_id,notes,owner) VALUES (?,?,?,?,?,?,?,?,?)",
+        c.execute("INSERT INTO expenses (date,category,description,amount,paid_by,payment_method,credit_card_id,notes,owner,is_business) VALUES (?,?,?,?,?,?,?,?,?,?)",
                   (today, rec['category'] or 'Other', rec['description'], rec['amount'],
-                   rec['person'], rec['payment_method'], rec['credit_card_id'], 'Auto from recurring', rec.get('person','')))
+                   rec['person'], rec['payment_method'], rec['credit_card_id'], 'Auto from recurring', rec['owner'], rec.get('is_business', 0)))
     else:
-        c.execute("INSERT INTO income (date,source,description,amount,received_by,notes,owner) VALUES (?,?,?,?,?,?,?)",
+        c.execute("INSERT INTO income (date,source,description,amount,received_by,notes,owner,is_business) VALUES (?,?,?,?,?,?,?,?)",
                   (today, rec['source'] or 'Other', rec['description'], rec['amount'],
-                   rec['person'], 'Auto from recurring', rec.get('person','')))
+                   rec['person'], 'Auto from recurring', rec['owner'], rec.get('is_business', 0)))
     # Advance next_date
     freq = rec['frequency']
     from datetime import timedelta
@@ -1501,10 +1730,10 @@ def get_summary_by_month():
     exp_vis, exp_params = get_visible_clause('expenses', username)
     inc_vis, inc_params = get_visible_clause('income', username)
     bill_vis, bill_params = get_visible_clause('bills', username)
-    monthly_expenses = qval(f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',date)=? AND {exp_vis}", [month] + exp_params)
-    monthly_income   = qval(f"SELECT COALESCE(SUM(amount),0) FROM income WHERE strftime('%Y-%m',date)=? AND {inc_vis}", [month] + inc_params)
-    total_income     = qval(f"SELECT COALESCE(SUM(amount),0) FROM income WHERE {inc_vis}", inc_params)
-    unpaid_bills     = qval(f"SELECT COALESCE(SUM(amount),0) FROM bills WHERE is_paid=0 AND {bill_vis}", bill_params)
+    monthly_expenses = qval(f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',date)=? AND is_business=0 AND {exp_vis}", [month] + exp_params)
+    monthly_income   = qval(f"SELECT COALESCE(SUM(amount),0) FROM income WHERE strftime('%Y-%m',date)=? AND is_business=0 AND {inc_vis}", [month] + inc_params)
+    total_income     = qval(f"SELECT COALESCE(SUM(amount),0) FROM income WHERE is_business=0 AND {inc_vis}", inc_params)
+    unpaid_bills     = qval(f"SELECT COALESCE(SUM(amount),0) FROM bills WHERE is_paid=0 AND is_business=0 AND {bill_vis}", bill_params)
     cc_vis, cc_params = get_visible_clause('credit_cards', username)
     card_ids         = [r[0] for r in conn.execute(f"SELECT id FROM credit_cards WHERE {cc_vis}", cc_params).fetchall()]
     total_cc = sum(get_credit_card_balance(cid) for cid in card_ids)
@@ -1551,6 +1780,7 @@ def get_summary_by_month():
 @app.route('/api/insights')
 @login_required
 def get_insights():
+    is_business = request.args.get('is_business', '0')
     conn = get_db_connection()
     now = datetime.now()
     cur_month = f"{now.year}-{now.month:02d}"
@@ -1571,8 +1801,8 @@ def get_insights():
     exp_vis, exp_params = get_visible_clause('expenses', session['username'])
     # Current month spending
     cur_spend = float(conn.execute(
-        f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',date)=? AND {exp_vis}",
-        [cur_month] + exp_params).fetchone()[0])
+        f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',date)=? AND is_business=? AND {exp_vis}",
+        [cur_month, int(is_business)] + exp_params).fetchone()[0])
 
     # Forecast: linear projection
     if days_elapsed > 0:
@@ -1589,14 +1819,14 @@ def get_insights():
 
     # Category anomalies — compare current month vs 3-month average
     cur_cats = {r[0]: float(r[1]) for r in conn.execute(
-        f"SELECT category, SUM(amount) FROM expenses WHERE strftime('%Y-%m',date)=? AND {exp_vis} GROUP BY category",
-        [cur_month] + exp_params).fetchall()}
+        f"SELECT category, SUM(amount) FROM expenses WHERE strftime('%Y-%m',date)=? AND is_business=? AND {exp_vis} GROUP BY category",
+        [cur_month, int(is_business)] + exp_params).fetchall()}
 
     for cat, cur_amt in cur_cats.items():
         if not months: continue
         hist_rows = conn.execute(
-            f"SELECT COALESCE(AVG(monthly),0) FROM (SELECT SUM(amount) as monthly FROM expenses WHERE category=? AND strftime('%Y-%m',date) IN ({','.join('?'*len(months))}) AND {exp_vis} GROUP BY strftime('%Y-%m',date))",
-            [cat, *months] + exp_params).fetchone()
+            f"SELECT COALESCE(AVG(monthly),0) FROM (SELECT SUM(amount) as monthly FROM expenses WHERE category=? AND strftime('%Y-%m',date) IN ({','.join('?'*len(months))}) AND is_business=? AND {exp_vis} GROUP BY strftime('%Y-%m',date))",
+            [cat, *months, int(is_business)] + exp_params).fetchone()
         avg = float(hist_rows[0]) if hist_rows and hist_rows[0] else 0
         if avg > 10 and cur_amt > avg * 1.4:
             pct = round(((cur_amt - avg) / avg) * 100)
@@ -1652,8 +1882,8 @@ def get_insights():
         if sm == 0: sm = 12; sy -= 1
         mn = f"{sy}-{sm:02d}"
         inc_vis, inc_params = get_visible_clause('income', session['username'])
-        inc = float(conn.execute(f"SELECT COALESCE(SUM(amount),0) FROM income WHERE strftime('%Y-%m',date)=? AND {inc_vis}", [mn] + inc_params).fetchone()[0])
-        exp = float(conn.execute(f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',date)=? AND {exp_vis}", [mn] + exp_params).fetchone()[0])
+        inc = float(conn.execute(f"SELECT COALESCE(SUM(amount),0) FROM income WHERE strftime('%Y-%m',date)=? AND is_business=? AND {inc_vis}", [mn, int(is_business)] + inc_params).fetchone()[0])
+        exp = float(conn.execute(f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',date)=? AND is_business=? AND {exp_vis}", [mn, int(is_business)] + exp_params).fetchone()[0])
         if inc - exp > 0:
             streak += 1
         else:
@@ -1677,6 +1907,7 @@ def get_insights():
 @app.route('/api/stats/category-sparklines')
 @login_required
 def category_sparklines():
+    is_business = request.args.get('is_business', '0')
     conn = get_db_connection()
     now = datetime.now()
     # Last 6 months
@@ -1695,8 +1926,8 @@ def category_sparklines():
         vals = []
         for mn in months:
             v = conn.execute(
-                f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE category=? AND strftime('%Y-%m',date)=? AND {exp_vis}",
-                [cat, mn] + exp_params).fetchone()[0]
+                f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE category=? AND strftime('%Y-%m',date)=? AND is_business=? AND {exp_vis}",
+                [cat, mn, int(is_business)] + exp_params).fetchone()[0]
             vals.append(round(float(v), 2))
         result[cat] = {'months': months, 'values': vals}
     conn.close()
@@ -1829,10 +2060,11 @@ def advanced_search():
     amt_max= request.args.get('amt_max', '')
     limit  = int(request.args.get('limit', 100))
 
+    is_business = int(request.args.get('is_business', 0))
     sql = """SELECT id,date,category,description,amount,paid_by,payment_method,
                     receipt_filename,notes,currency,original_amount
-             FROM expenses WHERE 1=1"""
-    params = []
+             FROM expenses WHERE is_business=? AND 1=1"""
+    params = [is_business]
     if q:      sql += " AND (description LIKE ? OR notes LIKE ?)"; params += [f'%{q}%', f'%{q}%']
     if cat:    sql += " AND category=?"; params.append(cat)
     if person: sql += " AND paid_by=?"; params.append(person)
@@ -1845,9 +2077,8 @@ def advanced_search():
 
     conn = get_db_connection()
     rows = [dict(r) for r in conn.execute(sql, params).fetchall()]
-    total = float(conn.execute(
-        sql.replace("SELECT id,date,category,description,amount,paid_by,payment_method,receipt_filename,notes,currency,original_amount", "SELECT COALESCE(SUM(amount),0)").split("ORDER BY")[0],
-        params).fetchone()[0])
+    sum_sql = sql.replace("SELECT id,date,category,description,amount,paid_by,payment_method,receipt_filename,notes,currency,original_amount", "SELECT COALESCE(SUM(amount),0)").split("ORDER BY")[0]
+    total = float(conn.execute(sum_sql, params).fetchone()[0])
     conn.close()
     return jsonify({'data': rows, 'count': len(rows), 'total': round(total, 2)}), 200
 
@@ -2074,11 +2305,11 @@ def advisor_plan():
         username = session['username']
     
         # Gather data
-        income_rows = conn.execute("SELECT SUM(amount) as total FROM income WHERE strftime('%Y-%m', date) = ?", (month,)).fetchone()
+        income_rows = conn.execute("SELECT SUM(amount) as total FROM income WHERE strftime('%Y-%m', date) = ? AND is_business=0", (month,)).fetchone()
         income = income_rows['total'] or 0.0
     
         # Gather fixed bills
-        bills = conn.execute("SELECT name, amount FROM bills").fetchall()
+        bills = conn.execute("SELECT name, amount FROM bills WHERE is_business=0").fetchall()
         bill_str = ", ".join([f"{b['name']} (${b['amount']})" for b in bills]) or "None"
 
         # Gather accurate Credit Card data
@@ -2104,7 +2335,7 @@ def advisor_plan():
         loan_str = ", ".join(loan_list) or "None"
         
         # Gather Budgets
-        budgets = conn.execute("SELECT category, amount FROM budgets WHERE year = ? AND month = ?", (now.year, now.month)).fetchall()
+        budgets = conn.execute("SELECT category, amount FROM budgets WHERE year = ? AND month = ? AND is_business=0", (now.year, now.month)).fetchall()
         budget_str = ", ".join([f"{bg['category']} (${bg['amount']})" for bg in budgets]) or "None"
         
         conn.close()
@@ -2161,24 +2392,32 @@ Your response MUST be exclusively formatted in nice Markdown with clear headings
 @app.route('/api/stats/summary')
 @login_required
 def get_summary_stats():
+    is_business = request.args.get('is_business', '0')
     conn = get_db_connection()
     now = datetime.now()
     current_month = f"{now.year}-{now.month:02d}"
+    username = session['username']
+    exp_vis, exp_params = get_visible_clause('expenses', username)
+    inc_vis, inc_params = get_visible_clause('income', username)
+    bill_vis, bill_params = get_visible_clause('bills', username)
 
     def qval(sql, params=()):
         return float(conn.execute(sql, params).fetchone()[0])
 
-    total_expenses   = qval("SELECT COALESCE(SUM(amount),0) FROM expenses")
-    total_income     = qval("SELECT COALESCE(SUM(amount),0) FROM income")
-    monthly_expenses = qval("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',date)=?", (current_month,))
-    monthly_income   = qval("SELECT COALESCE(SUM(amount),0) FROM income WHERE strftime('%Y-%m',date)=?", (current_month,))
-    unpaid_bills     = qval("SELECT COALESCE(SUM(amount),0) FROM bills WHERE is_paid=0")
-    card_ids         = [r[0] for r in conn.execute("SELECT id FROM credit_cards").fetchall()]
+    total_expenses   = qval(f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE is_business=? AND {exp_vis}", [int(is_business)] + exp_params)
+    total_income     = qval(f"SELECT COALESCE(SUM(amount),0) FROM income WHERE is_business=? AND {inc_vis}", [int(is_business)] + inc_params)
+    monthly_expenses = qval(f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%Y-%m',date)=? AND is_business=? AND {exp_vis}", (current_month, int(is_business)) + tuple(exp_params))
+    monthly_income   = qval(f"SELECT COALESCE(SUM(amount),0) FROM income WHERE strftime('%Y-%m',date)=? AND is_business=? AND {inc_vis}", (current_month, int(is_business)) + tuple(inc_params))
+    unpaid_bills     = qval(f"SELECT COALESCE(SUM(amount),0) FROM bills WHERE is_paid=0 AND is_business=? AND {bill_vis}", [int(is_business)] + bill_params)
+    
+    cc_vis, cc_params = get_visible_clause('credit_cards', username)
+    card_ids         = [r[0] for r in conn.execute(f"SELECT id FROM credit_cards WHERE {cc_vis}", cc_params).fetchall()]
     
     total_cc = sum(get_credit_card_balance(cid) for cid in card_ids)
     
     # Total Debt Payoff Projection (Simpler approximation)
-    all_loans = conn.execute("SELECT total_amount, monthly_payment, interest_rate, id FROM loans WHERE is_active=1").fetchall()
+    loan_vis, loan_params = get_visible_clause('loans', username)
+    all_loans = conn.execute(f"SELECT total_amount, monthly_payment, interest_rate, id FROM loans WHERE is_active=1 AND {loan_vis}", loan_params).fetchall()
     total_debt = total_cc
     total_monthly_pmt = 0
     max_months = 0
@@ -2222,22 +2461,29 @@ def get_summary_stats():
 @login_required
 def spending_by_category():
     month = request.args.get('month', datetime.now().strftime('%Y-%m'))
+    is_business = request.args.get('is_business', '0')
     conn = get_db_connection()
+    vis_clause, vis_params = get_visible_clause('expenses', session['username'])
     rows = conn.execute(
-        "SELECT category, SUM(amount) as total FROM expenses WHERE strftime('%Y-%m',date)=? GROUP BY category ORDER BY total DESC",
-        (month,)).fetchall()
+        f"SELECT category, SUM(amount) as total FROM expenses WHERE strftime('%Y-%m',date)=? AND is_business=? AND {vis_clause} GROUP BY category ORDER BY total DESC",
+        [month, int(is_business)] + vis_params).fetchall()
     conn.close()
     return jsonify({'data': [{'category': r[0], 'total': round(r[1],2)} for r in rows]}), 200
 
 @app.route('/api/stats/monthly-trend')
 @login_required
 def monthly_trend():
+    is_business = request.args.get('is_business', '0')
     conn = get_db_connection()
+    exp_vis, exp_params = get_visible_clause('expenses', session['username'])
+    inc_vis, inc_params = get_visible_clause('income', session['username'])
     rows = conn.execute(
-        "SELECT strftime('%Y-%m',date) as month, SUM(amount) as expenses FROM expenses GROUP BY month ORDER BY month DESC LIMIT 12"
+        f"SELECT strftime('%Y-%m',date) as month, SUM(amount) as expenses FROM expenses WHERE is_business=? AND {exp_vis} GROUP BY month ORDER BY month DESC LIMIT 12",
+        [int(is_business)] + exp_params
     ).fetchall()
     irows = conn.execute(
-        "SELECT strftime('%Y-%m',date) as month, SUM(amount) as income FROM income GROUP BY month ORDER BY month DESC LIMIT 12"
+        f"SELECT strftime('%Y-%m',date) as month, SUM(amount) as income FROM income WHERE is_business=? AND {inc_vis} GROUP BY month ORDER BY month DESC LIMIT 12",
+        [int(is_business)] + inc_params
     ).fetchall()
     conn.close()
     exp_map = {r[0]: round(r[1],2) for r in rows}
