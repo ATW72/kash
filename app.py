@@ -2,6 +2,10 @@ import os
 import sys
 import sqlite3
 import datetime as dt
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, request, session, redirect, url_for, render_template, send_file
 from flask_cors import CORS
