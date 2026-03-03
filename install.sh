@@ -4,7 +4,7 @@
 # Inspired by the community helper scripts at tteck.github.io/Proxmox
 #
 # Usage (run on Proxmox HOST shell):
-#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/atw-kash/install.sh)"
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/main/install.sh)"
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -16,7 +16,7 @@ set -euo pipefail
 # ── GitHub source ─────────────────────────────────────────────────────────────
 GITHUB_USER="ATW72"
 GITHUB_REPO="kash"
-GITHUB_BRANCH="atw-kash"
+GITHUB_BRANCH="main"
 RELEASE_ZIP="https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/refs/heads/${GITHUB_BRANCH}.zip"
 RAW_BASE="https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}"
 
@@ -460,7 +460,7 @@ post_install() {
   echo -e "${TAB}  Stop LXC     → ${BL}pct stop ${CTID}${CL}"
   echo ""
   echo -e "${TAB}${YW}To update Kash:${CL}"
-  echo -e "${TAB}  ${BL}bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/atw-kash/update.sh)\"${CL}"
+  echo -e "${TAB}  ${BL}bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/main/update.sh)\"${CL}"
   echo ""
   echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}\n"
 }

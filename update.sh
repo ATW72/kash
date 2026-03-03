@@ -4,7 +4,7 @@
 # Run this from your Proxmox HOST shell to update an existing deployment
 #
 # Usage:
-#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/atw-kash/update.sh)"
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/main/update.sh)"
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -19,7 +19,7 @@ CROSS="${RD}✗${CL}"
 INFO="${YW}●${CL}"
 TAB="  "
 
-RELEASE_ZIP="https://github.com/ATW72/kash/archive/refs/heads/atw-kash.zip"
+RELEASE_ZIP="https://github.com/ATW72/kash/archive/refs/heads/main.zip"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"  # Set via env var or prompted below
 
 msg_info()  { echo -e "${TAB}${INFO} ${1}..."; }
