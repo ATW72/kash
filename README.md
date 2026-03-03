@@ -1,10 +1,10 @@
-# Kash — Private Household Finance Tracker
+# Kash — Private Household & Business Finance Tracker
 
 > *Private. Simple. Yours.*
 
-A full-featured, self-hosted household finance tracker built for Proxmox LXC.
-Track spending, income, bills, budgets, and savings goals — with email notifications,
-multi-user support, bank statement import, AI categorization, and a native-quality mobile experience.
+A full-featured, self-hosted household **and business** finance tracker built for Proxmox LXC.
+Track spending, income, bills, budgets, savings goals, and invoices — with dual personal/business mode,
+email notifications, multi-user support, bank statement import, AI categorization, and a native-quality mobile experience.
 
 ---
 
@@ -23,9 +23,9 @@ multi-user support, bank statement import, AI categorization, and a native-quali
 
 ### Dashboard Charts
 - **12-Month Trend** — income vs expenses as dual area lines over the last year
-- **Income vs Spending** — full-width area chart showing the gap between what you earn and spend each month — the gap is your savings margin, visualised
-- **Spending Breakdown** — donut chart of spending by category this month; click any segment to filter expenses by that category
-- **Sparklines** — tiny inline trend lines on every stat card showing the last 12 months at a glance; spending trends red, savings trend teal
+- **Income vs Spending** — full-width area chart showing the gap between what you earn and spend each month
+- **Spending Breakdown** — donut chart of spending by category this month; click any segment to filter expenses
+- **Sparklines** — tiny inline trend lines on every stat card showing the last 12 months at a glance
 - **Cumulative Savings** — running total of net savings over time
 
 ### Spending
@@ -80,82 +80,147 @@ multi-user support, bank statement import, AI categorization, and a native-quali
 - **Duplicate skipping** — same date + description + amount is silently skipped
 - **AI categorization** — connect a local Ollama instance for smarter categorization
 
-### AI Integration (Ollama)
-- Connect to a local Ollama instance running on your network. **Data never leaves your network.**
-- **Smart Categorization** — Transaction descriptions from CSV imports auto-categorized by a local LLM.
-- **AI Advisor** — Generates a personalized markdown-formatted financial plan and debt-payoff strategy based on your real monthly income, bills, and budget limits.
-- Recommended model: `llama3.1:8b` (runs well on CPU-only hardware, though GPU is recommended for <5s response times).
-- Configure in the Import tab or set `OLLAMA_URL` in `.env`
+---
 
-### Email Notifications (per user)
-- Bill due in 7 days — early warning
-- Bill due in 3 days — final reminder
-- Budget at 80% or exceeded
-- Monthly summary on the 1st of each month
-- Each user configures their own email and alert preferences
+## 💼 Business Mode
 
-### Privacy & Sharing
+A fully isolated, dual-mode experience that keeps personal and business finances completely separate.
+
+### Switching Modes
+- **"Business" tab** in the top navigation — activates a deep purple theme system-wide
+- **"Biz" shortcut** in the mobile bottom navigation — one tap to Business from anywhere
+- **"Business Mode" badge** appears in the header when active
+
+### Business Overview Stats
+- **Revenue, Expenses, Net Profit, Profit Margin, Est. Tax Reserve** — animated counter cards
+- All stats are 100% isolated from personal data at the database level
+
+### Cash Flow Chart
+- Bar chart: Revenue vs Expenses for the last 6 months
+- **Golden Net Profit trend line** overlaid — shows profitability trend at a glance
+
+### Business Budget Tracking
+- Set category budgets specific to your business
+- Animated progress bars with color coding: 🟣 on track → 🟡 75%+ used → 🔴 over budget
+- **Budget alert banner** appears at the top of the Business tab when any category hits ≥80%
+
+### Invoice Generator 🧾
+- **Create invoices** — client name, email, issue/due date, line items, tax rate, notes
+- **Live totals** — subtotal, tax, and total update as you type
+- **Preview modal** — branded purple-gradient invoice preview
+- **Print / Save PDF** — browser-native print to PDF
+- **Invoice history** — list of all invoices with DRAFT / SENT / PAID status badges
+- **Mark as Paid** — one-click status update
+- **Auto invoice numbering** — `INV-YYYYMM-001` format
+
+### Business CSV Export
+- Download all business income & expenses as a formatted CSV
+- Button in the Invoice Generator card header
+
+### Business Income & Expenses
+- Full add/edit/delete for business-specific income and expenses
+- Category system separate from personal categories
+
+### Business AI Advisor
+- Powered by your local Ollama instance
+- Analyzes your real business revenue, expenses, and margin
+- Generates a plain-English business health summary and recommendations
+- Supports US states and France for tax context
+
+---
+
+## 📧 Email Notifications (per user)
+
+All alerts are sent daily at 8am via the built-in scheduler.
+
+| Alert | Trigger |
+|---|---|
+| Bill due in 7 days | Early warning |
+| Bill due in 3 days | Final reminder |
+| Bill overdue | Immediate |
+| Personal budget ≥80% | Daily check |
+| **Business budget ≥80%** | Daily check (purple-branded email) |
+| **Invoice overdue** | Daily — any unpaid invoice past its due date (red-branded email) |
+| Monthly summary | 1st of each month |
+
+Each user configures their own email address and which alerts to receive in Profile Settings.
+
+---
+
+## 🔐 Privacy & Sharing
 - **Private by default** — every record is only visible to the user who created it
 - **Opt-in sharing** — share any expense, income, credit card, bill, budget, or savings goal with specific users
 - Shared users get view and edit access
-- **Mine Only toggle** on every list — filter to just your own records at any time
-- Shared items show a badge with the owner's name
+- **Mine Only toggle** on every list — filter to just your own records
 - Only the owner can share or unshare a record
 
-### Multi-User & User Management
-- Admin creates accounts — users never self-register (keeps your app private)
-- **Invite by email** — admin enters username, display name, and email; Kash auto-generates a secure temporary password and emails it to the user
-- **Forced password change** — new users must set their own password on first login
+## 👥 Multi-User & User Management
+- Admin creates accounts — users never self-register
+- **Invite by email** — auto-generates a secure temporary password and emails the new user
+- **Forced password change** on first login
 - Admin can edit any user: username, display name, email, admin role, or reset password
-- Users with a temp password show a Temp badge in the users list
 - Unlimited users with individual logins and per-user notification settings
 
-### Spending Insights & Forecast
+## 🔒 Security
+- **Two-Factor Authentication (2FA)** — TOTP authenticator app support
+- **Google OAuth** — optional Google Sign-In
+- Password hashing with `pbkdf2:sha256`
+- Session management with Flask secure cookies
+
+## 📊 Spending Insights & Forecast
 - **Month-end forecast** — projects total spending based on current daily pace
 - **Anomaly detection** — alerts when a category is 40%+ above your 3-month average
 - **Savings streaks** — tracks consecutive months where you saved money
 - **Largest expense** highlight each month
 
-### Advanced Search & Filter
+## 🔍 Advanced Search & Filter
 - **Desktop** — real-time search bar in the header across expenses, income, and bills
 - **Mobile** — tap the search icon for a full-screen search overlay
 - Filter expenses by keyword, person, payment method, amount range, and date simultaneously
 
-### Bill Splitting
+## ✂️ Bill Splitting
 - Split any expense evenly, by percentage, or by custom amount
 - **Who Owes What** dashboard card shows outstanding balances at a glance
 - One-click settle for any person
 
-### Audit Trail
+## 📋 Audit Trail
 - Every expense create, edit, and delete is logged with who, what, and when
 - Filterable audit log visible to admins
 
-### Backup & Restore
+## 💾 Backup & Restore
 - One-click JSON backup of all data
 - Full restore from backup after a reinstall
 
-### Onboarding Wizard
+## 🧭 Onboarding Wizard
 - First-time users are guided through setup: currency, first budget, first bill, notifications
 - Each step can be skipped individually
 
-### Mobile / PWA — Native Quality
-- **Priority bottom navigation** — Dashboard, Spending, Bills, Income, + More (ordered by daily use)
+---
+
+## 📱 Mobile / PWA — Native Quality
+- **Priority bottom navigation** — Dashboard, Spending, Bills, Income, Biz, + More (ordered by daily use)
+- **"Biz" purple shortcut** — dedicated Business Mode button in the mobile bottom nav
 - **More drawer** — Budgets, Cards, Reports, Currencies, Import, Widgets, Account — slides up from the bottom
-- **Swipe-to-close drawers** — profile, widget, and more menus can be swiped down to close intuitively on touch screens
+- **Swipe-to-close drawers** — profile, widget, and more menus can be swiped down to close on touch screens
 - **Full-screen search overlay** — tap the search icon in the header for full-width search
 - **iPhone safe area support** — proper padding for notch and home indicator
 - **Swipeable tables** — horizontal scroll on all data tables
 - **Slide-up modals** — modals animate from the bottom on mobile
 - Install as a home screen app on iPhone and Android
 
-### Design
-- **Midnight Teal palette** — deep navy (#0a2540 → #0d3d52) with electric teal (#00d4aa) accents
-- **Outlined K wordmark** — custom SVG logo where the K is a teal outline, unique to Kash
-- **Pixel-Perfect Emails** — uses a transparent, raw GitHub-hosted PNG of the logo to bypass aggressive CSS/SVG stripping in enterprise email clients like Gmail and Outlook
-- **Inline SVG icons** — all icons are self-contained inline SVGs, zero CDN dependency, fully offline-capable
-- **DM Sans font** — loaded via Google Fonts CDN (`fonts.googleapis.com`), with a system font fallback (SF Pro, Segoe UI, Roboto) if the CDN is unavailable
-- **Dark mode** — warm deep navy palette (`#14233a` background, `#213348` cards) rather than pitch-black, preserving the teal accent depth
-- Dark mode persists across sessions including PWA mode
+---
+
+## 🎨 Design
+- **Midnight Teal palette** — deep navy (`#0a2540` → `#0d3d52`) with electric teal (`#00d4aa`) accents
+- **Business Mode** — deep purple theme (`#4c1d95` → `#7c3aed`) activates when Business tab is open
+- **Dual-theme context switching** — the entire header color changes based on personal vs business mode
+- **"Business Mode" badge** — appears in the header as a visual indicator
+- **Glassmorphism cards** — frosted glass card styling throughout
+- **Animated stat counters** — numbers count up smoothly when the Business tab loads
+- **Pixel-Perfect Emails** — branded HTML emails with inline styles; purple for business alerts, red for invoice overdue
+- **Inline SVG icons** — all icons are self-contained inline SVGs, zero CDN dependency
+- **DM Sans font** — loaded via Google Fonts CDN, with system font fallback
+- **Dark mode** — warm deep navy palette, persists across sessions including PWA mode
 
 ---
 
@@ -178,7 +243,7 @@ The installer will prompt you for:
 - **CPU, RAM, disk** — defaults to 1 core / 2048MB / 16GB
 - **Admin username & password** — your Kash login
 - **Gmail address & app password** — optional, for email notifications
-- **Ollama URL** — optional, for AI transaction categorization
+- **Ollama URL** — optional, for AI categorization and Business Advisor
 
 It then automatically:
 1. Creates a Debian LXC with recommended resources
@@ -214,8 +279,6 @@ All icons are inline SVGs and require no network access. The app font falls back
 | RAM | 1024MB | **2048MB** | Headroom for Gunicorn workers, APScheduler, Flask-Mail |
 | Disk | 4GB | **16GB** | Receipt photos add up — future-proofed for years of use |
 
-The install script defaults to **1 core / 2048MB RAM / 16GB disk**.
-
 ### Resizing an Existing Container
 
 ```bash
@@ -224,14 +287,12 @@ pct resize 121 rootfs 16G
 pct reboot 121
 ```
 
-Replace `121` with your container ID. No data is touched.
-
 ---
 
 ## Updating
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/main/update.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ATW72/kash/atw-kash/update.sh)"
 ```
 
 Or manually:
@@ -239,12 +300,12 @@ Or manually:
 ```bash
 pct exec 121 -- bash -c "
   cd /tmp &&
-  wget -q https://github.com/ATW72/kash/archive/refs/heads/main.zip -O kash.zip &&
+  wget -q https://github.com/ATW72/kash/archive/refs/heads/atw-kash.zip -O kash.zip &&
   unzip -o kash.zip &&
-  cp -r kash-main/* /opt/kash/ &&
+  cp -r kash-atw-kash/* /opt/kash/ &&
   chown -R appuser:appuser /opt/kash &&
   systemctl restart kash &&
-  rm -rf /tmp/kash-main /tmp/kash.zip &&
+  rm -rf /tmp/kash-atw-kash /tmp/kash.zip &&
   echo Done
 "
 ```
@@ -265,7 +326,7 @@ MAIL_FROM_NAME=Kash
 ```
 
 3. `pct exec 121 -- systemctl restart kash`
-4. Each user adds their email in Account → Notification Settings
+4. Each user adds their email in Profile → Notification Settings
 
 ---
 
@@ -282,6 +343,7 @@ OLLAMA_MODEL=llama3.1:8b
 
 4. `pct exec 121 -- systemctl restart kash`
 5. The Import tab will show a green Ollama connected status
+6. The Business AI Advisor will be available in the Business tab
 
 **Recommended hardware for Ollama:**
 - CPU-only: 16GB+ RAM, 4+ cores (llama3.1:8b uses ~5GB RAM)
@@ -311,7 +373,7 @@ OLLAMA_MODEL=llama3.1:8b
 | `MAIL_USERNAME` | *(empty)* | Gmail address |
 | `MAIL_PASSWORD` | *(empty)* | Gmail app password |
 | `MAIL_FROM_NAME` | `Kash` | Sender display name |
-| `OLLAMA_URL` | *(empty)* | Ollama instance URL for AI categorization |
+| `OLLAMA_URL` | *(empty)* | Ollama instance URL for AI features |
 | `OLLAMA_MODEL` | `llama3.1:8b` | Ollama model to use |
 
 ---
@@ -321,6 +383,7 @@ OLLAMA_MODEL=llama3.1:8b
 ```bash
 git clone https://github.com/ATW72/kash.git
 cd kash
+git checkout atw-kash
 pip install -r requirements.txt
 export APP_DATABASE_PATH=./data/expenses.db
 export APP_LOGIN_USERNAME=admin
@@ -340,10 +403,12 @@ python main.py
 | Database | SQLite |
 | Frontend | Vanilla JS, Chart.js, Inline SVG icons |
 | Email | Flask-Mail (Gmail SMTP) |
-| Scheduler | APScheduler |
+| Scheduler | APScheduler (daily 8am notifications) |
 | AI | Ollama (local LLM, optional) |
 | Deployment | Systemd on Debian LXC (Proxmox) |
 | PWA | Web App Manifest + Service Worker |
+| 2FA | PyOTP (TOTP) |
+| OAuth | Authlib (Google Sign-In, optional) |
 
 ---
 
