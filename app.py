@@ -471,8 +471,10 @@ def log_audit(conn, action, table_name, record_id, changes=None):
 
 def get_visible_clause(table_name, username, alias=''):
     """Returns a WHERE clause fragment and params that filters to records
-    owned by username OR shared with username. Admins no longer see all by default."""
+    owned by username OR shared with username. Admins see all."""
     tbl = f"{alias}." if alias else ""
+    if session.get('is_admin'):
+        return "1=1", []
     # Only records owned by the user or explicitly shared are visible.
     clause = f"({tbl}owner = ? OR id IN (SELECT record_id FROM sharing WHERE table_name=? AND shared_with=?))"
     params = [username, table_name, username]
@@ -484,8 +486,7 @@ def is_owner_or_shared(conn, table_name, record_id, username):
     if not row:
         return False, False  # not found
     owner = row['owner'] or ''
-    # Tightened: Admin no longer bypasses this, and empty/null owners are not automatically 'owned'
-    if owner != '' and owner == username:
+    if owner == '' or owner == username:
         return True, True  # owner
     shared = conn.execute(
         "SELECT can_edit FROM sharing WHERE table_name=? AND record_id=? AND shared_with=?",
@@ -832,7 +833,7 @@ def get_income():
     username  = session['username']
     conn = get_db_connection()
     if mine_only:
-        q = "SELECT * FROM income WHERE owner=?"; params = [username]
+        q = "SELECT * FROM income WHERE (owner=? OR owner='')"; params = [username]
     else:
         vis_clause, params = get_visible_clause('income', username)
         q = f"SELECT * FROM income WHERE {vis_clause}"
@@ -984,48 +985,23 @@ def create_cc_payment(cid):
 @login_required
 def update_credit_card(cid):
     data = request.json or {}
-    try:
-        conn = get_db_connection()
-        # Ownership check
-        can_see, can_edit = is_owner_or_shared(conn, 'credit_cards', cid, session['username'])
-        if not can_see:
-            conn.close()
-            return jsonify({'error': 'Credit card not found'}), 404
-        if not can_edit:
-            conn.close()
-            return jsonify({'error': 'Permission denied'}), 403
-
-        c = conn.cursor()
-        # NOTE: We do NOT update the owner to prevent unauthorized reassignments
-        c.execute("UPDATE credit_cards SET card_name=?,credit_limit=?,manual_balance=?,starting_balance=?,interest_rate=? WHERE id=?",
-                  (data.get('card_name'), data.get('credit_limit'), data.get('manual_balance'), data.get('starting_balance', 0), data.get('interest_rate', 0), cid))
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("UPDATE credit_cards SET owner=?,card_name=?,credit_limit=?,manual_balance=?,starting_balance=?,interest_rate=? WHERE id=?",
+              (data.get('owner'), data.get('card_name'), data.get('credit_limit'), data.get('manual_balance'), data.get('starting_balance', 0), data.get('interest_rate', 0), cid))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True}), 200
 
 
 @app.route('/api/credit-cards/<int:cid>', methods=['DELETE'])
 @login_required
 def delete_credit_card(cid):
-    try:
-        conn = get_db_connection()
-        # Ownership check
-        can_see, can_edit = is_owner_or_shared(conn, 'credit_cards', cid, session['username'])
-        if not can_see:
-            conn.close()
-            return jsonify({'error': 'Credit card not found'}), 404
-        if not can_edit:
-            conn.close()
-            return jsonify({'error': 'Permission denied'}), 403
-
-        conn.execute("DELETE FROM credit_cards WHERE id=?", (cid,))
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    conn = get_db_connection()
+    conn.execute("DELETE FROM credit_cards WHERE id=?", (cid,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True}), 200
 
 # ── Budgets ───────────────────────────────────────────────────────────────────
 
@@ -1352,17 +1328,10 @@ def apply_rollover():
 @login_required
 def get_savings_goals():
     conn = get_db_connection()
-    username = session['username']
-    
-    vis_clause, vis_params = get_visible_clause('savings_goals', username)
-    goals = [dict(r) for r in conn.execute(f"SELECT * FROM savings_goals WHERE {vis_clause} ORDER BY target_date", vis_params).fetchall()]
-    
-    # Calculate current savings (total income - total expenses) restricted to user
-    inc_vis, inc_params = get_visible_clause('income', username)
-    exp_vis, exp_params = get_visible_clause('expenses', username)
-    
-    total_income = conn.execute(f"SELECT COALESCE(SUM(amount),0) FROM income WHERE is_business=0 AND {inc_vis}", inc_params).fetchone()[0]
-    total_expenses = conn.execute(f"SELECT COALESCE(SUM(amount),0) FROM expenses WHERE is_business=0 AND {exp_vis}", exp_params).fetchone()[0]
+    goals = [dict(r) for r in conn.execute("SELECT * FROM savings_goals ORDER BY target_date").fetchall()]
+    # Calculate current savings (total income - total expenses)
+    total_income = conn.execute("SELECT COALESCE(SUM(amount),0) FROM income WHERE is_business=0").fetchone()[0]
+    total_expenses = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE is_business=0").fetchone()[0]
     current_savings = float(total_income) - float(total_expenses)
     conn.close()
     for g in goals:
@@ -1565,11 +1534,15 @@ def create_loan_payment(lid):
         conn.commit()
         conn.close()
         return jsonify({'success': True}), 201
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+        loan = c.execute("SELECT loan_name, category FROM loans WHERE id=?", (lid,)).fetchone()
+        c.execute("""INSERT INTO expenses (date, category, description, amount, paid_by, notes) 
+                     VALUES (?,?,?,?,?,?)""",
+                  (data['date'], loan['category'] or 'Bills', f"Payment: {loan['loan_name']}", 
+                   float(data['amount']), session['username'], data.get('notes')))
+        
+    conn.commit()
     conn.close()
     return jsonify({'success': True}), 201
 
@@ -2817,24 +2790,15 @@ def export_expenses_excel():
 @admin_required
 def backup_data():
     conn = get_db_connection()
-    username = session['username']
-    
-    def get_data(table, order_by=''):
-        vis_clause, vis_params = get_visible_clause(table, username)
-        sql = f"SELECT * FROM {table} WHERE {vis_clause}"
-        if order_by:
-            sql += f" ORDER BY {order_by}"
-        return [dict(r) for r in conn.execute(sql, vis_params).fetchall()]
-
     data = {
         'version': '3.4',
         'exported_at': datetime.now().isoformat(),
-        'expenses':     get_data('expenses', 'date'),
-        'income':       get_data('income', 'date'),
-        'credit_cards': get_data('credit_cards'),
-        'budgets':      get_data('budgets'),
-        'bills':        get_data('bills'),
-        'recurring':    get_data('recurring_transactions'),
+        'expenses':     [dict(r) for r in conn.execute("SELECT * FROM expenses ORDER BY date").fetchall()],
+        'income':       [dict(r) for r in conn.execute("SELECT * FROM income ORDER BY date").fetchall()],
+        'credit_cards': [dict(r) for r in conn.execute("SELECT * FROM credit_cards").fetchall()],
+        'budgets':      [dict(r) for r in conn.execute("SELECT * FROM budgets").fetchall()],
+        'bills':        [dict(r) for r in conn.execute("SELECT * FROM bills").fetchall()],
+        'recurring':    [dict(r) for r in conn.execute("SELECT * FROM recurring_transactions").fetchall()],
         'categories':   [dict(r) for r in conn.execute("SELECT * FROM categories").fetchall()],
     }
     conn.close()
@@ -2965,7 +2929,7 @@ def mail_status():
 @admin_required
 def get_users():
     conn = get_db_connection()
-    rows = [dict(r) for r in conn.execute("SELECT id,username,is_admin,display_name,created_at,must_change_password FROM users").fetchall()]
+    rows = [dict(r) for r in conn.execute("SELECT id,username,is_admin,display_name,email,created_at,must_change_password FROM users").fetchall()]
     conn.close()
     return jsonify({'data': rows}), 200
 
