@@ -471,11 +471,10 @@ def log_audit(conn, action, table_name, record_id, changes=None):
 
 def get_visible_clause(table_name, username, alias=''):
     """Returns a WHERE clause fragment and params that filters to records
-    owned by username OR shared with username. Admins see all."""
+    owned by username OR shared with username."""
     tbl = f"{alias}." if alias else ""
-    if session.get('is_admin'):
-        return "1=1", []
     # Only records owned by the user or explicitly shared are visible.
+    # Admins are scoped to their own data just like regular users.
     clause = f"({tbl}owner = ? OR id IN (SELECT record_id FROM sharing WHERE table_name=? AND shared_with=?))"
     params = [username, table_name, username]
     return clause, params
