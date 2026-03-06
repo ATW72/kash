@@ -322,6 +322,15 @@ def init_db():
         except Exception:
             pass
 
+    # Backfill owner for old records if empty (essential for visibility filter)
+    try:
+        c.execute("UPDATE recurring_transactions SET owner = person WHERE (owner = '' OR owner IS NULL) AND person != ''")
+        c.execute("UPDATE expenses SET owner = paid_by WHERE (owner = '' OR owner IS NULL) AND paid_by != ''")
+        c.execute("UPDATE income SET owner = received_by WHERE (owner = '' OR owner IS NULL) AND received_by != ''")
+        conn.commit()
+    except Exception:
+        pass
+
     # Create indexes for sharing lookups
     for sql in [
         "CREATE INDEX IF NOT EXISTS idx_sharing_table_record ON sharing(table_name, record_id)",
