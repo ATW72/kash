@@ -243,6 +243,11 @@ def init_db():
         changes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
 
+    c.execute("""CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+
     c.execute("""CREATE TABLE IF NOT EXISTS currencies (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         code TEXT NOT NULL UNIQUE,
@@ -2505,7 +2510,13 @@ Reply with ONLY a JSON array like: ["Groceries","Dining Out","Transportation"]""
 @login_required
 def ollama_status():
     """Check if Ollama is configured and reachable."""
+    # Prefer env var → DB setting
     ollama_url = Config.OLLAMA_URL
+    if not ollama_url:
+        conn = get_db_connection()
+        row = conn.execute("SELECT value FROM app_settings WHERE key='ollama_url'").fetchone()
+        conn.close()
+        ollama_url = row['value'] if row else ''
     if not ollama_url:
         return jsonify({'configured': False, 'url': ''}), 200
     import urllib.request
@@ -2518,7 +2529,232 @@ def ollama_status():
     except:
         return jsonify({'configured': True, 'url': ollama_url, 'reachable': False}), 200
 
+@app.route('/api/settings/ollama', methods=['GET'])
+@login_required
+def get_ollama_settings():
+    """Return Ollama URL and model from DB (falling back to env vars)."""
+    conn = get_db_connection()
+    def _get(key, default=''):
+        row = conn.execute('SELECT value FROM app_settings WHERE key=?', (key,)).fetchone()
+        return row['value'] if row else default
+    url   = _get('ollama_url',   Config.OLLAMA_URL)
+    model = _get('ollama_model', Config.OLLAMA_MODEL or 'llama3.1:8b')
+    conn.close()
+    return jsonify({'url': url, 'model': model}), 200
+
+@app.route('/api/settings/ollama', methods=['POST'])
+@login_required
+def save_ollama_settings():
+    """Persist Ollama URL and model to the DB."""
+    data  = request.json or {}
+    url   = data.get('url', '').strip()
+    model = data.get('model', 'llama3.1:8b').strip()
+    conn  = get_db_connection()
+    conn.execute('INSERT INTO app_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP',
+                 ('ollama_url', url))
+    conn.execute('INSERT INTO app_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP',
+                 ('ollama_model', model))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True}), 200
+
+# ── Payslip Import ────────────────────────────────────────────────────────────
+
+@app.route('/api/import/payslip', methods=['POST'])
+@login_required
+def import_payslip():
+    """Upload a PDF payslip, extract text, parse with Ollama."""
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    f = request.files['file']
+    if not f.filename.lower().endswith('.pdf'):
+        return jsonify({'error': 'Only PDF files are supported'}), 400
+
+    # Extract text from PDF
+    try:
+        import pdfplumber, io
+        pdf_bytes = f.read()
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            raw_text = '\n'.join(
+                page.extract_text() or '' for page in pdf.pages
+            ).strip()
+        if not raw_text:
+            return jsonify({'error': 'Could not extract text from PDF — it may be a scanned image'}), 400
+    except Exception as e:
+        return jsonify({'error': f'PDF parsing failed: {str(e)}'}), 500
+
+    # Send to Ollama — prefer env var → DB → error
+    def _db_setting(key, default=''):
+        conn2 = get_db_connection()
+        row = conn2.execute('SELECT value FROM app_settings WHERE key=?', (key,)).fetchone()
+        conn2.close()
+        return row['value'] if row else default
+
+    ollama_url = Config.OLLAMA_URL or _db_setting('ollama_url')
+    if not ollama_url:
+        return jsonify({'error': 'Ollama is not configured. Enter your Ollama URL in the Import → AI Categorization settings and click Save & Test.'}), 400
+
+    import urllib.request, json as jsonlib, re
+
+    prompt = f"""You are a payslip parser. Extract the following fields from this payslip and return ONLY valid JSON, no other text.
+
+Fields to extract:
+- pay_date: ISO date string (YYYY-MM-DD), best guess if not explicit
+- employer: company name string
+- gross_pay: float (total gross earnings before deductions)
+- net_pay: float (take-home / net pay amount)
+- deductions: array of objects, each with:
+  - label: string (exact label from payslip)
+  - amount: float (positive number)
+  - category: one of "Taxes", "Healthcare", "Insurance", "Retirement", "Other"
+  - is_recurring: boolean (true if this is a fixed monthly deduction like insurance, false for variable taxes)
+
+Important:
+- Include ALL deductions found (federal tax, state tax, social security, medicare, health insurance, dental, vision, 401k, auto insurance, etc.)
+- Taxes (federal, state, SS, medicare) should have is_recurring: false
+- Insurance, 401k, fixed benefit deductions should have is_recurring: true
+- Return ONLY the JSON object, no markdown, no explanation.
+
+Payslip text:
+{raw_text[:4000]}"""
+    ollama_model = Config.OLLAMA_MODEL or request.form.get('ollama_model', 'llama3.1:8b').strip()
+
+    try:
+        payload = jsonlib.dumps({
+            'model': ollama_model,
+            'prompt': prompt,
+            'stream': False
+        }).encode('utf-8')
+
+        url = ollama_url.rstrip('/')
+        if not url.endswith('/api/generate'):
+            url = f"{url}/api/generate"
+        req = urllib.request.Request(
+            url, data=payload,
+            headers={'Content-Type': 'application/json'}, method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            result = jsonlib.loads(resp.read())
+        response_text = result.get('response', '').strip()
+
+        # Extract JSON from response (handle any surrounding text)
+        match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if not match:
+            return jsonify({'error': 'Ollama could not parse the payslip — try a clearer PDF'}), 500
+        parsed = jsonlib.loads(match.group())
+    except Exception as e:
+        return jsonify({'error': f'Ollama parsing failed: {str(e)}'}), 500
+
+    return jsonify({'success': True, 'data': parsed}), 200
+
+
+@app.route('/api/import/payslip/confirm', methods=['POST'])
+@login_required
+def confirm_payslip_import():
+    """Save parsed payslip data as income + expense records + optional recurring."""
+    data        = request.json or {}
+    pay_date        = data.get('pay_date', '')
+    employer        = data.get('employer', 'Employer')
+    gross_pay       = float(data.get('gross_pay', 0))
+    net_pay         = float(data.get('net_pay', 0))
+    deductions      = data.get('deductions', [])
+    recurring_income = data.get('recurring_income', {})
+    username         = session['username']
+
+    if not pay_date or gross_pay <= 0:
+        return jsonify({'error': 'Invalid pay date or gross pay'}), 400
+
+    conn = get_db_connection()
+    income_id = None
+    expense_ids = []
+    recurring_created = []
+
+    try:
+        # 1. Create income record for gross pay
+        cur = conn.execute(
+            """INSERT INTO income (date, source, description, amount, received_by, notes, owner)
+               VALUES (?,?,?,?,?,?,?)""",
+            (pay_date, employer, f'Payslip — {employer}', gross_pay,
+             username, 'Imported from payslip', username)
+        )
+        income_id = cur.lastrowid
+
+        # 1b. Optionally set up recurring income
+        if recurring_income.get('enabled') and net_pay > 0:
+            freq  = recurring_income.get('frequency', 'biweekly')
+            label = recurring_income.get('label') or f'Paycheck — {employer}'
+            existing_ri = conn.execute(
+                "SELECT id FROM recurring_transactions WHERE description=? AND type='income' AND (owner=? OR person=?)",
+                (label, username, username)
+            ).fetchone()
+            if not existing_ri:
+                from datetime import date, timedelta
+                # next occurrence = pay_date + frequency offset
+                try:
+                    base = date.fromisoformat(pay_date)
+                except Exception:
+                    base = date.today()
+                offset_map = {'weekly': 7, 'biweekly': 14, 'semimonthly': 15, 'monthly': 30}
+                days_ahead = offset_map.get(freq, 14)
+                next_dt = base + timedelta(days=days_ahead)
+                conn.execute(
+                    """INSERT INTO recurring_transactions
+                       (type, frequency, next_date, description, amount, category, person, is_active, owner)
+                       VALUES ('income',?,?,?,?,?,?,1,?)""",
+                    (freq, next_dt.strftime('%Y-%m-%d'), label, net_pay, 'Income', username, username)
+                )
+                recurring_created.append(label)
+
+        # 2. Create expense records for each selected deduction
+        for ded in deductions:
+            label  = ded.get('label', 'Deduction')
+            amount = float(ded.get('amount', 0))
+            cat    = ded.get('category', 'Other')
+            if amount <= 0:
+                continue
+            cur2 = conn.execute(
+                """INSERT INTO expenses (date, category, description, amount, paid_by, notes, owner)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (pay_date, cat, label, amount, username, 'Payslip deduction', username)
+            )
+            expense_ids.append(cur2.lastrowid)
+
+            # Auto-create recurring transaction for every deduction (biweekly like the paycheck)
+            existing = conn.execute(
+                "SELECT id FROM recurring_transactions WHERE description=? AND type='expense' AND (owner=? OR person=?)",
+                (label, username, username)
+            ).fetchone()
+            if not existing:
+                from datetime import date, timedelta
+                try:
+                    base = date.fromisoformat(pay_date)
+                except Exception:
+                    base = date.today()
+                next_dt = base + timedelta(days=14)
+                conn.execute(
+                    """INSERT INTO recurring_transactions
+                       (type, frequency, next_date, description, amount, category, person, is_active, owner)
+                       VALUES ('expense','biweekly',?,?,?,?,?,1,?)""",
+                    (next_dt.strftime('%Y-%m-%d'), label, amount, cat, username, username)
+                )
+                recurring_created.append(label)
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': f'Import failed: {str(e)}'}), 500
+
+    conn.close()
+    return jsonify({
+        'success': True,
+        'income_created': 1,
+        'expenses_created': len(expense_ids),
+        'recurring_created': recurring_created
+    }), 200
+
 # ── AI Advisor ────────────────────────────────────────────────────────────────
+
 @app.route('/api/advisor/plan', methods=['GET'])
 @login_required
 def advisor_plan():

@@ -5521,6 +5521,122 @@
 
     <!-- ── Import Tab ── -->
     <div class="tab-content" id="import-tab">
+
+      <!-- ══ PAYSLIP IMPORT CARD ══ -->
+      <div class="glass-card" style="max-width:900px;margin-bottom:1.5rem;">
+        <div
+          style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;">
+          <div>
+            <div class="card-title" style="margin-bottom:0.25rem;">
+              📄 Import Payslip
+            </div>
+            <div style="font-size:0.85rem;color:var(--text-secondary);">Upload a PDF payslip — Ollama AI will extract
+              gross pay, taxes, and deductions automatically.</div>
+          </div>
+          <div id="payslip-ollama-badge" class="ollama-status" style="display:none;">
+            <span class="ollama-dot green"></span>
+            <span>Ollama AI ready</span>
+          </div>
+        </div>
+
+        <!-- Step 1: Upload -->
+        <div id="payslip-step-1">
+          <div class="import-dropzone" id="payslip-dropzone"
+            onclick="document.getElementById('payslip-file-input').click()">
+            <div class="dz-icon">📄</div>
+            <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem;">Drop your payslip PDF here</div>
+            <div style="color:var(--text-secondary);font-size:0.85rem;">or click to browse — .pdf only</div>
+            <input type="file" id="payslip-file-input" accept=".pdf" style="display:none;"
+              onchange="handlePayslipFile(this.files[0])">
+          </div>
+          <div id="payslip-parse-status"
+            style="display:none;text-align:center;padding:1.5rem 0;color:var(--text-secondary);">
+            <div style="font-size:1.5rem;margin-bottom:0.5rem;">⏳</div>
+            <div>Parsing payslip with Ollama AI…</div>
+          </div>
+        </div>
+
+        <!-- Step 2: Review -->
+        <div id="payslip-step-2" style="display:none;">
+          <div
+            style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+            <strong>Review Payslip Data</strong>
+            <button class="btn-sm btn-secondary" onclick="resetPayslipImport()">↩ Start Over</button>
+          </div>
+
+          <!-- Summary header -->
+          <div
+            style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.25rem;">
+            <div
+              style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:0.75rem 1rem;">
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem;">PAY DATE</div>
+              <input type="date" id="ps-pay-date" class="form-control" style="padding:0.2rem 0.4rem;font-size:0.9rem;">
+            </div>
+            <div
+              style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:0.75rem 1rem;">
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem;">EMPLOYER</div>
+              <input type="text" id="ps-employer" class="form-control" style="padding:0.2rem 0.4rem;font-size:0.9rem;">
+            </div>
+            <div
+              style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:0.75rem 1rem;">
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem;">GROSS PAY</div>
+              <input type="number" id="ps-gross-pay" class="form-control" step="0.01"
+                style="padding:0.2rem 0.4rem;font-size:0.9rem;font-weight:600;">
+            </div>
+            <div
+              style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:0.75rem 1rem;">
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem;">NET PAY</div>
+              <input type="number" id="ps-net-pay" class="form-control" step="0.01"
+                style="padding:0.2rem 0.4rem;font-size:0.9rem;font-weight:600;color:var(--primary);">
+            </div>
+          </div>
+
+          <!-- Recurring income setup -->
+          <div
+            style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+            <label
+              style="display:flex;align-items:center;gap:0.4rem;font-size:0.875rem;font-weight:600;cursor:pointer;flex:1;">
+              <input type="checkbox" id="ps-rec-income" checked style="width:auto;accent-color:var(--primary);">
+              🔄 Set up as recurring income <span style="font-weight:400;color:var(--text-secondary);">(uses net pay
+                amount)</span>
+            </label>
+            <select id="ps-rec-income-freq" class="form-control"
+              style="width:auto;padding:0.25rem 0.6rem;font-size:0.85rem;">
+              <option value="biweekly" selected>Every 2 weeks</option>
+              <option value="weekly">Weekly</option>
+              <option value="semimonthly">Twice a month</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+
+          <!-- Deductions table -->
+          <div style="margin-bottom:1rem;">
+            <div
+              style="font-size:0.85rem;font-weight:600;color:var(--text-secondary);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em;">
+              Deductions</div>
+            <div id="ps-deductions-list"></div>
+          </div>
+
+          <button class="btn-sm" style="width:100%;" onclick="confirmPayslipImport()">
+            <svg style="display:inline-block;vertical-align:middle;margin-right:0.4rem" width="14" height="14"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Import Payslip
+          </button>
+        </div>
+
+        <!-- Step 3: Done -->
+        <div id="payslip-step-3" style="display:none;text-align:center;padding:2rem 0;">
+          <div style="font-size:3rem;margin-bottom:1rem;">✅</div>
+          <div id="payslip-result-text" style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem;"></div>
+          <div id="payslip-recurring-text" style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:1.5rem;">
+          </div>
+          <button class="btn-sm btn-secondary" onclick="resetPayslipImport()">Import Another</button>
+        </div>
+      </div>
+
       <div class="glass-card" style="max-width:900px;">
         <div
           style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
@@ -9650,31 +9766,186 @@
     async function saveOllamaSettings() {
       const url = document.getElementById('ollama-url-input').value.trim();
       const model = document.getElementById('ollama-model-input').value.trim() || 'llama3.1:8b';
-      // Save via .env update endpoint or just store in localStorage for now
+      // Persist server-side in the DB
+      await apiCall('/api/settings/ollama', 'POST', { url, model });
+      // Also keep localStorage in sync for other client-side uses
       localStorage.setItem('ollama_url', url);
       localStorage.setItem('ollama_model', model);
       showToast('info', '⏳ Testing connection...');
       await checkOllamaStatus();
+      // Show a result toast based on the status badge state
+      const dot = document.getElementById('ollama-dot');
+      if (dot && dot.classList.contains('green')) {
+        showToast('success', '✅ Ollama connected successfully');
+      } else if (dot && dot.classList.contains('red')) {
+        showToast('error', '❌ Ollama saved but unreachable — check the URL');
+      } else {
+        showToast('error', '❌ Ollama URL is empty or not configured');
+      }
     }
 
-    // ── Load Ollama settings on tab switch ────────────────────────────────────
-    document.addEventListener('DOMContentLoaded', () => {
-      const savedUrl = localStorage.getItem('ollama_url');
-      const savedModel = localStorage.getItem('ollama_model');
-      if (savedUrl) {
-        const el = document.getElementById('ollama-url-input');
-        if (el) el.value = savedUrl;
-      }
-      if (savedModel) {
-        const el = document.getElementById('ollama-model-input');
-        if (el) el.value = savedModel || 'llama3.1:8b';
+    // ── Load Ollama settings on page load ──────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Load from server DB first (so settings survive across browsers/devices)
+      try {
+        const settings = await apiCall('/api/settings/ollama');
+        if (settings && settings.url) {
+          const urlEl = document.getElementById('ollama-url-input');
+          if (urlEl) urlEl.value = settings.url;
+          localStorage.setItem('ollama_url', settings.url);
+        }
+        if (settings && settings.model) {
+          const modelEl = document.getElementById('ollama-model-input');
+          if (modelEl) modelEl.value = settings.model;
+          localStorage.setItem('ollama_model', settings.model);
+        }
+      } catch (e) {
+        // Fallback to localStorage if API fails
+        const savedUrl = localStorage.getItem('ollama_url');
+        const savedModel = localStorage.getItem('ollama_model');
+        if (savedUrl) { const el = document.getElementById('ollama-url-input'); if (el) el.value = savedUrl; }
+        if (savedModel) { const el = document.getElementById('ollama-model-input'); if (el) el.value = savedModel || 'llama3.1:8b'; }
       }
       checkOllamaStatus();
     });
+
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PAYSLIP IMPORT
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    let _payslipData = null;
+
+    // Show Ollama badge if configured
+    document.addEventListener('DOMContentLoaded', async () => {
+      const res = await apiCall('/api/import/ollama-status');
+      if (res && res.reachable) {
+        const badge = document.getElementById('payslip-ollama-badge');
+        if (badge) badge.style.display = '';
+      }
+    });
+
+    // Drag and drop for payslip dropzone
+    document.addEventListener('DOMContentLoaded', () => {
+      const dz = document.getElementById('payslip-dropzone');
+      if (!dz) return;
+      dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+      dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+      dz.addEventListener('drop', e => {
+        e.preventDefault();
+        dz.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) handlePayslipFile(file);
+      });
+    });
+
+    async function handlePayslipFile(file) {
+      if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+        showToast('error', 'Please upload a PDF file'); return;
+      }
+      // Show parsing spinner
+      document.getElementById('payslip-dropzone').style.display = 'none';
+      document.getElementById('payslip-parse-status').style.display = '';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      // Send Ollama URL from localStorage so server can use it if env var not set
+      const ollamaUrl = localStorage.getItem('ollama_url') || '';
+      const ollamaModel = localStorage.getItem('ollama_model') || 'llama3.1:8b';
+      if (ollamaUrl) formData.append('ollama_url', ollamaUrl);
+      if (ollamaModel) formData.append('ollama_model', ollamaModel);
+
+      try {
+        const resp = await fetch('/api/import/payslip', { method: 'POST', body: formData });
+        const result = await resp.json();
+        if (!resp.ok || result.error) {
+          showToast('error', result.error || 'Parse failed');
+          resetPayslipImport(); return;
+        }
+        _payslipData = result.data;
+        renderPayslipReview(_payslipData);
+      } catch (e) {
+        showToast('error', 'Upload failed: ' + e.message);
+        resetPayslipImport();
+      }
+    }
+
+    function renderPayslipReview(data) {
+      document.getElementById('payslip-step-1').style.display = 'none';
+      document.getElementById('payslip-step-2').style.display = '';
+
+      document.getElementById('ps-pay-date').value = data.pay_date || '';
+      document.getElementById('ps-employer').value = data.employer || '';
+      document.getElementById('ps-gross-pay').value = data.gross_pay || 0;
+      document.getElementById('ps-net-pay').value = data.net_pay || 0;
+
+      const catIcon = { 'Taxes': '🏛️', 'Healthcare': '🏥', 'Insurance': '🛡️', 'Retirement': '🏦', 'Other': '📋' };
+
+      const list = document.getElementById('ps-deductions-list');
+      list.innerHTML = (data.deductions || []).map((d, i) => `
+        <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.75rem;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);margin-bottom:0.4rem;">
+          <input type="checkbox" id="ps-ded-${i}" checked style="width:auto;accent-color:var(--primary);flex-shrink:0;">
+          <span style="flex:1;font-size:0.9rem;">${catIcon[d.category] || '📋'} ${d.label}</span>
+          <span style="font-size:0.85rem;color:var(--text-secondary);font-weight:600;">$${(d.amount || 0).toFixed(2)}</span>
+          <span class="badge badge-primary" style="font-size:0.7rem;">${d.category}</span>
+          <span style="font-size:0.72rem;color:rgba(16,185,129,0.8);white-space:nowrap;">🔄 recurring</span>
+        </div>`).join('');
+    }
+
+    async function confirmPayslipImport() {
+      const deductions = (_payslipData.deductions || []).map((d, i) => {
+        const checked = document.getElementById(`ps-ded-${i}`)?.checked;
+        if (!checked) return null;
+        return { ...d };
+      }).filter(Boolean);
+
+      const employer = document.getElementById('ps-employer').value;
+      const payload = {
+        pay_date: document.getElementById('ps-pay-date').value,
+        employer,
+        gross_pay: parseFloat(document.getElementById('ps-gross-pay').value),
+        net_pay: parseFloat(document.getElementById('ps-net-pay').value),
+        deductions,
+        recurring_income: {
+          enabled: document.getElementById('ps-rec-income')?.checked || false,
+          frequency: document.getElementById('ps-rec-income-freq')?.value || 'biweekly',
+          label: `Paycheck — ${employer || 'Employer'}`
+        }
+      };
+
+      const res = await apiCall('/api/import/payslip/confirm', 'POST', payload);
+      if (!res) return;
+
+      document.getElementById('payslip-step-2').style.display = 'none';
+      document.getElementById('payslip-step-3').style.display = '';
+      document.getElementById('payslip-result-text').textContent =
+        `✅ Income recorded + ${res.expenses_created} deduction expense${res.expenses_created !== 1 ? 's' : ''} added`;
+      const recurringParts = [];
+      if (res.recurring_created && res.recurring_created.length)
+        recurringParts.push(`🔄 Recurring set up: ${res.recurring_created.join(', ')}`);
+      document.getElementById('payslip-recurring-text').textContent = recurringParts.join(' · ');
+
+      // Refresh income/expenses tabs in background
+      loadIncome && loadIncome();
+      loadExpenses && loadExpenses();
+    }
+
+
+    function resetPayslipImport() {
+      _payslipData = null;
+      document.getElementById('payslip-dropzone').style.display = '';
+      document.getElementById('payslip-parse-status').style.display = 'none';
+      document.getElementById('payslip-step-1').style.display = '';
+      document.getElementById('payslip-step-2').style.display = 'none';
+      document.getElementById('payslip-step-3').style.display = 'none';
+      document.getElementById('payslip-file-input').value = '';
+    }
+
   </script>
   <script>
     // ═══════════════════════════════════════════════════════════════════════════
     // MOBILE NAV
+
     // ═══════════════════════════════════════════════════════════════════════════
 
     function isMobile() { return window.innerWidth <= 640; }
